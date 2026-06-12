@@ -32,9 +32,8 @@ app.get("/vendor/topojson-client.min.js", (_req, res) =>
     path.join(__dirname, "node_modules/topojson-client/dist/topojson-client.min.js")
   )
 );
-app.get("/vendor/three.module.js", (_req, res) =>
-  res.sendFile(path.join(__dirname, "node_modules/three/build/three.module.js"))
-);
+// three.module.js re-exports from sibling ./three.core.js, so serve the whole build dir.
+app.use("/vendor/three", express.static(path.join(__dirname, "node_modules/three/build")));
 app.get("/vendor/OrbitControls.js", (_req, res) =>
   res.sendFile(
     path.join(__dirname, "node_modules/three/examples/jsm/controls/OrbitControls.js")
