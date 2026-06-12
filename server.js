@@ -12,8 +12,10 @@ dns.setDefaultResultOrder("ipv4first");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
-// World Bank: "Death rate, crude (per 1,000 people)" — open API, no token required.
+// World Bank indicators (open API, no token): crude death rate + total population.
+// Absolute deaths/year = CDR * population / 1000, which drives the real blink rate.
 const CDR_INDICATOR = "SP.DYN.CDRT.IN";
+const POP_INDICATOR = "SP.POP.TOTL";
 const WB_BASE = "https://api.worldbank.org/v2";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // refresh ~daily
 const REQUEST_TIMEOUT_MS = 20000;
@@ -68,13 +70,13 @@ async function fetchJson(url, attempt = 1) {
   }
 }
 
-// Fetch the most recent non-empty CDR value per economy from the World Bank.
+// Fetch the most recent non-empty value per economy for a World Bank indicator.
 // Response shape: [ {page, pages, per_page, total}, [ {countryiso3code, country:{value}, date, value}, ... ] ]
-async function fetchCdrFromWorldBank() {
-  const base = `${WB_BASE}/country/all/indicator/${CDR_INDICATOR}?format=json&mrnev=1&per_page=400`;
+async function fetchIndicatorLatest(code) {
+  const base = `${WB_BASE}/country/all/indicator/${code}?format=json&mrnev=1&per_page=400`;
   const first = await fetchJson(base);
   if (!Array.isArray(first) || first.length < 2 || !Array.isArray(first[1])) {
-    throw new Error("Unexpected World Bank response shape");
+    throw new Error(`Unexpected World Bank response shape for ${code}`);
   }
   const rows = [...first[1]];
   const pages = Number(first[0]?.pages) || 1;
@@ -85,9 +87,10 @@ async function fetchCdrFromWorldBank() {
   return rows;
 }
 
-// Map World Bank rows -> [{id (M49), iso3, name, value, year}], keeping only real
-// countries that exist in the map (drops aggregates/regions like "World", income groups).
-function toValues(rows) {
+// Index World Bank rows by numeric M49 id, keeping only real countries that exist
+// in the map (drops aggregates/regions like "World" or income groups). Each entry:
+// { id, iso3, name, value, year }.
+function indexByM49(rows) {
   const byId = new Map();
   for (const r of rows) {
     if (r.value === null || r.value === undefined) continue;
@@ -101,7 +104,7 @@ function toValues(rows) {
       byId.set(id, { id, iso3, name: r.country?.value ?? iso3, value: r.value, year });
     }
   }
-  return [...byId.values()];
+  return byId;
 }
 
 // --- In-memory cache + sample fallback ---
@@ -124,9 +127,23 @@ async function getMortality() {
   if (cache && Date.now() - cache.ts < CACHE_TTL_MS) return cache.payload;
 
   try {
-    const rows = await fetchCdrFromWorldBank();
-    const values = toValues(rows);
-    if (!values.length) throw new Error("World Bank returned no usable values");
+    const [cdrRows, popRows] = await Promise.all([
+      fetchIndicatorLatest(CDR_INDICATOR),
+      fetchIndicatorLatest(POP_INDICATOR),
+    ]);
+    const cdr = indexByM49(cdrRows);
+    const pop = indexByM49(popRows);
+    if (!cdr.size) throw new Error("World Bank returned no usable values");
+
+    // Merge population in so the client can compute real deaths/year per country.
+    const values = [...cdr.values()].map((v) => ({
+      id: v.id,
+      iso3: v.iso3,
+      name: v.name,
+      value: v.value, // crude death rate (deaths per 1,000)
+      year: v.year,
+      population: pop.get(v.id)?.value ?? null,
+    }));
 
     const payload = {
       indicator: "Crude Death Rate (deaths per 1,000 population)",

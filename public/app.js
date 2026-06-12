@@ -3,14 +3,15 @@
 const WIDTH = 960;
 const HEIGHT = 500;
 
-// --- Blink-frequency tuning ----------------------------------------------
-// Each flash represents one death (per 1,000 people). Real deaths are far too
-// rare to see, so we compress one simulated year into MS_PER_YEAR_SIM ms.
-//   blink interval (ms) = MS_PER_YEAR_SIM / CDR        (i.e. 1 / (CDR / n))
-// Higher CDR -> shorter interval -> blinks more often.
-const MS_PER_YEAR_SIM = 30000; // 1 year ≈ 30s  (lower = faster blinking)
-const FLASH_MS = 1000; // each death flashes to black, fades to white over ~1s
+// --- Blink frequency (real time) -----------------------------------------
+// Each flash = one real death. A country's real deaths per year are
+//   deathsPerYear = CDR * population / 1000
+// so the average real interval between deaths is
+//   interval_ms = MS_PER_YEAR_REAL / deathsPerYear
+// Populous countries flash every few seconds; tiny ones almost never — and
+// across the whole world it sums to ~2 deaths/second.
 const MS_PER_YEAR_REAL = 365.25 * 24 * 3600 * 1000;
+const FLASH_MS = 700; // each death flashes to black, fades back to white
 // -------------------------------------------------------------------------
 
 const statusEl = document.getElementById("status");
@@ -42,23 +43,26 @@ async function main() {
       "On a deployment with open internet (e.g. Railway) this shows real data.";
   }
 
-  const speedup = MS_PER_YEAR_REAL / MS_PER_YEAR_SIM;
   subtitleEl.textContent =
     `${mortality.indicator} — latest available (≤ ${mortality.year}). ` +
-    `Each flash = one death per 1,000 people; faster blinking = higher mortality.`;
+    `Each flash is one real death, in real time (~2 people die worldwide every second).`;
 
   // Maps keyed by M49 numeric id.
   const valueById = new Map(mortality.values.map((d) => [Number(d.id), d.value]));
   const nameById = new Map(mortality.values.map((d) => [Number(d.id), d.name]));
   const yearById = new Map(mortality.values.map((d) => [Number(d.id), d.year]));
 
-  // Per-country blink parameters: period (ms) and a random phase so countries
-  // don't all flash in unison. Period clamped to >= flash so it never glitches.
+  // Per-country blink parameters: real average interval between deaths and a
+  // random phase so countries don't flash in unison. Needs CDR and population.
   const blinkById = new Map();
-  for (const [id, cdr] of valueById) {
-    if (!(cdr > 0)) continue;
-    const period = Math.max(MS_PER_YEAR_SIM / cdr, FLASH_MS * 1.1);
-    blinkById.set(id, { period, phase: Math.random() * period });
+  for (const v of mortality.values) {
+    const id = Number(v.id);
+    const cdr = v.value;
+    const pop = v.population;
+    if (!(cdr > 0) || !(pop > 0)) continue;
+    const deathsPerYear = (cdr * pop) / 1000;
+    const period = Math.max(MS_PER_YEAR_REAL / deathsPerYear, FLASH_MS * 1.1);
+    blinkById.set(id, { period, phase: Math.random() * period, deathsPerYear });
   }
 
   const countries = topojson.feature(topo, topo.objects.countries).features;
@@ -110,7 +114,7 @@ async function main() {
   }
   requestAnimationFrame(frame);
 
-  drawLegend(speedup);
+  drawLegend();
 }
 
 function showTooltip(event, d, valueById, nameById, yearById, blinkById, mortality) {
@@ -126,7 +130,8 @@ function showTooltip(event, d, valueById, nameById, yearById, blinkById, mortali
       ? `<div class="tt-value">No data</div>`
       : `<div class="tt-value">${v.toFixed(1)} deaths / 1,000</div>` +
         (blink
-          ? `<div style="color:var(--muted)">≈ 1 flash / ${(blink.period / 1000).toFixed(1)}s · ${year}</div>`
+          ? `<div style="color:var(--muted)">${fmtDeaths(blink.deathsPerYear)} deaths/yr · ` +
+            `1 flash / ${fmtInterval(blink.period)} · ${year}</div>`
           : `<div style="color:var(--muted)">${year}</div>`));
   const pad = 14;
   let x = event.clientX + pad;
@@ -142,15 +147,29 @@ function hideTooltip() {
   tooltip.classList.add("hidden");
 }
 
-function drawLegend(speedup) {
-  const fmt = d3.format(",.0f");
+function fmtDeaths(perYear) {
+  return d3.format(",.0f")(perYear);
+}
+
+// Human-readable average interval between deaths.
+function fmtInterval(ms) {
+  const s = ms / 1000;
+  if (s < 90) return `${s.toFixed(1)}s`;
+  const m = s / 60;
+  if (m < 90) return `${m.toFixed(1)} min`;
+  const h = m / 60;
+  if (h < 48) return `${h.toFixed(1)} h`;
+  return `${(h / 24).toFixed(1)} days`;
+}
+
+function drawLegend() {
   d3.select("#legend")
     .html("")
     .append("div")
     .html(
       `<span style="color:#fff">○</span> alive &nbsp;→&nbsp; ` +
-        `<span style="color:#000;background:#fff;padding:0 3px;border-radius:2px">●</span> a death (per 1,000). ` +
-        `Time compressed ~${fmt(speedup)}× (1 year ≈ ${Math.round(MS_PER_YEAR_SIM / 1000)}s).`
+        `<span style="color:#000;background:#fff;padding:0 3px;border-radius:2px">●</span> a death, ` +
+        `in real time. Hover a country for its rate.`
     );
 }
 
