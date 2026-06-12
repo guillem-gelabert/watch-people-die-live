@@ -39,24 +39,47 @@ const countryIds = (() => {
 })();
 
 // Node's fetch (undici) sends no User-Agent by default; the UN Data Portal's
-// WAF rejects such requests with 403, so send a browser-like UA.
+// WAF rejects such requests, so present a full browser-like header set.
 const REQUEST_HEADERS = {
-  Accept: "application/json",
+  Accept: "application/json, text/plain, */*",
+  "Accept-Language": "en-US,en;q=0.9",
   "User-Agent":
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+  Referer: "https://population.un.org/dataportal/data/indicators",
 };
 
-// --- Small fetch helper with timeout ---
-async function fetchJson(url) {
+// Minimal cookie jar: some WAFs answer the first request with a 401/403 challenge
+// that sets a cookie, then accept a retry that echoes it back.
+let cookieJar = "";
+function rememberCookies(res) {
+  const set = res.headers.getSetCookie?.() ?? [];
+  const pairs = set.map((c) => c.split(";")[0]).filter(Boolean);
+  if (pairs.length) cookieJar = pairs.join("; ");
+}
+
+async function rawFetch(url) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const res = await fetch(url, { headers: REQUEST_HEADERS, signal: ctrl.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-    return await res.json();
+    const headers = { ...REQUEST_HEADERS };
+    if (cookieJar) headers.Cookie = cookieJar;
+    return await fetch(url, { headers, signal: ctrl.signal });
   } finally {
     clearTimeout(timer);
   }
+}
+
+// --- fetch helper: captures challenge cookies and retries once ---
+async function fetchJson(url) {
+  let res = await rawFetch(url);
+  if ((res.status === 401 || res.status === 403) && (res.headers.getSetCookie?.()?.length)) {
+    rememberCookies(res);
+    res = await rawFetch(url); // retry with the cookie the challenge handed us
+  } else {
+    rememberCookies(res);
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+  return await res.json();
 }
 
 // Follow the API's `nextPage` links, accumulating every page's `data` array.
@@ -178,29 +201,45 @@ async function getMortality() {
   }
 }
 
-// Diagnostic endpoint: attempts the live calls and reports exactly what happened.
-app.get("/api/debug", async (_req, res) => {
-  const report = {};
+// Diagnostic endpoint: probes each endpoint and dumps status + key headers so a
+// deployment-only failure (e.g. a WAF challenge) can be diagnosed without guessing.
+async function probe(url) {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
-    const raw = await fetch(`${API_BASE}/indicators/?pageSize=1`, {
-      headers: REQUEST_HEADERS,
-      signal: ctrl.signal,
-    });
+    const headers = { ...REQUEST_HEADERS };
+    if (cookieJar) headers.Cookie = cookieJar;
+    const r = await fetch(url, { headers, signal: ctrl.signal });
     clearTimeout(timer);
-    report.indicatorsStatus = raw.status;
-    report.indicatorsBodySnippet = (await raw.text()).slice(0, 400);
+    const body = (await r.text()).slice(0, 500);
+    return {
+      url,
+      status: r.status,
+      statusText: r.statusText,
+      server: r.headers.get("server"),
+      contentType: r.headers.get("content-type"),
+      wwwAuthenticate: r.headers.get("www-authenticate"),
+      setCookie: (r.headers.getSetCookie?.() ?? []).map((c) => c.split(";")[0]),
+      bodySnippet: body,
+    };
   } catch (err) {
-    report.indicatorsError = `${err.name}: ${err.message}`;
+    return { url, error: `${err.name}: ${err.message}` };
   }
-  try {
-    const id = await resolveCdrIndicatorId();
-    report.cdrIndicatorId = id;
-  } catch (err) {
-    report.cdrError = `${err.name}: ${err.message}`;
-  }
-  res.json(report);
+}
+
+app.get("/api/debug", async (_req, res) => {
+  const now = new Date().getFullYear();
+  res.json({
+    indicators: await probe(`${API_BASE}/indicators/?pageSize=1`),
+    locations: await probe(`${API_BASE}/locations/?pageSize=1`),
+    data: await probe(
+      `${API_BASE}/data/indicators/59/locations/900/start/${now - 1}/end/${now}/`
+    ),
+    dataWithFormat: await probe(
+      `${API_BASE}/data/indicators/59/locations/900/start/${now - 1}/end/${now}/?format=json`
+    ),
+    cookieJar,
+  });
 });
 
 app.get("/api/mortality", async (_req, res) => {
