@@ -38,15 +38,20 @@ const countryIds = (() => {
   }
 })();
 
+// Node's fetch (undici) sends no User-Agent by default; the UN Data Portal's
+// WAF rejects such requests with 403, so send a browser-like UA.
+const REQUEST_HEADERS = {
+  Accept: "application/json",
+  "User-Agent":
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+};
+
 // --- Small fetch helper with timeout ---
 async function fetchJson(url) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
-      headers: { Accept: "application/json" },
-      signal: ctrl.signal,
-    });
+    const res = await fetch(url, { headers: REQUEST_HEADERS, signal: ctrl.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
     return await res.json();
   } finally {
@@ -172,6 +177,31 @@ async function getMortality() {
     return payload;
   }
 }
+
+// Diagnostic endpoint: attempts the live calls and reports exactly what happened.
+app.get("/api/debug", async (_req, res) => {
+  const report = {};
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+    const raw = await fetch(`${API_BASE}/indicators/?pageSize=1`, {
+      headers: REQUEST_HEADERS,
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    report.indicatorsStatus = raw.status;
+    report.indicatorsBodySnippet = (await raw.text()).slice(0, 400);
+  } catch (err) {
+    report.indicatorsError = `${err.name}: ${err.message}`;
+  }
+  try {
+    const id = await resolveCdrIndicatorId();
+    report.cdrIndicatorId = id;
+  } catch (err) {
+    report.cdrError = `${err.name}: ${err.message}`;
+  }
+  res.json(report);
+});
 
 app.get("/api/mortality", async (_req, res) => {
   try {
