@@ -26,15 +26,16 @@ async function main() {
   if (mortality.source === "sample") {
     bannerEl.classList.remove("hidden");
     bannerEl.textContent =
-      "⚠ Showing bundled sample data — the live UN Data Portal API was unreachable from the server. " +
+      "⚠ Showing bundled sample data — the live World Bank API was unreachable from the server. " +
       "On a deployment with open internet (e.g. Railway) this shows real data.";
   }
 
-  subtitleEl.textContent = `${mortality.indicator} — ${mortality.year}`;
+  subtitleEl.textContent = `${mortality.indicator} — latest available (≤ ${mortality.year})`;
 
-  // Map of M49 numeric id -> value.
+  // Maps keyed by M49 numeric id.
   const valueById = new Map(mortality.values.map((d) => [Number(d.id), d.value]));
   const nameById = new Map(mortality.values.map((d) => [Number(d.id), d.name]));
+  const yearById = new Map(mortality.values.map((d) => [Number(d.id), d.year]));
 
   const countries = topojson.feature(topo, topo.objects.countries).features;
 
@@ -66,23 +67,26 @@ async function main() {
       const v = valueById.get(Number(d.id));
       return v == null ? "var(--no-data)" : color(v);
     })
-    .on("mousemove", (event, d) => showTooltip(event, d, valueById, nameById, mortality))
+    .on("mousemove", (event, d) =>
+      showTooltip(event, d, valueById, nameById, yearById, mortality)
+    )
     .on("mouseleave", hideTooltip);
 
   drawLegend(color, d3.extent(values), mortality.indicator);
 }
 
-function showTooltip(event, d, valueById, nameById, mortality) {
+function showTooltip(event, d, valueById, nameById, yearById, mortality) {
   const id = Number(d.id);
   const v = valueById.get(id);
   const name = nameById.get(id) || (d.properties && d.properties.name) || "Unknown";
+  const year = yearById.get(id) || mortality.year;
   tooltip.classList.remove("hidden");
   tooltip.innerHTML =
     `<div class="tt-name">${name}</div>` +
     (v == null
       ? `<div class="tt-value">No data</div>`
       : `<div class="tt-value">${v.toFixed(1)} deaths / 1,000</div>` +
-        `<div style="color:var(--muted)">${mortality.year}</div>`);
+        `<div style="color:var(--muted)">${year}</div>`);
   const pad = 14;
   let x = event.clientX + pad;
   let y = event.clientY + pad;

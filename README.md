@@ -1,28 +1,32 @@
 # watch-people-die-live
 
 A world map of **Crude Death Rate** (deaths per 1,000 population) for the latest available
-year, pulled from the [UN World Population Prospects Data Portal API](https://population.un.org/dataportal/about/dataapi)
-and rendered as a D3 choropleth.
+year, pulled from the [World Bank API](https://data.worldbank.org/indicator/SP.DYN.CDRT.IN)
+(indicator `SP.DYN.CDRT.IN`) and rendered as a D3 choropleth.
+
+> The World Bank's crude death rate is itself derived from the UN World Population Prospects.
+> The UN Data Portal API was the original source, but its data endpoint now requires a Bearer
+> token, so this uses the equivalent open World Bank indicator (no token / registration needed).
 
 ## How it works
 
-- **Backend** (`server.js`, Express): a `/api/mortality` endpoint that
-  1. resolves the *Crude Death Rate* indicator id from the API by name,
-  2. lists country locations (filtered to those present in the map geometry),
-  3. detects the latest year with an estimate value, and
-  4. fetches the per-country values (both sexes), handling the API's pagination.
-
-  The result is cached in memory (~24h). The endpoint returns
-  `{ indicator, year, source, values: [{ id, iso3, name, value }] }`, where `id` is the
+- **Backend** (`server.js`, Express): a `/api/mortality` endpoint that fetches the most recent
+  non-empty CDR value per economy from the World Bank (`?mrnev=1`), maps each country's
+  **ISO3 code → numeric M49 id** (via `i18n-iso-countries`), drops aggregates/regions, and
+  caches the result in memory (~24h). Returns
+  `{ indicator, year, source, values: [{ id, iso3, name, value, year }] }`, where `id` is the
   numeric **M49 code** — the same key used by the map geometry, so the join is direct.
 
 - **Frontend** (`public/`): vanilla **D3 v7** + **topojson-client** drawing a
-  `geoNaturalEarth1` choropleth, with a color legend and hover tooltips. D3, topojson-client,
-  and the [`world-atlas`](https://github.com/topojson/world-atlas) TopoJSON are vendored from
-  npm and served by the backend (no CDN dependency).
+  `geoNaturalEarth1` choropleth, with a color legend and hover tooltips (per-country value +
+  year). D3, topojson-client, and the [`world-atlas`](https://github.com/topojson/world-atlas)
+  TopoJSON are vendored from npm and served by the backend (no CDN dependency).
 
-- **Fallback**: if the UN API is unreachable, the server serves `data/sample-cdr.json`
+- **Fallback**: if the World Bank API is unreachable, the server serves `data/sample-cdr.json`
   (clearly marked as sample data) so the UI still renders, and the client shows a banner.
+
+- **`/api/debug`**: probes the live World Bank endpoint and reports the HTTP status + a body
+  snippet — handy for diagnosing a deployment-only fetch issue.
 
 ## Run locally
 
@@ -32,9 +36,9 @@ npm start
 # open http://localhost:3000
 ```
 
-> Note: some sandboxed/CI networks block `population.un.org`. There, `/api/mortality` returns
-> `source: "sample"`. On a normal network (including Railway) it returns `source: "un"` with
-> real data for ~200 countries.
+> Note: some sandboxed/CI networks block outbound hosts. There, `/api/mortality` returns
+> `source: "sample"`. On a normal network (including Railway) it returns `source: "worldbank"`
+> with real data for ~190 countries.
 
 ## Deploy on Railway
 
@@ -42,6 +46,7 @@ npm start
 2. In Railway: **New Project → Deploy from GitHub repo** and select it.
 3. Railway builds with Nixpacks and runs `npm start` (see `railway.json`). The `PORT`
    environment variable is injected automatically and the server honors it.
-4. Open the generated domain. Railway's egress reaches the UN API, so the map shows live data.
+4. Open the generated domain — Railway's egress reaches the World Bank API, so the map shows
+   live data.
 
-No environment variables or API keys are required — the UN Data Portal API is public.
+No environment variables or API keys are required — the World Bank API is public.
