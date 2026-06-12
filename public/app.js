@@ -12,8 +12,8 @@ const HEIGHT = 500;
 // than on a fixed beat. Populous countries emit a dot every few seconds; tiny
 // ones almost never — and across the whole world it sums to ~2 deaths/second.
 const MS_PER_YEAR_REAL = 365.25 * 24 * 3600 * 1000;
-const DOT_MS = 1200; // lifetime of one death dot: appear, grow, fade, vanish
-const DOT_MAX_R = 3.5; // max dot radius in the 960×500 viewBox units
+const DOT_MS = 3500; // lifetime of one death dot: appear, grow, fade, vanish
+const DOT_MAX_R = 16; // max dot radius in the 960×500 viewBox units
 const MAX_DOTS = 600; // safety cap on concurrent dots
 const CATCHUP_CAP = DOT_MS; // events older than this (e.g. backgrounded tab) don't spawn
 // -------------------------------------------------------------------------
@@ -149,7 +149,8 @@ async function main() {
         dots.splice(i, 1);
         continue;
       }
-      dots[i].el.setAttribute("r", DOT_MAX_R * (1 - (1 - p) * (1 - p)));
+      // Grows steadily across the whole lifetime while fading out.
+      dots[i].el.setAttribute("r", DOT_MAX_R * p);
       dots[i].el.setAttribute("opacity", 1 - p);
     }
     requestAnimationFrame(frame);
