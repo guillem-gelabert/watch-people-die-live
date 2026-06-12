@@ -3,16 +3,19 @@
 const WIDTH = 960;
 const HEIGHT = 500;
 
-// --- Blink frequency (real time, Poisson) --------------------------------
-// Each flash = one real death. A country's real deaths per year are
+// --- Death frequency (real time, Poisson) --------------------------------
+// Each dot = one real death. A country's real deaths per year are
 //   deathsPerYear = CDR * population / 1000
 // so the MEAN interval between deaths is meanMs = MS_PER_YEAR_REAL / deathsPerYear.
 // Deaths are modelled as a Poisson process: gaps are exponentially distributed
-// with that mean, so flashes occur at random (clustering and spacing out) rather
-// than on a fixed beat. Populous countries flash every few seconds; tiny ones
-// almost never — and across the whole world it sums to ~2 deaths/second.
+// with that mean, so dots appear at random (clustering and spacing out) rather
+// than on a fixed beat. Populous countries emit a dot every few seconds; tiny
+// ones almost never — and across the whole world it sums to ~2 deaths/second.
 const MS_PER_YEAR_REAL = 365.25 * 24 * 3600 * 1000;
-const FLASH_MS = 700; // each death flashes to black, fades back to white
+const DOT_MS = 1200; // lifetime of one death dot: appear, grow, fade, vanish
+const DOT_MAX_R = 3.5; // max dot radius in the 960×500 viewBox units
+const MAX_DOTS = 600; // safety cap on concurrent dots
+const CATCHUP_CAP = DOT_MS; // events older than this (e.g. backgrounded tab) don't spawn
 // -------------------------------------------------------------------------
 
 // Exponential inter-arrival time for a Poisson process with the given mean.
@@ -51,7 +54,7 @@ async function main() {
 
   subtitleEl.textContent =
     `${mortality.indicator} — latest available (≤ ${mortality.year}). ` +
-    `Each flash is one real death, in real time (~2 people die worldwide every second).`;
+    `Each dot is one real death, in real time (~2 people die worldwide every second).`;
 
   // Maps keyed by M49 numeric id.
   const valueById = new Map(mortality.values.map((d) => [Number(d.id), d.value]));
@@ -81,7 +84,7 @@ async function main() {
 
   svg.append("path").attr("class", "sphere").attr("d", path({ type: "Sphere" }));
 
-  const paths = svg
+  svg
     .append("g")
     .selectAll("path")
     .data(countries)
@@ -94,34 +97,60 @@ async function main() {
     )
     .on("mouseleave", hideTooltip);
 
-  // Animation loop: each country is white; a death (Poisson event) flashes it to
-  // black, then it eases back to white over FLASH_MS. `next` is the scheduled time
-  // of the upcoming death; on firing we record `flashStart` and draw the next gap.
-  const nodes = paths.nodes();
-  const state = nodes.map((n) => {
-    const b = blinkById.get(Number(n.__data__.id));
-    if (!b) return null;
-    return { mean: b.meanMs, flashStart: -Infinity, next: expGap(b.meanMs) };
-  });
+  // Dots render above the land, and don't intercept pointer events (see CSS) so
+  // country hover/tooltip still works.
+  const dotLayer = svg.append("g").attr("class", "dots");
+
+  // Pick a random screen point that lies inside the country, by rejection sampling
+  // over its projected bounding box and testing membership with d3.geoContains on
+  // the inverse-projected lon/lat. Falls back to the centroid for thin/tiny shapes.
+  function randomPointInCountry(feature, bounds) {
+    const [[x0, y0], [x1, y1]] = bounds;
+    for (let i = 0; i < 30; i++) {
+      const x = x0 + Math.random() * (x1 - x0);
+      const y = y0 + Math.random() * (y1 - y0);
+      const ll = projection.invert([x, y]);
+      if (ll && d3.geoContains(feature, ll)) return [x, y];
+    }
+    return path.centroid(feature);
+  }
+
+  // Animation loop: each death (Poisson event) spawns a red dot at a random point
+  // inside the country; the dot grows and fades over DOT_MS, then is removed.
+  // `next` is the scheduled time of the upcoming death; on firing we draw the next gap.
+  const state = countries
+    .filter((d) => blinkById.has(Number(d.id)))
+    .map((feature) => {
+      const mean = blinkById.get(Number(feature.id)).meanMs;
+      return { feature, bounds: path.bounds(feature), mean, next: expGap(mean) };
+    });
+  const dots = [];
   const start = performance.now();
-  let prev = nodes.map(() => -1);
 
   function frame(now) {
     const t = now - start;
-    for (let i = 0; i < nodes.length; i++) {
-      const s = state[i];
-      if (!s) continue;
+    for (const s of state) {
       while (t >= s.next) {
-        s.flashStart = s.next;
+        // Skip events too far in the past (e.g. after a backgrounded tab) so we
+        // don't spawn a burst; recent events spawn a dot.
+        if (t - s.next <= CATCHUP_CAP && dots.length < MAX_DOTS) {
+          const [x, y] = randomPointInCountry(s.feature, s.bounds);
+          const el = dotLayer.append("circle").attr("class", "death-dot").attr("cx", x).attr("cy", y).attr("r", 0).node();
+          dots.push({ el, t0: s.next });
+        }
         s.next += expGap(s.mean);
       }
-      const age = t - s.flashStart;
-      // black at the moment of death, easing to white over FLASH_MS.
-      const shade = age < FLASH_MS ? Math.round(255 * (age / FLASH_MS)) : 255;
-      if (shade !== prev[i]) {
-        nodes[i].setAttribute("fill", `rgb(${shade},${shade},${shade})`);
-        prev[i] = shade;
+    }
+    // Grow + fade the active dots; remove once their lifetime is spent.
+    for (let i = dots.length - 1; i >= 0; i--) {
+      const p = (t - dots[i].t0) / DOT_MS;
+      if (p >= 1) {
+        dots[i].el.remove();
+        dots.splice(i, 1);
+        continue;
       }
+      dots[i].el.setAttribute("r", DOT_MAX_R * (1 - (1 - p) * (1 - p)));
+      dots[i].el.setAttribute("opacity", 1 - p);
     }
     requestAnimationFrame(frame);
   }
@@ -180,9 +209,9 @@ function drawLegend() {
     .html("")
     .append("div")
     .html(
-      `<span style="color:#fff">○</span> alive &nbsp;→&nbsp; ` +
-        `<span style="color:#000;background:#fff;padding:0 3px;border-radius:2px">●</span> a death, ` +
-        `at random in real time (Poisson). Hover a country for its rate.`
+      `<span style="color:var(--accent)">●</span> each dot is a death, ` +
+        `at a random place in that country, in real time (Poisson). ` +
+        `Hover a country for its rate.`
     );
 }
 

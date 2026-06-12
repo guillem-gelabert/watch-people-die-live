@@ -91,6 +91,11 @@ main {
   stroke-width: 1px;
 }
 
+.death-dot {
+  fill: var(--accent);
+  pointer-events: none;
+}
+
 .sphere {
   fill: #11151c;
   stroke: #222834;
