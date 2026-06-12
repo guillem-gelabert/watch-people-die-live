@@ -74,32 +74,18 @@ main {
   position: relative;
 }
 
-#map {
+#globe {
   width: 100%;
-  height: auto;
+  height: 70vh;
+  min-height: 360px;
+  background: #808080;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+#globe canvas {
   display: block;
-}
-
-.country {
-  stroke: var(--stroke);
-  stroke-width: 0.4px;
-  cursor: pointer;
-}
-
-.country:hover {
-  stroke: #5ac8fa;
-  stroke-width: 1px;
-}
-
-.death-dot {
-  fill: var(--accent);
-  pointer-events: none;
-}
-
-.sphere {
-  fill: #11151c;
-  stroke: #222834;
-  stroke-width: 0.6px;
+  touch-action: none; /* let OrbitControls handle drag/pinch instead of scrolling */
 }
 
 #legend {

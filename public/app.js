@@ -1,7 +1,6 @@
 /* global d3, topojson */
-
-const WIDTH = 960;
-const HEIGHT = 500;
+import * as THREE from "three";
+import { OrbitControls } from "/vendor/OrbitControls.js";
 
 // --- Death frequency (real time, Poisson) --------------------------------
 // Each dot = one real death. A country's real deaths per year are
@@ -13,9 +12,17 @@ const HEIGHT = 500;
 // ones almost never — and across the whole world it sums to ~2 deaths/second.
 const MS_PER_YEAR_REAL = 365.25 * 24 * 3600 * 1000;
 const DOT_MS = 3500; // lifetime of one death dot: appear, grow, fade, vanish
-const DOT_MAX_R = 16; // max dot radius in the 960×500 viewBox units
+const DOT_MAX_R = 0.028; // max dot radius in globe units (earth radius = 1)
 const MAX_DOTS = 600; // safety cap on concurrent dots
 const CATCHUP_CAP = DOT_MS; // events older than this (e.g. backgrounded tab) don't spawn
+
+// Globe / texture.
+const GLOBE_R = 1;
+const TEX_W = 2048;
+const TEX_H = 1024;
+const OCEAN_FILL = "#11151c";
+const NO_DATA_FILL = "#33384a";
+const DOT_COLOR = 0xff5252;
 // -------------------------------------------------------------------------
 
 // Exponential inter-arrival time for a Poisson process with the given mean.
@@ -23,12 +30,31 @@ function expGap(mean) {
   return -Math.log(1 - Math.random()) * mean;
 }
 
+// lon/lat (degrees) -> point on a sphere textured with a standard equirectangular
+// map (north up, lon -180 at the left seam). Inverse is vec3ToLonLat below.
+function lonLatToVec3(lon, lat, r) {
+  const phi = ((90 - lat) * Math.PI) / 180;
+  const theta = ((lon + 180) * Math.PI) / 180;
+  return new THREE.Vector3(
+    -r * Math.sin(phi) * Math.cos(theta),
+    r * Math.cos(phi),
+    r * Math.sin(phi) * Math.sin(theta)
+  );
+}
+
+function vec3ToLonLat(p) {
+  const r = p.length();
+  const lat = 90 - (Math.acos(p.y / r) * 180) / Math.PI;
+  let lon = (Math.atan2(p.z, -p.x) * 180) / Math.PI - 180;
+  while (lon < -180) lon += 360;
+  while (lon > 180) lon -= 360;
+  return [lon, lat];
+}
+
 const statusEl = document.getElementById("status");
 const bannerEl = document.getElementById("sample-banner");
 const subtitleEl = document.getElementById("subtitle");
 const tooltip = document.getElementById("tooltip");
-
-const NO_DATA_FILL = "#33384a";
 
 async function main() {
   let topo, mortality;
@@ -74,88 +100,143 @@ async function main() {
 
   const countries = topojson.feature(topo, topo.objects.countries).features;
 
-  const projection = d3.geoNaturalEarth1().fitSize([WIDTH, HEIGHT], { type: "Sphere" });
-  const path = d3.geoPath(projection);
+  // --- Base map: draw the world once into a canvas, used as a sphere texture ---
+  const canvas = document.createElement("canvas");
+  canvas.width = TEX_W;
+  canvas.height = TEX_H;
+  const ctx = canvas.getContext("2d");
+  const projection = d3
+    .geoEquirectangular()
+    .scale(TEX_W / (2 * Math.PI))
+    .translate([TEX_W / 2, TEX_H / 2]);
+  const geoPathStr = d3.geoPath(projection); // returns an SVG path string (no context)
+  ctx.fillStyle = OCEAN_FILL;
+  ctx.fillRect(0, 0, TEX_W, TEX_H);
+  for (const f of countries) {
+    ctx.fillStyle = blinkById.has(Number(f.id)) ? "#ffffff" : NO_DATA_FILL;
+    ctx.fill(new Path2D(geoPathStr(f)));
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
 
-  const svg = d3
-    .select("#map")
-    .attr("viewBox", `0 0 ${WIDTH} ${HEIGHT}`)
-    .attr("preserveAspectRatio", "xMidYMid meet");
+  // --- three.js scene ---
+  const container = document.getElementById("globe");
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setClearColor(0x808080); // 50% gray background
+  container.appendChild(renderer.domElement);
 
-  svg.append("path").attr("class", "sphere").attr("d", path({ type: "Sphere" }));
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  camera.position.set(0, 0, 3);
 
-  svg
-    .append("g")
-    .selectAll("path")
-    .data(countries)
-    .join("path")
-    .attr("class", "country")
-    .attr("d", path)
-    .attr("fill", (d) => (blinkById.has(Number(d.id)) ? "#fff" : NO_DATA_FILL))
-    .on("mousemove", (event, d) =>
-      showTooltip(event, d, valueById, nameById, yearById, blinkById, mortality)
-    )
-    .on("mouseleave", hideTooltip);
+  const globe = new THREE.Group();
+  scene.add(globe);
+  const earth = new THREE.Mesh(
+    new THREE.SphereGeometry(GLOBE_R, 64, 64),
+    new THREE.MeshBasicMaterial({ map: texture })
+  );
+  globe.add(earth);
+  const dotsGroup = new THREE.Group();
+  globe.add(dotsGroup); // dots rotate with the earth
 
-  // Dots render above the land, and don't intercept pointer events (see CSS) so
-  // country hover/tooltip still works.
-  const dotLayer = svg.append("g").attr("class", "dots");
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true; // momentum
+  controls.enablePan = false;
+  controls.minDistance = 1.25;
+  controls.maxDistance = 6;
+  controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
 
-  // Pick a random screen point that lies inside the country, by rejection sampling
-  // over its projected bounding box and testing membership with d3.geoContains on
-  // the inverse-projected lon/lat. Falls back to the centroid for thin/tiny shapes.
-  function randomPointInCountry(feature, bounds) {
-    const [[x0, y0], [x1, y1]] = bounds;
+  function resize() {
+    const w = container.clientWidth;
+    const h = container.clientHeight || Math.round(w * 0.6);
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  // --- Death dots (3D spheres intersecting the surface) ---
+  const dotGeo = new THREE.SphereGeometry(1, 12, 12);
+
+  // Random lon/lat inside a country via rejection sampling over its geographic
+  // bounds; falls back to the centroid for thin/tiny shapes.
+  function randomLonLat(feature, bounds) {
+    const [[lon0, lat0], [lon1, lat1]] = bounds;
     for (let i = 0; i < 30; i++) {
-      const x = x0 + Math.random() * (x1 - x0);
-      const y = y0 + Math.random() * (y1 - y0);
-      const ll = projection.invert([x, y]);
-      if (ll && d3.geoContains(feature, ll)) return [x, y];
+      const lon = lon0 + Math.random() * (lon1 - lon0);
+      const lat = lat0 + Math.random() * (lat1 - lat0);
+      if (d3.geoContains(feature, [lon, lat])) return [lon, lat];
     }
-    return path.centroid(feature);
+    return d3.geoCentroid(feature);
   }
 
-  // Animation loop: each death (Poisson event) spawns a red dot at a random point
-  // inside the country; the dot grows and fades over DOT_MS, then is removed.
-  // `next` is the scheduled time of the upcoming death; on firing we draw the next gap.
   const state = countries
     .filter((d) => blinkById.has(Number(d.id)))
     .map((feature) => {
       const mean = blinkById.get(Number(feature.id)).meanMs;
-      return { feature, bounds: path.bounds(feature), mean, next: expGap(mean) };
+      return { feature, bounds: d3.geoBounds(feature), mean, next: expGap(mean) };
     });
   const dots = [];
   const start = performance.now();
+
+  function spawnDot(lon, lat, t0) {
+    const mat = new THREE.MeshBasicMaterial({ color: DOT_COLOR, transparent: true });
+    const m = new THREE.Mesh(dotGeo, mat);
+    m.position.copy(lonLatToVec3(lon, lat, GLOBE_R)); // centered on surface -> straddles it
+    m.scale.setScalar(1e-4);
+    dotsGroup.add(m);
+    dots.push({ m, mat, t0 });
+  }
 
   function frame(now) {
     const t = now - start;
     for (const s of state) {
       while (t >= s.next) {
-        // Skip events too far in the past (e.g. after a backgrounded tab) so we
-        // don't spawn a burst; recent events spawn a dot.
+        // Skip events too far in the past (e.g. backgrounded tab) to avoid a burst.
         if (t - s.next <= CATCHUP_CAP && dots.length < MAX_DOTS) {
-          const [x, y] = randomPointInCountry(s.feature, s.bounds);
-          const el = dotLayer.append("circle").attr("class", "death-dot").attr("cx", x).attr("cy", y).attr("r", 0).node();
-          dots.push({ el, t0: s.next });
+          const [lon, lat] = randomLonLat(s.feature, s.bounds);
+          spawnDot(lon, lat, s.next);
         }
         s.next += expGap(s.mean);
       }
     }
-    // Grow + fade the active dots; remove once their lifetime is spent.
+    // Grow + fade active dots; remove once their lifetime is spent.
     for (let i = dots.length - 1; i >= 0; i--) {
       const p = (t - dots[i].t0) / DOT_MS;
       if (p >= 1) {
-        dots[i].el.remove();
+        dotsGroup.remove(dots[i].m);
+        dots[i].mat.dispose();
         dots.splice(i, 1);
         continue;
       }
-      // Grows steadily across the whole lifetime while fading out.
-      dots[i].el.setAttribute("r", DOT_MAX_R * p);
-      dots[i].el.setAttribute("opacity", 1 - p);
+      dots[i].m.scale.setScalar(Math.max(DOT_MAX_R * p, 1e-4));
+      dots[i].mat.opacity = 1 - p;
     }
+    controls.update();
+    renderer.render(scene, camera);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
+
+  // --- Hover tooltip: raycast the globe, map the hit point back to a country ---
+  const raycaster = new THREE.Raycaster();
+  const ptr = new THREE.Vector2();
+  renderer.domElement.addEventListener("mousemove", (event) => {
+    const rect = renderer.domElement.getBoundingClientRect();
+    ptr.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    ptr.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    raycaster.setFromCamera(ptr, camera);
+    const hit = raycaster.intersectObject(earth, false)[0];
+    if (!hit) return hideTooltip();
+    const [lon, lat] = vec3ToLonLat(earth.worldToLocal(hit.point.clone()));
+    const feature = countries.find((f) => d3.geoContains(f, [lon, lat]));
+    if (!feature) return hideTooltip();
+    showTooltip(event, feature, valueById, nameById, yearById, blinkById, mortality);
+  });
+  renderer.domElement.addEventListener("mouseleave", hideTooltip);
 
   drawLegend();
 }
@@ -212,7 +293,7 @@ function drawLegend() {
     .html(
       `<span style="color:var(--accent)">●</span> each dot is a death, ` +
         `at a random place in that country, in real time (Poisson). ` +
-        `Hover a country for its rate.`
+        `Drag to rotate · scroll/pinch to zoom · hover a country for its rate.`
     );
 }
 
