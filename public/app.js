@@ -3,16 +3,22 @@
 const WIDTH = 960;
 const HEIGHT = 500;
 
-// --- Blink frequency (real time) -----------------------------------------
+// --- Blink frequency (real time, Poisson) --------------------------------
 // Each flash = one real death. A country's real deaths per year are
 //   deathsPerYear = CDR * population / 1000
-// so the average real interval between deaths is
-//   interval_ms = MS_PER_YEAR_REAL / deathsPerYear
-// Populous countries flash every few seconds; tiny ones almost never — and
-// across the whole world it sums to ~2 deaths/second.
+// so the MEAN interval between deaths is meanMs = MS_PER_YEAR_REAL / deathsPerYear.
+// Deaths are modelled as a Poisson process: gaps are exponentially distributed
+// with that mean, so flashes occur at random (clustering and spacing out) rather
+// than on a fixed beat. Populous countries flash every few seconds; tiny ones
+// almost never — and across the whole world it sums to ~2 deaths/second.
 const MS_PER_YEAR_REAL = 365.25 * 24 * 3600 * 1000;
 const FLASH_MS = 700; // each death flashes to black, fades back to white
 // -------------------------------------------------------------------------
+
+// Exponential inter-arrival time for a Poisson process with the given mean.
+function expGap(mean) {
+  return -Math.log(1 - Math.random()) * mean;
+}
 
 const statusEl = document.getElementById("status");
 const bannerEl = document.getElementById("sample-banner");
@@ -52,8 +58,7 @@ async function main() {
   const nameById = new Map(mortality.values.map((d) => [Number(d.id), d.name]));
   const yearById = new Map(mortality.values.map((d) => [Number(d.id), d.year]));
 
-  // Per-country blink parameters: real average interval between deaths and a
-  // random phase so countries don't flash in unison. Needs CDR and population.
+  // Per-country death stats: mean interval (ms) between deaths. Needs CDR + pop.
   const blinkById = new Map();
   for (const v of mortality.values) {
     const id = Number(v.id);
@@ -61,8 +66,7 @@ async function main() {
     const pop = v.population;
     if (!(cdr > 0) || !(pop > 0)) continue;
     const deathsPerYear = (cdr * pop) / 1000;
-    const period = Math.max(MS_PER_YEAR_REAL / deathsPerYear, FLASH_MS * 1.1);
-    blinkById.set(id, { period, phase: Math.random() * period, deathsPerYear });
+    blinkById.set(id, { meanMs: MS_PER_YEAR_REAL / deathsPerYear, deathsPerYear });
   }
 
   const countries = topojson.feature(topo, topo.objects.countries).features;
@@ -90,21 +94,30 @@ async function main() {
     )
     .on("mouseleave", hideTooltip);
 
-  // Animation loop: a country is white, then flashes to black at t % period and
-  // eases back to white over FLASH_MS.
+  // Animation loop: each country is white; a death (Poisson event) flashes it to
+  // black, then it eases back to white over FLASH_MS. `next` is the scheduled time
+  // of the upcoming death; on firing we record `flashStart` and draw the next gap.
   const nodes = paths.nodes();
-  const data = nodes.map((n) => blinkById.get(Number(n.__data__.id)) || null);
+  const state = nodes.map((n) => {
+    const b = blinkById.get(Number(n.__data__.id));
+    if (!b) return null;
+    return { mean: b.meanMs, flashStart: -Infinity, next: expGap(b.meanMs) };
+  });
   const start = performance.now();
   let prev = nodes.map(() => -1);
 
   function frame(now) {
     const t = now - start;
     for (let i = 0; i < nodes.length; i++) {
-      const b = data[i];
-      if (!b) continue;
-      const pos = (t + b.phase) % b.period;
-      // 0 at flash start (black) -> 255 white at FLASH_MS; white for the rest.
-      const shade = pos < FLASH_MS ? Math.round(255 * (pos / FLASH_MS)) : 255;
+      const s = state[i];
+      if (!s) continue;
+      while (t >= s.next) {
+        s.flashStart = s.next;
+        s.next += expGap(s.mean);
+      }
+      const age = t - s.flashStart;
+      // black at the moment of death, easing to white over FLASH_MS.
+      const shade = age < FLASH_MS ? Math.round(255 * (age / FLASH_MS)) : 255;
       if (shade !== prev[i]) {
         nodes[i].setAttribute("fill", `rgb(${shade},${shade},${shade})`);
         prev[i] = shade;
@@ -131,7 +144,7 @@ function showTooltip(event, d, valueById, nameById, yearById, blinkById, mortali
       : `<div class="tt-value">${v.toFixed(1)} deaths / 1,000</div>` +
         (blink
           ? `<div style="color:var(--muted)">${fmtDeaths(blink.deathsPerYear)} deaths/yr · ` +
-            `1 flash / ${fmtInterval(blink.period)} · ${year}</div>`
+            `avg 1 / ${fmtInterval(blink.meanMs)} · ${year}</div>`
           : `<div style="color:var(--muted)">${year}</div>`));
   const pad = 14;
   let x = event.clientX + pad;
@@ -169,7 +182,7 @@ function drawLegend() {
     .html(
       `<span style="color:#fff">○</span> alive &nbsp;→&nbsp; ` +
         `<span style="color:#000;background:#fff;padding:0 3px;border-radius:2px">●</span> a death, ` +
-        `in real time. Hover a country for its rate.`
+        `at random in real time (Poisson). Hover a country for its rate.`
     );
 }
 
