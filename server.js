@@ -1,8 +1,14 @@
 import express from "express";
 import path from "node:path";
 import fs from "node:fs";
+import dns from "node:dns";
 import { fileURLToPath } from "node:url";
 import isoCountries from "i18n-iso-countries";
+
+// Some cloud hosts (incl. Railway) have a broken IPv6 path to certain upstreams.
+// Node's fetch resolves AAAA first by default, so a host that publishes IPv6 (e.g.
+// api.worldbank.org) can hang until the request aborts. Prefer IPv4 to avoid that.
+dns.setDefaultResultOrder("ipv4first");
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
@@ -46,14 +52,17 @@ const REQUEST_HEADERS = {
   "User-Agent": "watch-people-die-live/1.0 (+https://github.com/guillem-gelabert/watch-people-die-live)",
 };
 
-// --- Small fetch helper with timeout ---
-async function fetchJson(url) {
+// --- Small fetch helper with timeout + one retry (handles transient hangs) ---
+async function fetchJson(url, attempt = 1) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
   try {
     const res = await fetch(url, { headers: REQUEST_HEADERS, signal: ctrl.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
     return await res.json();
+  } catch (err) {
+    if (attempt < 2) return fetchJson(url, attempt + 1);
+    throw err;
   } finally {
     clearTimeout(timer);
   }
@@ -138,6 +147,7 @@ async function getMortality() {
 
 // Diagnostic endpoint: reports exactly what the live source returns.
 async function probe(url) {
+  const started = Date.now();
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
@@ -146,6 +156,7 @@ async function probe(url) {
     const body = (await r.text()).slice(0, 600);
     return {
       url,
+      elapsedMs: Date.now() - started,
       status: r.status,
       statusText: r.statusText,
       server: r.headers.get("server"),
@@ -153,7 +164,7 @@ async function probe(url) {
       bodySnippet: body,
     };
   } catch (err) {
-    return { url, error: `${err.name}: ${err.message}` };
+    return { url, elapsedMs: Date.now() - started, error: `${err.name}: ${err.message}` };
   }
 }
 
