@@ -1,6 +1,12 @@
 /* global d3, topojson */
 import * as THREE from "three";
 import { OrbitControls } from "/vendor/OrbitControls.js";
+import {
+  earthVertexShader,
+  earthFragmentShader,
+  atmosphereVertexShader,
+  atmosphereFragmentShader,
+} from "./shaders.js";
 
 // --- Death frequency (real time, Poisson) --------------------------------
 // Each dot = one real death. A country's real deaths per year are
@@ -16,13 +22,14 @@ const DOT_MAX_R = 0.07; // max dot radius in globe units (earth radius = 1)
 const MAX_DOTS = 600; // safety cap on concurrent dots
 const CATCHUP_CAP = DOT_MS; // events older than this (e.g. backgrounded tab) don't spawn
 
-// Globe / texture.
+// Globe.
 const GLOBE_R = 1;
-const TEX_W = 2048;
-const TEX_H = 1024;
-const OCEAN_FILL = "#11151c";
-const NO_DATA_FILL = "#33384a";
 const DOT_COLOR = 0xff5252;
+const ATMOSPHERE_DAY_COLOR = "#00aaff";
+const ATMOSPHERE_TWILIGHT_COLOR = "#ff6600";
+// Sun direction (unit vector). Fixed in world space; the day/night terminator
+// and atmosphere glow are lit from here.
+const SUN_DIRECTION = new THREE.Vector3(1, 0.35, 0.9).normalize();
 // -------------------------------------------------------------------------
 
 // Exponential inter-arrival time for a Poisson process with the given mean.
@@ -112,46 +119,67 @@ async function main() {
 
   const countries = topojson.feature(topo, topo.objects.countries).features;
 
-  // --- Base map: draw the world once into a canvas, used as a sphere texture ---
-  const canvas = document.createElement("canvas");
-  canvas.width = TEX_W;
-  canvas.height = TEX_H;
-  const ctx = canvas.getContext("2d");
-  const projection = d3
-    .geoEquirectangular()
-    .scale(TEX_W / (2 * Math.PI))
-    .translate([TEX_W / 2, TEX_H / 2]);
-  const geoPathStr = d3.geoPath(projection); // returns an SVG path string (no context)
-  ctx.fillStyle = OCEAN_FILL;
-  ctx.fillRect(0, 0, TEX_W, TEX_H);
-  for (const f of countries) {
-    ctx.fillStyle = blinkById.has(Number(f.id)) ? "#ffffff" : NO_DATA_FILL;
-    ctx.fill(new Path2D(geoPathStr(f)));
-  }
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
-
   // --- three.js scene ---
   const container = document.getElementById("globe");
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setClearColor(0x808080); // 50% gray background
+  renderer.setClearColor(0x000011); // deep space
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
   const FOV = 45;
-  const FIT_MARGIN = 1.35; // > 1 leaves breathing room around the globe
+  const FIT_MARGIN = 1.5; // > 1 leaves breathing room (atmosphere extends past the globe)
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
   camera.position.set(0, 0, 3);
 
+  // --- Realistic earth: day/night/clouds + atmosphere (Bruno Simon shaders) ---
+  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+  const loader = new THREE.TextureLoader();
+  const loadTex = (url, srgb) => {
+    const t = loader.load(url);
+    if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+    t.anisotropy = maxAniso;
+    return t;
+  };
+  const dayColor = new THREE.Color(ATMOSPHERE_DAY_COLOR);
+  const twilightColor = new THREE.Color(ATMOSPHERE_TWILIGHT_COLOR);
+
+  const earthGeometry = new THREE.SphereGeometry(GLOBE_R, 64, 64);
+  const earthMaterial = new THREE.ShaderMaterial({
+    vertexShader: earthVertexShader,
+    fragmentShader: earthFragmentShader,
+    uniforms: {
+      uDayTexture: new THREE.Uniform(loadTex("/earth/day.jpg", true)),
+      uNightTexture: new THREE.Uniform(loadTex("/earth/night.jpg", true)),
+      uSpecularCloudsTexture: new THREE.Uniform(loadTex("/earth/specularClouds.jpg", false)),
+      uSunDirection: new THREE.Uniform(SUN_DIRECTION.clone()),
+      uAtmosphereDayColor: new THREE.Uniform(dayColor),
+      uAtmosphereTwilightColor: new THREE.Uniform(twilightColor),
+    },
+  });
+
   const globe = new THREE.Group();
   scene.add(globe);
-  const earth = new THREE.Mesh(
-    new THREE.SphereGeometry(GLOBE_R, 64, 64),
-    new THREE.MeshBasicMaterial({ map: texture })
-  );
+  const earth = new THREE.Mesh(earthGeometry, earthMaterial);
   globe.add(earth);
+
+  const atmosphere = new THREE.Mesh(
+    earthGeometry,
+    new THREE.ShaderMaterial({
+      side: THREE.BackSide,
+      transparent: true,
+      vertexShader: atmosphereVertexShader,
+      fragmentShader: atmosphereFragmentShader,
+      uniforms: {
+        uSunDirection: new THREE.Uniform(SUN_DIRECTION.clone()),
+        uAtmosphereDayColor: new THREE.Uniform(dayColor),
+        uAtmosphereTwilightColor: new THREE.Uniform(twilightColor),
+      },
+    })
+  );
+  atmosphere.scale.setScalar(1.04);
+  globe.add(atmosphere);
+
   const dotsGroup = new THREE.Group();
   globe.add(dotsGroup); // dots rotate with the earth
 
