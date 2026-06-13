@@ -123,12 +123,14 @@ async function main() {
   // --- three.js scene ---
   const container = document.getElementById("globe");
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setClearColor(0x808080); // 50% gray background
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+  const FOV = 45;
+  const FIT_MARGIN = 1.35; // > 1 leaves breathing room around the globe
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
   camera.position.set(0, 0, 3);
 
   const globe = new THREE.Group();
@@ -151,9 +153,21 @@ async function main() {
   function resize() {
     const w = container.clientWidth;
     const h = container.clientHeight || Math.round(w * 0.6);
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
+    renderer.setSize(w, h); // updates the canvas CSS size too (buffer scaled by pixelRatio)
+    const aspect = w / h;
+    camera.aspect = aspect;
     camera.updateProjectionMatrix();
+    // Distance so the whole globe fits with margin in BOTH dimensions. The camera
+    // FOV is vertical; on portrait (aspect < 1) the horizontal FOV is the binding
+    // constraint, so divide by aspect. Keeps the earth centered and not too big.
+    const dist =
+      (GLOBE_R * FIT_MARGIN) /
+      Math.tan((FOV * Math.PI) / 360) /
+      Math.min(aspect, 1);
+    camera.position.setLength(dist);
+    controls.minDistance = dist * 0.6;
+    controls.maxDistance = dist * 2.5;
+    controls.update();
   }
   resize();
   window.addEventListener("resize", resize);
