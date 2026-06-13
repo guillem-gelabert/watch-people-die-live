@@ -35,6 +35,11 @@ app.get("/vendor/topojson-client.min.js", (_req, res) =>
 app.get("/data/countries-110m.json", (_req, res) =>
   res.sendFile(path.join(__dirname, "node_modules/world-atlas/countries-110m.json"))
 );
+// Pre-built population-density grid (see scripts/build-density.mjs). Drives the
+// sub-country, density-weighted death flicker on the client.
+app.get("/data/density-grid.json", (_req, res) =>
+  res.sendFile(path.join(__dirname, "data/density-grid.json"))
+);
 
 // --- Set of valid country M49 ids, read from the TopoJSON we ship to the client ---
 const countryIds = (() => {

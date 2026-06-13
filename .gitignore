@@ -2,3 +2,7 @@ node_modules/
 npm-debug.log*
 .env
 .DS_Store
+
+# Raw population raster used only by scripts/build-density.mjs at build time.
+# The derived data/density-grid.json is committed; the multi-MB source is not.
+data/source/

@@ -16,7 +16,10 @@
     <main>
       <div id="status">Loading data…</div>
       <div id="map-wrap">
-        <svg id="map" role="img" aria-label="World map of crude death rate"></svg>
+        <div id="map" role="img" aria-label="World population-density map of crude death rate">
+          <canvas id="map-bg"></canvas>
+          <canvas id="map-fg"></canvas>
+        </div>
         <div id="legend"></div>
       </div>
     </main>
