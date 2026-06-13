@@ -27,10 +27,23 @@ const GLOBE_R = 1;
 const DOT_COLOR = 0xff5252;
 const ATMOSPHERE_DAY_COLOR = "#00aaff";
 const ATMOSPHERE_TWILIGHT_COLOR = "#ff6600";
-// Sun direction (unit vector). Fixed in world space; the day/night terminator
-// and atmosphere glow are lit from here.
-const SUN_DIRECTION = new THREE.Vector3(1, 0.35, 0.9).normalize();
 // -------------------------------------------------------------------------
+
+// Direction to the sun, as a unit vector in the same frame as the earth texture:
+// it points at the subsolar point (where the sun is overhead right now). The
+// subsolar longitude tracks UTC (15°/hour, 0° ≈ noon UTC at Greenwich); the
+// latitude is the solar declination for the day of year. Equation-of-time is
+// omitted (≤ ~4° / 16 min error), which is plenty for a day/night mask.
+function sunDirectionNow(out) {
+  const now = new Date();
+  const hours =
+    now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+  const lon = -15 * (hours - 12);
+  const yearStart = Date.UTC(now.getUTCFullYear(), 0, 0);
+  const dayOfYear = Math.floor((now.getTime() - yearStart) / 86400000);
+  const decl = 23.44 * Math.sin((2 * Math.PI * (284 + dayOfYear)) / 365);
+  return out.copy(lonLatToVec3(lon, decl, 1)).normalize();
+}
 
 // Exponential inter-arrival time for a Poisson process with the given mean.
 function expGap(mean) {
@@ -143,6 +156,7 @@ async function main() {
   };
   const dayColor = new THREE.Color(ATMOSPHERE_DAY_COLOR);
   const twilightColor = new THREE.Color(ATMOSPHERE_TWILIGHT_COLOR);
+  const sunDirection = sunDirectionNow(new THREE.Vector3());
 
   const earthGeometry = new THREE.SphereGeometry(GLOBE_R, 64, 64);
   const earthMaterial = new THREE.ShaderMaterial({
@@ -152,7 +166,7 @@ async function main() {
       uDayTexture: new THREE.Uniform(loadTex("/earth/day.jpg", true)),
       uNightTexture: new THREE.Uniform(loadTex("/earth/night.jpg", true)),
       uSpecularCloudsTexture: new THREE.Uniform(loadTex("/earth/specularClouds.jpg", false)),
-      uSunDirection: new THREE.Uniform(SUN_DIRECTION.clone()),
+      uSunDirection: new THREE.Uniform(sunDirection.clone()),
       uAtmosphereDayColor: new THREE.Uniform(dayColor),
       uAtmosphereTwilightColor: new THREE.Uniform(twilightColor),
     },
@@ -163,22 +177,29 @@ async function main() {
   const earth = new THREE.Mesh(earthGeometry, earthMaterial);
   globe.add(earth);
 
-  const atmosphere = new THREE.Mesh(
-    earthGeometry,
-    new THREE.ShaderMaterial({
-      side: THREE.BackSide,
-      transparent: true,
-      vertexShader: atmosphereVertexShader,
-      fragmentShader: atmosphereFragmentShader,
-      uniforms: {
-        uSunDirection: new THREE.Uniform(SUN_DIRECTION.clone()),
-        uAtmosphereDayColor: new THREE.Uniform(dayColor),
-        uAtmosphereTwilightColor: new THREE.Uniform(twilightColor),
-      },
-    })
-  );
+  const atmosphereMaterial = new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    transparent: true,
+    vertexShader: atmosphereVertexShader,
+    fragmentShader: atmosphereFragmentShader,
+    uniforms: {
+      uSunDirection: new THREE.Uniform(sunDirection.clone()),
+      uAtmosphereDayColor: new THREE.Uniform(dayColor),
+      uAtmosphereTwilightColor: new THREE.Uniform(twilightColor),
+    },
+  });
+  const atmosphere = new THREE.Mesh(earthGeometry, atmosphereMaterial);
   atmosphere.scale.setScalar(1.04);
   globe.add(atmosphere);
+
+  // Keep the terminator matching wall-clock time as a long session runs (the
+  // subsolar point drifts 15°/hour). Recompute periodically — no need per frame.
+  function updateSun() {
+    sunDirectionNow(sunDirection);
+    earthMaterial.uniforms.uSunDirection.value.copy(sunDirection);
+    atmosphereMaterial.uniforms.uSunDirection.value.copy(sunDirection);
+  }
+  setInterval(updateSun, 60000);
 
   const dotsGroup = new THREE.Group();
   globe.add(dotsGroup); // dots rotate with the earth
