@@ -7,7 +7,7 @@ import {
   atmosphereVertexShader,
   atmosphereFragmentShader,
 } from "./shaders.js";
-import { makePersona } from "./persona.js";
+import { makePersona, initPersona } from "./persona.js";
 
 // --- Death frequency (real time, Poisson) --------------------------------
 // Each dot = one real death. A country's real deaths per year are
@@ -96,6 +96,9 @@ async function main() {
       d3.json("/data/countries-110m.json"),
       d3.json("/data/density-grid.json"),
       d3.json("/api/mortality"),
+      // Loads the real per-country age/sex/cause distributions for personas. Resolves
+      // (with fallbacks) rather than rejecting, so it never blocks the globe.
+      initPersona(),
     ]);
   } catch (err) {
     statusEl.textContent = "Failed to load data. Please try again later.";
@@ -326,7 +329,7 @@ async function main() {
 
   function pushDeath(m49) {
     const country = nameById.get(m49) || "Unknown";
-    feed.unshift(makePersona(country).text);
+    feed.unshift(makePersona(m49, country).text);
     if (feed.length > FEED_MAX) feed.length = FEED_MAX;
     renderFeed();
   }

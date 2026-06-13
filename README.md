@@ -44,11 +44,22 @@ deaths/year is preserved exactly.
 
 - **Deaths feed** (`public/persona.js`): a panel at the bottom lists the last ~6 deaths as
   short personas, e.g. *"Woman 78, breast cancer – Spain"*. Since the dots are synthetic
-  Poisson events, each persona is **statistically generated** — an old-skewed age, a sex, and
-  an age/sex-consistent cause from a WHO-style weighted table (breast cancer → women,
-  prostate → men, neonatal → infants, dementia → the elderly) — and the location is the
-  country the death fired in. The feed is explicitly labelled as representative, not real
-  people.
+  Poisson events, each persona is **statistically generated**, but from **real, per-country
+  distributions** so it matches where the death fired:
+  - **Age + sex** are drawn from that country's real age × sex distribution of deaths
+    (**UN World Population Prospects**, "Deaths by age and sex", via the
+    [UN Data Portal API](https://population.un.org/dataportal/about/dataapi)) — so a death in
+    Japan skews old and one in Nigeria skews young, with a realistic (non-50/50) sex split.
+  - **Cause** is drawn from that country's real cause-of-death mix for that sex and age band
+    (**IHME Global Burden of Disease**), collapsed to recognisable labels.
+
+  Both distributions are pre-built into committed JSON (`data/mortality-age-sex.json`,
+  `data/causes.json`) and fetched once by the client; if either is missing it falls back to a
+  bundled sample (`data/sample-personas.json`) and finally to an illustrative WHO-style table,
+  so the feed always reads sensibly. The feed is explicitly representative, not real people.
+
+- **Persona data build**: see *Building the persona data* below for the `npm run build:mortality`
+  / `build:causes` commands and the inputs they need.
 
 - **Fallback**: if the World Bank API is unreachable, the server serves `data/sample-cdr.json`
   (clearly marked as sample data) so the UI still renders, and the client shows a banner. If
@@ -69,6 +80,44 @@ npm start
 The density grid (`data/density-grid.json`) is committed, so no build step is needed to run.
 To regenerate it from the source raster: `npm run build:density -- --force`.
 
+## Building the persona data
+
+The per-country age/sex/cause distributions behind the deaths feed are committed JSON, so
+the app runs without rebuilding them. To regenerate from source:
+
+**Age × sex (UN World Population Prospects)** — `data/mortality-age-sex.json`:
+
+```bash
+# UN_API_KEY = your UN Data Portal Bearer token (on Railway: the un_api_key variable).
+UN_API_KEY=eyJ... npm run build:mortality -- --force
+```
+
+This calls the [UN Data Portal API](https://population.un.org/dataportalapi/api/v1), finds the
+"Deaths by age and sex" indicator, and fetches it for every mapped country. The host
+`population.un.org` must be reachable — some sandboxed/CI networks block it via an egress
+allowlist; add it there (or run where it's reachable) before building.
+
+**Cause of death (IHME GBD)** — `data/causes.json`:
+
+The UN portal has no cause-of-death data, and IHME GBD has no tokened API, so the cause data
+is built from a CSV you export once from the
+[GBD Results Tool](https://vizhub.healthdata.org/gbd-results/) (free account; ≤100k rows per
+request):
+
+- **Measure** Deaths · **Metric** Number · **Sex** Male, Female
+- **Cause** All causes expanded to **Level 3** (recognisable causes)
+- **Age** `<1`, `1-4`, `5-9`, … 5-year groups · **Location** all countries · **Year** most recent
+
+Save it under `data/source/` (git-ignored, like the GPWv4 raster), then:
+
+```bash
+npm run build:causes -- --force          # auto-discovers the CSV in data/source/
+# or: npm run build:causes -- --src=path/to/gbd.csv --top=8 --force
+```
+
+GBD cause names are mapped to short labels and the strongest `--top` (default 8) causes per
+country/sex/age band are kept, the rest folded into "other causes".
+
 > Note: some sandboxed/CI networks block outbound hosts. There, `/api/mortality` returns
 > `source: "sample"`. On a normal network (including Railway) it returns `source: "worldbank"`
 > with real data for ~190 countries.
@@ -82,4 +131,6 @@ To regenerate it from the source raster: `npm run build:density -- --force`.
 4. Open the generated domain — Railway's egress reaches the World Bank API, so the map shows
    live data.
 
-No environment variables or API keys are required — the World Bank API is public.
+No environment variables or API keys are required at runtime — the World Bank API is public
+and the persona distributions are committed JSON. `UN_API_KEY` is only needed at build time by
+`npm run build:mortality` (see *Building the persona data*), never by the running server.

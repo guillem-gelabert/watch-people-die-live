@@ -2,16 +2,21 @@
 //   "Woman 78, breast cancer – Spain"
 //
 // The deaths on the globe are synthetic Poisson events, so there is no real person
-// behind a dot. We fabricate a *statistically representative* identity: an age drawn
-// from an old-skewed, mortality-weighted distribution, a sex, and a cause of death
-// that is consistent with that age and sex (no prostate cancer for women, neonatal
-// causes only for infants, dementia only for the elderly, ...). Weights are
-// illustrative, loosely following WHO global leading causes by life stage — not a
-// per-country epidemiological model.
+// behind a dot. We fabricate a *statistically representative* identity:
+//   • age + sex are drawn from the country's REAL age x sex distribution of deaths
+//     (UN World Population Prospects, data/mortality-age-sex.json), so a death in
+//     Japan skews old and one in Nigeria skews young;
+//   • the cause is drawn from that country's REAL cause-of-death mix for that sex and
+//     age band (IHME Global Burden of Disease, data/causes.json).
+//
+// Both files are built offline (scripts/build-mortality.mjs, scripts/build-causes.mjs)
+// and shipped as static JSON. If they are missing or a country has no data we fall
+// back — first to a small bundled sample, finally to the illustrative WHO-style tables
+// below — so makePersona() never throws and the feed always reads sensibly.
 
-// --- Age at death: weighted bands, then a uniform age inside the chosen band. -----
-// Weights skew heavily old with a small infant tail, roughly matching the global
-// age distribution of deaths.
+// --- Fallback tables (used only when real data is unavailable) --------------------
+// Age bands; index ALSO indexes the `bands` arrays in the data files, so this order
+// must match BANDS in scripts/build-mortality.mjs and scripts/build-causes.mjs.
 const AGE_BANDS = [
   { min: 0, max: 0, w: 2 }, // under 1 (infant)
   { min: 1, max: 4, w: 1 },
@@ -24,9 +29,8 @@ const AGE_BANDS = [
   { min: 85, max: 99, w: 25 },
 ];
 
-// --- Causes of death, each valid for an age range [min, max] and optional sex. ----
-// `sex: 'f' | 'm'` restricts the cause; omitted means either. Weights are relative
-// within whatever subset is valid for a given persona.
+// Causes of death, each valid for an age range [min, max] and optional sex. Used only
+// as the final fallback when GBD data is unavailable for a country/band.
 const CAUSES = [
   // Infancy (< 1)
   { label: "neonatal complications", w: 30, min: 0, max: 0 },
@@ -77,9 +81,37 @@ const CAUSES = [
   { label: "colorectal cancer", w: 6, min: 70, max: 99 },
 ];
 
+// --- Real data, loaded once by initPersona() --------------------------------------
+let MORT = null; // { global:{m:[w],f:[w]}, countries:{ m49:{m:[w],f:[w]} } }
+let CAUSE = null; // { causes:[label], global:{m:[{i:w}],f:[...]}, countries:{...} }
+
+async function loadJson(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+// Fetch the real distributions once. Prefers the full build outputs, falls back to the
+// bundled sample, then leaves things null (callers use the tables above). Never throws.
+export async function initPersona() {
+  const [mort, cause] = await Promise.all([
+    loadJson("/data/mortality-age-sex.json"),
+    loadJson("/data/causes.json"),
+  ]);
+  let sample = null;
+  if (!mort || !cause) sample = await loadJson("/data/sample-personas.json");
+  MORT = mort || sample?.mortality || null;
+  CAUSE = cause || sample?.causes || null;
+}
+
 function weightedPick(items, weightOf) {
   let total = 0;
   for (const it of items) total += weightOf(it);
+  if (!(total > 0)) return items[items.length - 1];
   let r = Math.random() * total;
   for (const it of items) {
     r -= weightOf(it);
@@ -88,9 +120,42 @@ function weightedPick(items, weightOf) {
   return items[items.length - 1];
 }
 
-function sampleAge() {
-  const band = weightedPick(AGE_BANDS, (b) => b.w);
-  return band.min + Math.floor(Math.random() * (band.max - band.min + 1));
+// Index of a weighted-random entry in a numeric array, or -1 if the array is empty/zero.
+function pickIndex(weights) {
+  let total = 0;
+  for (const w of weights) total += w;
+  if (!(total > 0)) return -1;
+  let r = Math.random() * total;
+  for (let i = 0; i < weights.length; i++) {
+    r -= weights[i];
+    if (r < 0) return i;
+  }
+  return weights.length - 1;
+}
+
+// Country's age/sex weights from real data, or null. { m:[9], f:[9] }.
+function mortFor(m49) {
+  if (!MORT) return null;
+  return MORT.countries?.[m49] || MORT.global || null;
+}
+
+function sampleSex(m49) {
+  const e = mortFor(m49);
+  if (e) {
+    const sm = e.m.reduce((a, b) => a + b, 0);
+    const sf = e.f.reduce((a, b) => a + b, 0);
+    if (sm + sf > 0) return Math.random() * (sm + sf) < sm ? "m" : "f";
+  }
+  return Math.random() < 0.5 ? "f" : "m";
+}
+
+// Choose an age-band index for this country + sex, then a uniform age within the band.
+function sampleAge(m49, sex) {
+  const e = mortFor(m49);
+  let idx = e ? pickIndex(e[sex]) : -1;
+  if (idx < 0) idx = AGE_BANDS.indexOf(weightedPick(AGE_BANDS, (b) => b.w));
+  const band = AGE_BANDS[idx] || AGE_BANDS[AGE_BANDS.length - 1];
+  return { age: band.min + Math.floor(Math.random() * (band.max - band.min + 1)), idx };
 }
 
 // "Woman"/"Man" for adults; softer labels for the young so a line never reads oddly.
@@ -100,20 +165,34 @@ function sexLabel(sex, age) {
   return sex === "f" ? "Woman" : "Man";
 }
 
-function pickCause(age, sex) {
+// Cause for this country/sex/age band from GBD data; fall back to the CAUSES table.
+function pickCause(m49, sex, bandIdx, age) {
+  if (CAUSE) {
+    const e = CAUSE.countries?.[m49] || CAUSE.global;
+    const cell = e?.[sex]?.[bandIdx]; // { causeIdx: weight }
+    if (cell) {
+      const idxs = Object.keys(cell);
+      if (idxs.length) {
+        const pick = weightedPick(idxs, (i) => cell[i]);
+        const label = CAUSE.causes?.[Number(pick)];
+        if (label) return label;
+      }
+    }
+  }
+  // Fallback: the illustrative WHO-style table, filtered to a valid age + sex.
   const valid = CAUSES.filter(
     (c) => age >= c.min && age <= c.max && (!c.sex || c.sex === sex)
   );
-  // Extremely unlikely to be empty given the bands, but stay safe.
   if (!valid.length) return "an undetermined cause";
   return weightedPick(valid, (c) => c.w).label;
 }
 
-// Build one persona for a death in `country` (a display name like "Spain").
-export function makePersona(country) {
-  const sex = Math.random() < 0.5 ? "f" : "m";
-  const age = sampleAge();
-  const cause = pickCause(age, sex);
+// Build one persona for a death in country `m49` (display name like "Spain").
+// `m49` may be omitted/unknown — then the global distribution (or the tables) is used.
+export function makePersona(m49, country) {
+  const sex = sampleSex(m49);
+  const { age, idx } = sampleAge(m49, sex);
+  const cause = pickCause(m49, sex, idx, age);
   const who = sexLabel(sex, age);
   const text = `${who} ${age}, ${cause} – ${country}`;
   return { sex, age, cause, country, text };

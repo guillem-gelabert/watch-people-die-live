@@ -47,6 +47,13 @@ app.get("/data/countries-110m.json", (_req, res) =>
 app.get("/data/density-grid.json", (_req, res) =>
   res.sendFile(path.join(__dirname, "data/density-grid.json"))
 );
+// Pre-built persona distributions: per-country age x sex deaths (UN WPP, see
+// scripts/build-mortality.mjs) and cause-of-death by sex/age (IHME GBD, see
+// scripts/build-causes.mjs), plus a small offline sample. Served as static JSON; the
+// client (public/persona.js) fetches them once and falls back gracefully if absent.
+for (const f of ["mortality-age-sex.json", "causes.json", "sample-personas.json"]) {
+  app.get(`/data/${f}`, (_req, res) => res.sendFile(path.join(__dirname, "data", f)));
+}
 
 // --- Set of valid country M49 ids, read from the TopoJSON we ship to the client ---
 const countryIds = (() => {
