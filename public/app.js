@@ -256,7 +256,7 @@ async function main() {
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; // momentum
   controls.enablePan = false;
-  controls.minDistance = 1.25;
+  controls.minDistance = GLOBE_R * 1.1; // refined per-viewport in resize()
   controls.maxDistance = 6;
   controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
 
@@ -275,8 +275,11 @@ async function main() {
       Math.tan((FOV * Math.PI) / 360) /
       Math.min(aspect, 1);
     camera.position.setLength(dist);
-    controls.minDistance = dist * 0.6;
-    controls.maxDistance = dist * 2.5;
+    // Zoom range: allow getting right down near the surface (a fixed close limit,
+    // independent of viewport), but don't let the globe shrink much past its
+    // fit-to-view size when zooming out.
+    controls.minDistance = GLOBE_R * 1.1;
+    controls.maxDistance = dist * 1.25;
     controls.update();
   }
   resize();
