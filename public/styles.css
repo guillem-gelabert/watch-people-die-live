@@ -96,15 +96,19 @@ main {
    pointer events through so you can drag/zoom the globe from anywhere. */
 header,
 main,
-footer {
+footer,
+#death-feed,
+#feed-note {
   position: relative;
   z-index: 1;
   pointer-events: none;
 }
 
 header,
-footer a {
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+footer a,
+#death-feed,
+#feed-note {
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
 }
 
 a,
@@ -152,6 +156,55 @@ a,
 
 #tooltip .tt-value {
   color: var(--accent);
+}
+
+#death-feed {
+  text-align: center;
+  min-height: 9rem; /* reserve space so the layout doesn't jump as lines fill in */
+  display: flex;
+  flex-direction: column-reverse; /* newest (first in DOM) sits at the bottom, nearest the note */
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.1rem;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.feed-line {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  max-width: 92vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feed-new {
+  color: var(--accent);
+  font-weight: 600;
+  animation: feed-in 0.4s ease-out;
+}
+
+@keyframes feed-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+#feed-note {
+  margin: 0.35rem 0 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: italic;
+}
+
+@media (max-width: 520px) {
+  #death-feed {
+    font-size: 0.85rem;
+    min-height: 7.5rem;
+  }
 }
 
 footer {

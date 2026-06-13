@@ -7,6 +7,7 @@ import {
   atmosphereVertexShader,
   atmosphereFragmentShader,
 } from "./shaders.js";
+import { makePersona } from "./persona.js";
 
 // --- Death frequency (real time, Poisson) --------------------------------
 // Each dot = one real death. A country's real deaths per year are
@@ -318,6 +319,33 @@ async function main() {
     dots.push({ m, mat, t0 });
   }
 
+  // --- "Last deaths" feed: a generated persona per death, newest 6 kept. ----
+  const FEED_MAX = 6;
+  const feedEl = document.getElementById("death-feed");
+  const feed = []; // newest first
+
+  function pushDeath(m49) {
+    const country = nameById.get(m49) || "Unknown";
+    feed.unshift(makePersona(country).text);
+    if (feed.length > FEED_MAX) feed.length = FEED_MAX;
+    renderFeed();
+  }
+
+  function renderFeed() {
+    if (!feedEl) return;
+    // feed[0] is newest: brightest, and (via column-reverse CSS) sits at the bottom;
+    // older lines rise and dim.
+    feedEl.innerHTML = feed
+      .map((text, i) => {
+        const opacity = (1 - i / FEED_MAX).toFixed(2);
+        const cls = i === 0 ? ' class="feed-new"' : "";
+        return `<div class="feed-line"${cls} style="opacity:${opacity}">${escapeHtml(
+          text
+        )}</div>`;
+      })
+      .join("");
+  }
+
   function frame(now) {
     const t = now - start;
     for (const s of state) {
@@ -327,6 +355,7 @@ async function main() {
           const [lon, lat] =
             densityLonLat(Number(s.feature.id)) || randomLonLat(s.feature, s.bounds);
           spawnDot(lon, lat, s.next);
+          pushDeath(Number(s.feature.id));
         }
         s.next += expGap(s.mean);
       }
@@ -422,6 +451,13 @@ function showTooltip(event, d, valueById, nameById, yearById, blinkById, mortali
 
 function hideTooltip() {
   tooltip.classList.add("hidden");
+}
+
+function escapeHtml(s) {
+  return s.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
 }
 
 function fmtDeaths(perYear) {

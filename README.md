@@ -42,6 +42,14 @@ deaths/year is preserved exactly.
   TopoJSON are vendored from npm and served by the backend (no CDN dependency). Load with
   `?calibrate` to drop fixed city markers for visually checking globe alignment.
 
+- **Deaths feed** (`public/persona.js`): a panel at the bottom lists the last ~6 deaths as
+  short personas, e.g. *"Woman 78, breast cancer – Spain"*. Since the dots are synthetic
+  Poisson events, each persona is **statistically generated** — an old-skewed age, a sex, and
+  an age/sex-consistent cause from a WHO-style weighted table (breast cancer → women,
+  prostate → men, neonatal → infants, dementia → the elderly) — and the location is the
+  country the death fired in. The feed is explicitly labelled as representative, not real
+  people.
+
 - **Fallback**: if the World Bank API is unreachable, the server serves `data/sample-cdr.json`
   (clearly marked as sample data) so the UI still renders, and the client shows a banner. If
   the raw population CSV can't be fetched at build time, `build-density.mjs` emits a coarse
