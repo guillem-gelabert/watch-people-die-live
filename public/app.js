@@ -12,7 +12,7 @@ import { OrbitControls } from "/vendor/OrbitControls.js";
 // ones almost never — and across the whole world it sums to ~2 deaths/second.
 const MS_PER_YEAR_REAL = 365.25 * 24 * 3600 * 1000;
 const DOT_MS = 3500; // lifetime of one death dot: appear, grow, fade, vanish
-const DOT_MAX_R = 0.028; // max dot radius in globe units (earth radius = 1)
+const DOT_MAX_R = 0.07; // max dot radius in globe units (earth radius = 1)
 const MAX_DOTS = 600; // safety cap on concurrent dots
 const CATCHUP_CAP = DOT_MS; // events older than this (e.g. backgrounded tab) don't spawn
 
@@ -274,10 +274,10 @@ async function main() {
 // Fixed, non-fading markers at known cities (see CALIBRATION). Each should sit on
 // its real location once the globe is rotated to face it.
 function addCalibrationMarkers(group) {
-  const geo = new THREE.SphereGeometry(0.02, 16, 16);
+  const geo = new THREE.SphereGeometry(0.05, 16, 16);
   for (const [, lon, lat, color] of CALIBRATION) {
     const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color }));
-    m.position.copy(lonLatToVec3(lon, lat, GLOBE_R));
+    m.position.copy(lonLatToVec3(lon, lat, GLOBE_R * 1.01)); // just above the surface
     group.add(m);
   }
 }
