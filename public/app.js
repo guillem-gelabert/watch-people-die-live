@@ -51,6 +51,18 @@ function vec3ToLonLat(p) {
   return [lon, lat];
 }
 
+// Visual calibration: load with ?calibrate to drop fixed coloured markers on known
+// cities, so you can rotate the globe and confirm each sits on the right spot.
+const CALIBRATION = [
+  ["Null Island (0°,0°)", 0, 0, 0xffffff],
+  ["London", -0.13, 51.5, 0x00ff00],
+  ["New York", -74.0, 40.7, 0xffff00],
+  ["Tokyo", 139.7, 35.7, 0x00ffff],
+  ["Sydney", 151.2, -33.9, 0xff00ff],
+  ["Cape Town", 18.4, -33.9, 0xff8800],
+  ["São Paulo", -46.6, -23.5, 0x4488ff],
+];
+
 const statusEl = document.getElementById("status");
 const bannerEl = document.getElementById("sample-banner");
 const subtitleEl = document.getElementById("subtitle");
@@ -142,6 +154,9 @@ async function main() {
   globe.add(earth);
   const dotsGroup = new THREE.Group();
   globe.add(dotsGroup); // dots rotate with the earth
+
+  const calibrate = /[?&]calibrate\b/.test(location.search);
+  if (calibrate) addCalibrationMarkers(globe);
 
   const controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true; // momentum
@@ -252,7 +267,32 @@ async function main() {
   });
   renderer.domElement.addEventListener("mouseleave", hideTooltip);
 
-  drawLegend();
+  if (calibrate) drawCalibrationLegend();
+  else drawLegend();
+}
+
+// Fixed, non-fading markers at known cities (see CALIBRATION). Each should sit on
+// its real location once the globe is rotated to face it.
+function addCalibrationMarkers(group) {
+  const geo = new THREE.SphereGeometry(0.02, 16, 16);
+  for (const [, lon, lat, color] of CALIBRATION) {
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color }));
+    m.position.copy(lonLatToVec3(lon, lat, GLOBE_R));
+    group.add(m);
+  }
+}
+
+function drawCalibrationLegend() {
+  d3.select("#legend")
+    .html("")
+    .append("div")
+    .html(
+      "Calibration: each marker should sit on its city — " +
+        CALIBRATION.map(
+          ([name, , , color]) =>
+            `<span style="color:#${color.toString(16).padStart(6, "0")}">●</span> ${name}`
+        ).join(" · ")
+    );
 }
 
 function showTooltip(event, d, valueById, nameById, yearById, blinkById, mortality) {
