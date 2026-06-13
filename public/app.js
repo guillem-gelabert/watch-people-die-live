@@ -89,10 +89,11 @@ const subtitleEl = document.getElementById("subtitle");
 const tooltip = document.getElementById("tooltip");
 
 async function main() {
-  let topo, mortality;
+  let topo, grid, mortality;
   try {
-    [topo, mortality] = await Promise.all([
+    [topo, grid, mortality] = await Promise.all([
       d3.json("/data/countries-110m.json"),
+      d3.json("/data/density-grid.json"),
       d3.json("/api/mortality"),
     ]);
   } catch (err) {
@@ -112,7 +113,8 @@ async function main() {
 
   subtitleEl.textContent =
     `${mortality.indicator} — latest available (≤ ${mortality.year}). ` +
-    `Each dot is one real death, in real time (~2 people die worldwide every second).`;
+    `Each dot is one real death, placed where people actually live (denser regions ` +
+    `die more), in real time (~2 people die worldwide every second).`;
 
   // Maps keyed by M49 numeric id.
   const valueById = new Map(mortality.values.map((d) => [Number(d.id), d.value]));
@@ -131,6 +133,50 @@ async function main() {
   }
 
   const countries = topojson.feature(topo, topo.objects.countries).features;
+
+  // --- Population-density placement -----------------------------------------
+  // The per-country death RATE (blinkById) is unchanged, so each country's total
+  // deaths/year is preserved exactly. We only change WHERE a death lands: instead
+  // of a uniform-random point in the country, sample one of its population-grid
+  // cells with probability proportional to the people living there, then jitter
+  // within that cell. Denser cells therefore receive far more dots.
+  const cs = grid.cellsize;
+  const cellsByCountry = new Map(); // m49 -> { lon[], lat[], cum: Float64Array, total }
+  for (const [lon, lat, pop, m49] of grid.cells) {
+    let c = cellsByCountry.get(m49);
+    if (!c) {
+      c = { lon: [], lat: [], pop: [] };
+      cellsByCountry.set(m49, c);
+    }
+    c.lon.push(lon);
+    c.lat.push(lat);
+    c.pop.push(pop);
+  }
+  for (const c of cellsByCountry.values()) {
+    c.cum = new Float64Array(c.pop.length);
+    let sum = 0;
+    for (let i = 0; i < c.pop.length; i++) {
+      sum += c.pop[i];
+      c.cum[i] = sum;
+    }
+    c.total = sum;
+  }
+
+  // Pick a lon/lat for a death in country `m49`, weighted by cell population.
+  // Returns null if we have no grid cells for that country (caller falls back).
+  function densityLonLat(m49) {
+    const c = cellsByCountry.get(m49);
+    if (!c || !(c.total > 0)) return null;
+    const r = Math.random() * c.total;
+    let lo = 0;
+    let hi = c.cum.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (c.cum[mid] < r) lo = mid + 1;
+      else hi = mid;
+    }
+    return [c.lon[lo] + Math.random() * cs, c.lat[lo] + Math.random() * cs];
+  }
 
   // --- three.js scene ---
   const container = document.getElementById("globe");
@@ -275,7 +321,8 @@ async function main() {
       while (t >= s.next) {
         // Skip events too far in the past (e.g. backgrounded tab) to avoid a burst.
         if (t - s.next <= CATCHUP_CAP && dots.length < MAX_DOTS) {
-          const [lon, lat] = randomLonLat(s.feature, s.bounds);
+          const [lon, lat] =
+            densityLonLat(Number(s.feature.id)) || randomLonLat(s.feature, s.bounds);
           spawnDot(lon, lat, s.next);
         }
         s.next += expGap(s.mean);
@@ -395,7 +442,7 @@ function drawLegend() {
     .append("div")
     .html(
       `<span style="color:var(--accent)">●</span> each dot is a death, ` +
-        `at a random place in that country, in real time (Poisson). ` +
+        `placed where people live (denser regions die more), in real time (Poisson). ` +
         `Drag to rotate · scroll/pinch to zoom · hover a country for its rate.`
     );
 }

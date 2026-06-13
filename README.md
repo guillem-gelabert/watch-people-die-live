@@ -1,8 +1,11 @@
 # watch-people-die-live
 
-A world map of **Crude Death Rate** (deaths per 1,000 population) for the latest available
-year, pulled from the [World Bank API](https://data.worldbank.org/indicator/SP.DYN.CDRT.IN)
-(indicator `SP.DYN.CDRT.IN`) and rendered as a D3 choropleth.
+A real-time 3D globe where **each dot is one real death**. Death rates come from the
+[World Bank API](https://data.worldbank.org/indicator/SP.DYN.CDRT.IN) (Crude Death Rate,
+indicator `SP.DYN.CDRT.IN`), but instead of dropping each death at a random point in its
+country, deaths are placed on a **population-density grid** — so they land where people
+actually live and denser regions die far more often, while each country's real total
+deaths/year is preserved exactly.
 
 > The World Bank's crude death rate is itself derived from the UN World Population Prospects.
 > The UN Data Portal API was the original source, but its data endpoint now requires a Bearer
@@ -17,13 +20,32 @@ year, pulled from the [World Bank API](https://data.worldbank.org/indicator/SP.D
   `{ indicator, year, source, values: [{ id, iso3, name, value, year }] }`, where `id` is the
   numeric **M49 code** — the same key used by the map geometry, so the join is direct.
 
-- **Frontend** (`public/`): vanilla **D3 v7** + **topojson-client** drawing a
-  `geoNaturalEarth1` choropleth, with a color legend and hover tooltips (per-country value +
-  year). D3, topojson-client, and the [`world-atlas`](https://github.com/topojson/world-atlas)
-  TopoJSON are vendored from npm and served by the backend (no CDN dependency).
+- **Density grid** (`data/density-grid.json`, built by `scripts/build-density.mjs`): a
+  0.5° (30 arc-min) grid of cells, each `[lon, lat, population, M49]`, derived from
+  **GPWv4** (Gridded Population of the World, v4 — population count adjusted to 2015 UN
+  totals) via the [`openaddresses/population`](https://github.com/openaddresses/population)
+  CSV. The build aggregates the high-res 0.1° rows to 0.5° and maps each cell's ISO3 to the
+  numeric **M49** id. Because a cell's *count* already equals density × area, splitting a
+  country's deaths in proportion to cell count both preserves the country total and
+  concentrates deaths in dense cells. Run with `npm run build:density` (pass `--force` to
+  rebuild); the multi-MB raw CSV lives in `data/source/` (git-ignored) — only the ~1 MB
+  derived grid is committed.
+
+- **Frontend** (`public/`): a **three.js** globe (realistic day/night earth, clouds, and
+  atmosphere, lit from the real-time subsolar point) with `OrbitControls` for drag/zoom.
+  Each country runs its own Poisson process (mean interval `MS_PER_YEAR / deathsPerYear`,
+  so the country total is preserved); when a death fires, its **location** is chosen by
+  sampling one of the country's density-grid cells with probability proportional to the
+  people living there, then jittering within that 0.5° cell — so dots cluster where
+  population is dense. Each death appears as a growing/fading red dot on the surface. D3,
+  topojson-client, three.js, and the [`world-atlas`](https://github.com/topojson/world-atlas)
+  TopoJSON are vendored from npm and served by the backend (no CDN dependency). Load with
+  `?calibrate` to drop fixed city markers for visually checking globe alignment.
 
 - **Fallback**: if the World Bank API is unreachable, the server serves `data/sample-cdr.json`
-  (clearly marked as sample data) so the UI still renders, and the client shows a banner.
+  (clearly marked as sample data) so the UI still renders, and the client shows a banner. If
+  the raw population CSV can't be fetched at build time, `build-density.mjs` emits a coarse
+  synthetic grid from the bundled `world-atlas` geometry so the app still builds offline.
 
 - **`/api/debug`**: probes the live World Bank endpoint and reports the HTTP status + a body
   snippet — handy for diagnosing a deployment-only fetch issue.
@@ -35,6 +57,9 @@ npm install
 npm start
 # open http://localhost:3000
 ```
+
+The density grid (`data/density-grid.json`) is committed, so no build step is needed to run.
+To regenerate it from the source raster: `npm run build:density -- --force`.
 
 > Note: some sandboxed/CI networks block outbound hosts. There, `/api/mortality` returns
 > `source: "sample"`. On a normal network (including Railway) it returns `source: "worldbank"`
