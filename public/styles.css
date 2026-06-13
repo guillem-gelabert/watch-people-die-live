@@ -75,12 +75,33 @@ main {
 }
 
 #globe {
-  width: 100%;
-  height: 70vh;
-  min-height: 360px;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh; /* fill the mobile viewport, accounting for browser chrome */
   background: #000011;
-  border-radius: 6px;
-  overflow: hidden;
+  z-index: 0;
+}
+
+/* The globe is a full-screen backdrop; the text UI floats on top of it and lets
+   pointer events through so you can drag/zoom the globe from anywhere. */
+header,
+main,
+footer {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+
+header,
+footer a {
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+a,
+.banner {
+  pointer-events: auto;
 }
 
 #globe canvas {
