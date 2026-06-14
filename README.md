@@ -126,11 +126,16 @@ country/sex/age band are kept, the rest folded into "other causes".
 
 1. Push this repo to GitHub.
 2. In Railway: **New Project → Deploy from GitHub repo** and select it.
-3. Railway builds with Nixpacks and runs `npm start` (see `railway.json`). The `PORT`
-   environment variable is injected automatically and the server honors it.
-4. Open the generated domain — Railway's egress reaches the World Bank API, so the map shows
-   live data.
+3. Railway builds with Nixpacks. Its build command runs `npm run build:mortality` (see
+   `railway.json`) so the UN age/sex distribution (`data/mortality-age-sex.json`) is fetched
+   fresh at deploy time — Railway's egress reaches `population.un.org`. Set the Data Portal
+   token as the `un_api_key` (or `UN_API_KEY`) service variable; if it's missing or the fetch
+   fails the build still succeeds and the app falls back to the bundled persona sample. Then
+   `npm start` runs the server (`PORT` is injected automatically).
+4. Open the generated domain — Railway's egress reaches the World Bank API too, so the map
+   shows live data.
 
-No environment variables or API keys are required at runtime — the World Bank API is public
-and the persona distributions are committed JSON. `UN_API_KEY` is only needed at build time by
-`npm run build:mortality` (see *Building the persona data*), never by the running server.
+Runtime needs no keys (the World Bank API is public). `un_api_key`/`UN_API_KEY` is used only by
+the **build** to fetch the UN data. Cause data (`data/causes.json`) is *not* fetched on build —
+IHME GBD has no API — so until it's built and committed (see *Building the persona data*),
+causes come from the bundled sample.

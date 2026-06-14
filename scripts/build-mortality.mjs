@@ -15,12 +15,14 @@
 //     countries: { <m49>: { m:[w per band], f:[w per band] }, ... } }
 //   Weights are raw death counts; persona.js normalises at sample time.
 //
-// Auth: set UN_API_KEY (the Data Portal bearer token). On Railway it is `un_api_key`.
+// Auth: set the Data Portal bearer token in UN_API_KEY (or un_api_key, the name used on
+// Railway — either casing works).
 // Usage: UN_API_KEY=... node scripts/build-mortality.mjs [--year=2023] [--force]
 //
-// NOTE: the UN host (population.un.org) must be reachable. In some sandboxes it is not
-// on the network egress allowlist; add it there before running. If the fetch fails the
-// committed file is left untouched so the app keeps using whatever data it already has.
+// This also runs during the Railway build (see railway.json), where the token is
+// present and population.un.org is reachable, so the deployed app gets fresh data
+// without committing it. The build command tolerates failure: if the fetch fails the
+// file is simply absent and the client falls back to the bundled persona sample.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -46,7 +48,7 @@ const BANDS = [
   [85, 200],
 ];
 
-const TOKEN = process.env.UN_API_KEY;
+const TOKEN = process.env.UN_API_KEY || process.env.un_api_key;
 const force = process.argv.includes("--force");
 const yearArg = process.argv.find((a) => a.startsWith("--year="));
 const YEAR = yearArg ? Number(yearArg.split("=")[1]) : 2023;
@@ -58,8 +60,8 @@ async function main() {
   }
   if (!TOKEN) {
     console.error(
-      "UN_API_KEY is not set. Export the Data Portal bearer token and retry, e.g.\n" +
-        "  UN_API_KEY=eyJ... node scripts/build-mortality.mjs"
+      "UN_API_KEY (or un_api_key) is not set. Export the Data Portal bearer token and " +
+        "retry, e.g.\n  UN_API_KEY=eyJ... node scripts/build-mortality.mjs"
     );
     process.exit(1);
   }
