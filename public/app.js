@@ -428,8 +428,9 @@ async function main() {
     const toCamera = new THREE.Vector3(0, 0, 1);
     const q1 = new THREE.Quaternion().setFromUnitVectors(v, toCamera);
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q1); // north pole after q1
-    const roll = Math.atan2(up.x, up.y); // bring north to screen-up
-    const q2 = new THREE.Quaternion().setFromAxisAngle(toCamera, -roll);
+    // Roll around the view axis so the north pole projects to screen-up (+Y).
+    const roll = Math.atan2(up.x, up.y);
+    const q2 = new THREE.Quaternion().setFromAxisAngle(toCamera, roll);
     centerTarget = q2.multiply(q1);
   }
 
