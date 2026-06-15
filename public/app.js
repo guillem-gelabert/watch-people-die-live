@@ -421,20 +421,30 @@ async function main() {
   const FEED_SOFT_MAX = 60; // trimmed back to this while following
   const FEED_HARD_MAX = 200; // absolute cap, even when paused (with scroll compensation)
   const feedEl = document.getElementById("death-feed");
+  const feedBottomBtn = document.getElementById("feed-bottom");
   let following = true;
 
+  function setFollowing(v) {
+    following = v;
+    feedBottomBtn?.classList.toggle("hidden", v); // show the jump button only while paused
+  }
   function isAtBottom() {
     if (!feedEl) return true;
     return feedEl.scrollHeight - feedEl.clientHeight - feedEl.scrollTop <= 4;
   }
+  function scrollToNewest() {
+    if (feedEl) feedEl.scrollTop = feedEl.scrollHeight;
+    setFollowing(true);
+  }
   if (feedEl) {
-    feedEl.addEventListener("scroll", () => (following = isAtBottom()), { passive: true });
+    feedEl.addEventListener("scroll", () => setFollowing(isAtBottom()), { passive: true });
     // Pressing / wheeling = the user takes manual control until they return to bottom.
-    const pause = () => (following = false);
+    const pause = () => setFollowing(false);
     feedEl.addEventListener("pointerdown", pause, { passive: true });
     feedEl.addEventListener("wheel", pause, { passive: true });
     feedEl.addEventListener("touchstart", pause, { passive: true });
   }
+  feedBottomBtn?.addEventListener("click", scrollToNewest);
 
   function pushDeath(m49) {
     if (!feedEl) return;
