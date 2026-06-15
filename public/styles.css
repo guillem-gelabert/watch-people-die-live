@@ -139,6 +139,7 @@ body {
 }
 
 .feed-line {
+  flex: 0 0 auto; /* never shrink to fit — overflow & scroll instead of overlapping */
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.2px;
   white-space: nowrap;
