@@ -7,7 +7,6 @@ import {
   atmosphereVertexShader,
   atmosphereFragmentShader,
 } from "./shaders.js";
-import { makePersona, initPersona } from "./persona.js";
 
 // --- Death frequency (real time, Poisson) --------------------------------
 // Each dot = one real death. A country's real deaths per year are
@@ -75,7 +74,7 @@ function flashIntensity(age) {
 }
 
 // lon/lat (degrees) -> point on a sphere textured with a standard equirectangular
-// map (north up, lon -180 at the left seam). Inverse is vec3ToLonLat below.
+// map (north up, lon -180 at the left seam).
 function lonLatToVec3(lon, lat, r) {
   const phi = ((90 - lat) * Math.PI) / 180;
   const theta = ((lon + 180) * Math.PI) / 180;
@@ -84,15 +83,6 @@ function lonLatToVec3(lon, lat, r) {
     r * Math.cos(phi),
     r * Math.sin(phi) * Math.sin(theta)
   );
-}
-
-function vec3ToLonLat(p) {
-  const r = p.length();
-  const lat = 90 - (Math.acos(p.y / r) * 180) / Math.PI;
-  let lon = (Math.atan2(p.z, -p.x) * 180) / Math.PI - 180;
-  while (lon < -180) lon += 360;
-  while (lon > 180) lon -= 360;
-  return [lon, lat];
 }
 
 // Visual calibration: load with ?calibrate to drop fixed coloured markers on known
@@ -107,11 +97,6 @@ const CALIBRATION = [
   ["São Paulo", -46.6, -23.5, 0x4488ff],
 ];
 
-const statusEl = document.getElementById("status");
-const bannerEl = document.getElementById("sample-banner");
-const subtitleEl = document.getElementById("subtitle");
-const tooltip = document.getElementById("tooltip");
-
 async function main() {
   let topo, grid, mortality;
   try {
@@ -119,34 +104,11 @@ async function main() {
       d3.json("/data/countries-110m.json"),
       d3.json("/data/density-grid.json"),
       d3.json("/api/mortality"),
-      // Loads the real per-country age/sex/cause distributions for personas. Resolves
-      // (with fallbacks) rather than rejecting, so it never blocks the globe.
-      initPersona(),
     ]);
   } catch (err) {
-    statusEl.textContent = "Failed to load data. Please try again later.";
-    console.error(err);
+    console.error("Failed to load data:", err);
     return;
   }
-
-  statusEl.classList.add("hidden");
-
-  if (mortality.source === "sample") {
-    bannerEl.classList.remove("hidden");
-    bannerEl.textContent =
-      "⚠ Showing bundled sample data — the live World Bank API was unreachable from the server. " +
-      "On a deployment with open internet (e.g. Railway) this shows real data.";
-  }
-
-  subtitleEl.textContent =
-    `${mortality.indicator} — latest available (≤ ${mortality.year}). ` +
-    `Each dot is one real death, placed where people actually live (denser regions ` +
-    `die more), in real time (~2 people die worldwide every second).`;
-
-  // Maps keyed by M49 numeric id.
-  const valueById = new Map(mortality.values.map((d) => [Number(d.id), d.value]));
-  const nameById = new Map(mortality.values.map((d) => [Number(d.id), d.name]));
-  const yearById = new Map(mortality.values.map((d) => [Number(d.id), d.year]));
 
   // Per-country death stats: mean interval (ms) between deaths. Needs CDR + pop.
   const blinkById = new Map();
@@ -215,8 +177,13 @@ async function main() {
   const scene = new THREE.Scene();
   const FOV = 45;
   const FIT_MARGIN = 1.5; // > 1 leaves breathing room (atmosphere extends past the globe)
+  const START_ZOOM = 0.58; // initial distance as a fraction of the fit distance (tighter)
   const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
   camera.position.set(0, 0, 3);
+  // Direction the camera should ease toward to center the viewer's location (unit
+  // vector), or null when idle / after the user takes over. Declared early so the
+  // OrbitControls "start" handler below can clear it.
+  let camTarget = null;
 
   // --- Realistic earth: day/night/clouds + atmosphere (Bruno Simon shaders) ---
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
@@ -291,7 +258,12 @@ async function main() {
   controls.minDistance = GLOBE_R * 1.1; // refined per-viewport in resize()
   controls.maxDistance = 6;
   controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+  // North stays up: the globe is never rotated (its +Y pole = world up) and
+  // OrbitControls keeps camera.up = +Y and never rolls, so any manual rotation
+  // keeps the pole pointing up. We "center" by orbiting the camera, not the globe.
+  controls.addEventListener("start", () => (camTarget = null)); // user takes over
 
+  let didInitZoom = false;
   function resize() {
     const w = container.clientWidth;
     const h = container.clientHeight || Math.round(w * 0.6);
@@ -299,19 +271,19 @@ async function main() {
     const aspect = w / h;
     camera.aspect = aspect;
     camera.updateProjectionMatrix();
-    // Distance so the whole globe fits with margin in BOTH dimensions. The camera
-    // FOV is vertical; on portrait (aspect < 1) the horizontal FOV is the binding
-    // constraint, so divide by aspect. Keeps the earth centered and not too big.
-    const dist =
+    // Distance at which the whole globe just fits with margin in both dimensions.
+    const fitDist =
       (GLOBE_R * FIT_MARGIN) /
       Math.tan((FOV * Math.PI) / 360) /
       Math.min(aspect, 1);
-    camera.position.setLength(dist);
-    // Zoom range: allow getting right down near the surface (a fixed close limit,
-    // independent of viewport), but don't let the globe shrink much past its
-    // fit-to-view size when zooming out.
+    // Start on a tighter zoom than the fit (bigger globe); only on first layout,
+    // so a later window resize doesn't yank the user's zoom back.
+    if (!didInitZoom) {
+      camera.position.setLength(Math.max(fitDist * START_ZOOM, GLOBE_R * 1.15));
+      didInitZoom = true;
+    }
     controls.minDistance = GLOBE_R * 1.1;
-    controls.maxDistance = dist * 1.25;
+    controls.maxDistance = fitDist * 1.25;
     controls.update();
   }
   resize();
@@ -390,48 +362,14 @@ async function main() {
     blasts.push({ t0, u, v, flash, flashMat: mat });
   }
 
-  // --- "Last deaths" feed: a generated persona per death, newest 6 kept. ----
-  const FEED_MAX = 6;
-  const feedEl = document.getElementById("death-feed");
-  const feed = []; // newest first
-
-  function pushDeath(m49) {
-    const country = nameById.get(m49) || "Unknown";
-    feed.unshift(makePersona(m49, country).text);
-    if (feed.length > FEED_MAX) feed.length = FEED_MAX;
-    renderFeed();
-  }
-
-  function renderFeed() {
-    if (!feedEl) return;
-    // feed[0] is newest: brightest, and (via column-reverse CSS) sits at the bottom;
-    // older lines rise and dim.
-    feedEl.innerHTML = feed
-      .map((text, i) => {
-        const opacity = (1 - i / FEED_MAX).toFixed(2);
-        const cls = i === 0 ? ' class="feed-new"' : "";
-        return `<div class="feed-line"${cls} style="opacity:${opacity}">${escapeHtml(
-          text
-        )}</div>`;
-      })
-      .join("");
-  }
-
   const uBlastUv = earthMaterial.uniforms.uBlastUv.value;
   const uBlastProg = earthMaterial.uniforms.uBlastProg.value;
 
-  // Rotate the globe so a lon/lat faces the camera (+Z), keeping north roughly up.
-  // Set as a tween target; the frame loop eases the globe toward it once.
-  let centerTarget = null;
+  // Center on a lon/lat by orbiting the CAMERA to that point's direction (the
+  // globe itself is never rotated, so north stays up). The frame loop eases the
+  // camera toward camTarget until the user takes over (OrbitControls "start").
   function centerOn(lon, lat) {
-    const v = lonLatToVec3(lon, lat, 1).normalize();
-    const toCamera = new THREE.Vector3(0, 0, 1);
-    const q1 = new THREE.Quaternion().setFromUnitVectors(v, toCamera);
-    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q1); // north pole after q1
-    // Roll around the view axis so the north pole projects to screen-up (+Y).
-    const roll = Math.atan2(up.x, up.y);
-    const q2 = new THREE.Quaternion().setFromAxisAngle(toCamera, roll);
-    centerTarget = q2.multiply(q1);
+    camTarget = lonLatToVec3(lon, lat, 1).normalize();
   }
 
   // Best-effort: center on the viewer's approximate IP location (see /api/geo).
@@ -453,7 +391,6 @@ async function main() {
           const [lon, lat] =
             densityLonLat(Number(s.feature.id)) || randomLonLat(s.feature, s.bounds);
           spawnBlast(lon, lat, s.next);
-          pushDeath(Number(s.feature.id));
         }
         s.next += expGap(s.mean);
       }
@@ -494,10 +431,17 @@ async function main() {
     }
     earthMaterial.uniforms.uBlastCount.value = nBlasts;
 
-    // Ease the globe toward the viewer's location, then release control.
-    if (centerTarget) {
-      globe.quaternion.slerp(centerTarget, 0.12);
-      if (globe.quaternion.angleTo(centerTarget) < 0.001) centerTarget = null;
+    // Ease the camera around to the viewer's location (preserving zoom), then
+    // release. Keeping up = +Y means north stays up throughout.
+    if (camTarget) {
+      const dist = camera.position.length();
+      const cur = camera.position.clone().normalize();
+      if (cur.angleTo(camTarget) < 0.01) {
+        camTarget = null;
+      } else {
+        camera.position.copy(cur.lerp(camTarget, 0.12).normalize().multiplyScalar(dist));
+        camera.up.set(0, 1, 0);
+      }
     }
 
     controls.update();
@@ -505,26 +449,6 @@ async function main() {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-
-  // --- Hover tooltip: raycast the globe, map the hit point back to a country ---
-  const raycaster = new THREE.Raycaster();
-  const ptr = new THREE.Vector2();
-  renderer.domElement.addEventListener("mousemove", (event) => {
-    const rect = renderer.domElement.getBoundingClientRect();
-    ptr.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    ptr.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    raycaster.setFromCamera(ptr, camera);
-    const hit = raycaster.intersectObject(earth, false)[0];
-    if (!hit) return hideTooltip();
-    const [lon, lat] = vec3ToLonLat(earth.worldToLocal(hit.point.clone()));
-    const feature = countries.find((f) => d3.geoContains(f, [lon, lat]));
-    if (!feature) return hideTooltip();
-    showTooltip(event, feature, valueById, nameById, yearById, blinkById, mortality);
-  });
-  renderer.domElement.addEventListener("mouseleave", hideTooltip);
-
-  if (calibrate) drawCalibrationLegend();
-  else drawLegend();
 }
 
 // Fixed, non-fading markers at known cities (see CALIBRATION). Each should sit on
@@ -536,82 +460,6 @@ function addCalibrationMarkers(group) {
     m.position.copy(lonLatToVec3(lon, lat, GLOBE_R * 1.01)); // just above the surface
     group.add(m);
   }
-}
-
-function drawCalibrationLegend() {
-  d3.select("#legend")
-    .html("")
-    .append("div")
-    .html(
-      "Calibration: each marker should sit on its city — " +
-        CALIBRATION.map(
-          ([name, , , color]) =>
-            `<span style="color:#${color.toString(16).padStart(6, "0")}">●</span> ${name}`
-        ).join(" · ")
-    );
-}
-
-function showTooltip(event, d, valueById, nameById, yearById, blinkById, mortality) {
-  const id = Number(d.id);
-  const v = valueById.get(id);
-  const name = nameById.get(id) || (d.properties && d.properties.name) || "Unknown";
-  const year = yearById.get(id) || mortality.year;
-  const blink = blinkById.get(id);
-  tooltip.classList.remove("hidden");
-  tooltip.innerHTML =
-    `<div class="tt-name">${name}</div>` +
-    (v == null
-      ? `<div class="tt-value">No data</div>`
-      : `<div class="tt-value">${v.toFixed(1)} deaths / 1,000</div>` +
-        (blink
-          ? `<div style="color:var(--muted)">${fmtDeaths(blink.deathsPerYear)} deaths/yr · ` +
-            `avg 1 / ${fmtInterval(blink.meanMs)} · ${year}</div>`
-          : `<div style="color:var(--muted)">${year}</div>`));
-  const pad = 14;
-  let x = event.clientX + pad;
-  let y = event.clientY + pad;
-  const r = tooltip.getBoundingClientRect();
-  if (x + r.width > window.innerWidth) x = event.clientX - r.width - pad;
-  if (y + r.height > window.innerHeight) y = event.clientY - r.height - pad;
-  tooltip.style.left = `${x}px`;
-  tooltip.style.top = `${y}px`;
-}
-
-function hideTooltip() {
-  tooltip.classList.add("hidden");
-}
-
-function escapeHtml(s) {
-  return s.replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
-  );
-}
-
-function fmtDeaths(perYear) {
-  return d3.format(",.0f")(perYear);
-}
-
-// Human-readable average interval between deaths.
-function fmtInterval(ms) {
-  const s = ms / 1000;
-  if (s < 90) return `${s.toFixed(1)}s`;
-  const m = s / 60;
-  if (m < 90) return `${m.toFixed(1)} min`;
-  const h = m / 60;
-  if (h < 48) return `${h.toFixed(1)} h`;
-  return `${(h / 24).toFixed(1)} days`;
-}
-
-function drawLegend() {
-  d3.select("#legend")
-    .html("")
-    .append("div")
-    .html(
-      `<span style="color:var(--accent)">●</span> each flash is a death, ` +
-        `placed where people live (denser regions die more), in real time (Poisson). ` +
-        `Drag to rotate · scroll/pinch to zoom · hover a country for its rate.`
-    );
 }
 
 main();

@@ -36,30 +36,27 @@ deaths/year is preserved exactly.
   Each country runs its own Poisson process (mean interval `MS_PER_YEAR / deathsPerYear`,
   so the country total is preserved); when a death fires, its **location** is chosen by
   sampling one of the country's density-grid cells with probability proportional to the
-  people living there, then jittering within that 0.5° cell — so dots cluster where
-  population is dense. Each death appears as a growing/fading red dot on the surface. D3,
-  topojson-client, three.js, and the [`world-atlas`](https://github.com/topojson/world-atlas)
-  TopoJSON are vendored from npm and served by the backend (no CDN dependency). Load with
-  `?calibrate` to drop fixed city markers for visually checking globe alignment.
+  people living there, then jittering within that 0.5° cell — so deaths cluster where
+  population is dense. Each death is rendered as an **"atomic blast seen from space"**: a
+  white **double flash** (a near-instant first pulse, a brief dark minimum, then a longer
+  second pulse — the bhangmeter signature, slowed to be visible) followed by a single subtle
+  **shockwave** that refracts the surface like one expanding water ripple (implemented in the
+  earth fragment shader). The UI is otherwise text-free — the globe fills the screen, the
+  north pole stays up while you drag, and a single **Data and Methodology** link
+  (`/methodology`) explains the sources. D3, topojson-client, three.js, and the
+  [`world-atlas`](https://github.com/topojson/world-atlas) TopoJSON are vendored from npm and
+  served by the backend (no CDN dependency). Load with `?calibrate` to drop fixed city markers
+  for visually checking globe alignment.
 
-- **Deaths feed** (`public/persona.js`): a panel at the bottom lists the last ~6 deaths as
-  short personas, e.g. *"Woman 78, breast cancer – Spain"*. Since the dots are synthetic
-  Poisson events, each persona is **statistically generated**, but from **real, per-country
-  distributions** so it matches where the death fired:
-  - **Age + sex** are drawn from that country's real age × sex distribution of deaths
-    (**UN World Population Prospects**, "Deaths by age and sex", via the
-    [UN Data Portal API](https://population.un.org/dataportal/about/dataapi)) — so a death in
-    Japan skews old and one in Nigeria skews young, with a realistic (non-50/50) sex split.
-  - **Cause** is drawn from that country's real cause-of-death mix for that sex and age band
-    (**IHME Global Burden of Disease**), collapsed to recognisable labels.
-
-  Both distributions are pre-built into committed JSON (`data/mortality-age-sex.json`,
-  `data/causes.json`) and fetched once by the client; if either is missing it falls back to a
-  bundled sample (`data/sample-personas.json`) and finally to an illustrative WHO-style table,
-  so the feed always reads sensibly. The feed is explicitly representative, not real people.
-
-- **Persona data build**: see *Building the persona data* below for the `npm run build:mortality`
-  / `build:causes` commands and the inputs they need.
+- **Per-country persona data** (`public/persona.js`): real, per-country distributions for the
+  age, sex, and cause behind a death — **age + sex** from the **UN World Population Prospects**
+  ("Deaths by age and sex", via the
+  [UN Data Portal API](https://population.un.org/dataportal/about/dataapi)) and **cause** from
+  the **IHME Global Burden of Disease**, pre-built into committed JSON
+  (`data/mortality-age-sex.json`, `data/causes.json`) with a bundled sample fallback
+  (`data/sample-personas.json`). The current UI is text-free, so these aren't displayed on
+  screen, but the data and build pipeline remain for reuse. See *Building the persona data* for
+  the `npm run build:mortality` / `build:causes` commands and the inputs they need.
 
 - **Viewer location** (`/api/geo`): on load the globe gently rotates to centre on the viewer's
   approximate location. The server looks up the caller's IP via the free, no-key

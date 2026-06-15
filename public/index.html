@@ -9,31 +9,9 @@
   <body>
     <div id="globe" aria-label="3D globe of real-time deaths"></div>
 
-    <header>
-      <h1>Watch People Die, Live</h1>
-      <p id="subtitle">Crude Death Rate by country — deaths per 1,000 population</p>
-      <div id="sample-banner" class="banner hidden"></div>
-    </header>
-
-    <main>
-      <div id="status">Loading data…</div>
-      <div id="legend"></div>
-    </main>
-
-    <div id="death-feed" aria-live="polite" aria-label="Most recent deaths"></div>
-    <p id="feed-note">Identities are generated and representative — not real people.</p>
-
     <footer>
-      Source:
-      <a
-        href="https://data.worldbank.org/indicator/SP.DYN.CDRT.IN"
-        target="_blank"
-        rel="noopener"
-        >World Bank — Death rate, crude (per 1,000 people)</a
-      >
+      <a href="/methodology">Data and Methodology</a>
     </footer>
-
-    <div id="tooltip" class="hidden"></div>
 
     <script src="/vendor/d3.min.js"></script>
     <script src="/vendor/topojson-client.min.js"></script>

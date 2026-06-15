@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Data and Methodology — Watch People Die, Live</title>
+    <style>
+      :root {
+        --bg: #0d0f14;
+        --fg: #e8eaed;
+        --muted: #9aa3af;
+        --accent: #ff5252;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        line-height: 1.6;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 3rem 1.25rem 5rem;
+      }
+      h1 {
+        font-size: 1.8rem;
+        letter-spacing: 0.5px;
+        margin: 0 0 0.25rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin: 2.25rem 0 0.5rem;
+      }
+      p,
+      li {
+        color: #d6dae0;
+      }
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .lead {
+        color: var(--muted);
+        font-size: 1.05rem;
+      }
+      .back {
+        display: inline-block;
+        margin-bottom: 2rem;
+        color: var(--muted);
+      }
+      code {
+        background: #161a22;
+        border-radius: 4px;
+        padding: 0.1rem 0.35rem;
+        font-size: 0.9em;
+      }
+      footer {
+        margin-top: 3rem;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="/">← Back to the globe</a>
+      <h1>Data and Methodology</h1>
+      <p class="lead">
+        Each flash on the globe represents one real human death, timed and placed from
+        public demographic data. No flash corresponds to a specific identifiable person —
+        the events are statistical, not records of individuals.
+      </p>
+
+      <h2>How often people die (rate &amp; timing)</h2>
+      <p>
+        Each country emits deaths as an independent
+        <a href="https://en.wikipedia.org/wiki/Poisson_point_process" target="_blank" rel="noopener">Poisson process</a>.
+        A country's deaths per year are computed as
+        <code>crude death rate × population ÷ 1000</code>, which sets the mean interval
+        between flashes; individual gaps are drawn from an exponential distribution, so
+        deaths arrive irregularly (clustering and spacing out) rather than on a fixed beat.
+        Worldwide this sums to roughly two deaths every second.
+      </p>
+      <ul>
+        <li>
+          <strong>Crude death rate &amp; population</strong> —
+          <a href="https://data.worldbank.org/indicator/SP.DYN.CDRT.IN" target="_blank" rel="noopener">World Bank Open Data</a>
+          (indicators <code>SP.DYN.CDRT.IN</code> and <code>SP.POP.TOTL</code>), most recent
+          year available per country. The World Bank's crude death rate is itself derived
+          from the
+          <a href="https://population.un.org/wpp/" target="_blank" rel="noopener">UN World Population Prospects</a>.
+        </li>
+      </ul>
+
+      <h2>Where deaths appear (placement)</h2>
+      <p>
+        Within a country, a death is not dropped at a random point but sampled from a
+        population-density grid, so flashes concentrate where people actually live and each
+        country's real annual total is preserved.
+      </p>
+      <ul>
+        <li>
+          <strong>Population density</strong> —
+          <a href="https://sedac.ciesin.columbia.edu/data/collection/gpw-v4" target="_blank" rel="noopener">Gridded Population of the World, v4 (GPWv4)</a>,
+          aggregated to a 0.5° grid. Each cell's population sets how likely a death is to
+          land there.
+        </li>
+      </ul>
+
+      <h2>What you see (visualization)</h2>
+      <p>
+        Each death is rendered as an "atomic blast seen from space":
+      </p>
+      <ul>
+        <li>
+          A <strong>double flash</strong> — a near-instant first pulse, a brief dark
+          minimum, then a longer second pulse that fades — echoing the
+          <a href="https://en.wikipedia.org/wiki/Bhangmeter" target="_blank" rel="noopener">double-flash signature</a>
+          of a nuclear detonation (the real first pulse lasts about a millisecond; here it
+          is slowed so it is visible).
+        </li>
+        <li>
+          A single, subtle <strong>shockwave</strong> that refracts the surface like one
+          expanding water ripple, then dissipates.
+        </li>
+      </ul>
+
+      <h2>Centring on you</h2>
+      <p>
+        On load the globe rotates to centre on your approximate location, looked up from
+        your IP address via the free service
+        <a href="https://ip-api.com" target="_blank" rel="noopener">ip-api.com</a>. Only
+        coordinates and a place name are used, cached briefly in memory and never stored.
+        If the lookup is unavailable the globe simply keeps its default view.
+      </p>
+
+      <h2>Caveats</h2>
+      <p>
+        This is an illustrative visualization, not a surveillance or forecasting tool.
+        Rates are national averages applied uniformly in time; density placement is
+        approximate; and the blast imagery is a metaphor, not a depiction of cause or
+        manner of death. Figures reflect the latest available data, which lags real time by
+        one or more years.
+      </p>
+
+      <footer>
+        Built with <a href="https://threejs.org/" target="_blank" rel="noopener">three.js</a>.
+        Source data: World Bank, UN World Population Prospects, CIESIN GPWv4.
+      </footer>
+    </main>
+  </body>
+</html>

@@ -24,6 +24,10 @@ const app = express();
 
 // --- Static frontend + vendored libraries (no CDN, works offline / on Railway) ---
 app.use(express.static(path.join(__dirname, "public")));
+// Clean URL for the data & methodology page.
+app.get("/methodology", (_req, res) =>
+  res.sendFile(path.join(__dirname, "public/methodology.html"))
+);
 app.get("/vendor/d3.min.js", (_req, res) =>
   res.sendFile(path.join(__dirname, "node_modules/d3/dist/d3.min.js"))
 );
