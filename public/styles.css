@@ -89,8 +89,8 @@ body {
   touch-action: pan-y;
   overscroll-behavior: contain;
   text-align: center;
-  height: 33vh;
-  height: 33dvh;
+  height: 20vh;
+  height: 20dvh;
   padding-bottom: 1.5rem; /* breathing room at the bottom edge */
   overflow-y: auto;
   font-size: 1rem;
