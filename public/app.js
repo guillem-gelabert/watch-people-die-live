@@ -7,6 +7,7 @@ import {
   atmosphereVertexShader,
   atmosphereFragmentShader,
 } from "./shaders.js";
+import { makePersona, initPersona } from "./persona.js";
 
 // --- Death frequency (real time, Poisson) --------------------------------
 // Each dot = one real death. A country's real deaths per year are
@@ -104,11 +105,17 @@ async function main() {
       d3.json("/data/countries-110m.json"),
       d3.json("/data/density-grid.json"),
       d3.json("/api/mortality"),
+      // Real per-country age/sex/cause distributions for the deaths feed. Resolves
+      // (with fallbacks) rather than rejecting, so it never blocks the globe.
+      initPersona(),
     ]);
   } catch (err) {
     console.error("Failed to load data:", err);
     return;
   }
+
+  // Country display name by M49 id, for the deaths feed.
+  const nameById = new Map(mortality.values.map((d) => [Number(d.id), d.name]));
 
   // Per-country death stats: mean interval (ms) between deaths. Needs CDR + pop.
   const blinkById = new Map();
@@ -362,6 +369,33 @@ async function main() {
     blasts.push({ t0, u, v, flash, flashMat: mat });
   }
 
+  // --- "Last deaths" feed: a generated persona per death, newest 6 kept. ----
+  const FEED_MAX = 6;
+  const feedEl = document.getElementById("death-feed");
+  const feed = []; // newest first
+
+  function pushDeath(m49) {
+    const country = nameById.get(m49) || "Unknown";
+    feed.unshift(makePersona(m49, country).text);
+    if (feed.length > FEED_MAX) feed.length = FEED_MAX;
+    renderFeed();
+  }
+
+  function renderFeed() {
+    if (!feedEl) return;
+    // feed[0] is newest: brightest, and (via column-reverse CSS) sits at the bottom;
+    // older lines rise and dim.
+    feedEl.innerHTML = feed
+      .map((text, i) => {
+        const opacity = (1 - i / FEED_MAX).toFixed(2);
+        const cls = i === 0 ? ' class="feed-new"' : "";
+        return `<div class="feed-line"${cls} style="opacity:${opacity}">${escapeHtml(
+          text
+        )}</div>`;
+      })
+      .join("");
+  }
+
   const uBlastUv = earthMaterial.uniforms.uBlastUv.value;
   const uBlastProg = earthMaterial.uniforms.uBlastProg.value;
 
@@ -391,6 +425,7 @@ async function main() {
           const [lon, lat] =
             densityLonLat(Number(s.feature.id)) || randomLonLat(s.feature, s.bounds);
           spawnBlast(lon, lat, s.next);
+          pushDeath(Number(s.feature.id));
         }
         s.next += expGap(s.mean);
       }
@@ -460,6 +495,13 @@ function addCalibrationMarkers(group) {
     m.position.copy(lonLatToVec3(lon, lat, GLOBE_R * 1.01)); // just above the surface
     group.add(m);
   }
+}
+
+function escapeHtml(s) {
+  return s.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+  );
 }
 
 main();

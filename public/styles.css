@@ -39,8 +39,56 @@ body {
   touch-action: none; /* let OrbitControls handle drag/pinch instead of scrolling */
 }
 
-/* The only on-screen text: a quiet link in the bottom corner. It floats over the
-   full-screen globe but stays clickable. */
+/* Last-deaths feed: short generated personas, floating over the globe just above
+   the footer link. Newest sits at the bottom (column-reverse) and is brightest;
+   older lines rise and dim. Lets pointer events through to the globe. */
+#death-feed {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 2.75rem;
+  z-index: 1;
+  pointer-events: none;
+  text-align: center;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 0.1rem;
+  font-size: 1rem;
+  line-height: 1.35;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+}
+
+.feed-line {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  max-width: 92vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.feed-new {
+  color: var(--accent);
+  font-weight: 600;
+  animation: feed-in 0.4s ease-out;
+}
+
+@keyframes feed-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@media (max-width: 520px) {
+  #death-feed {
+    font-size: 0.85rem;
+  }
+}
+
+/* A quiet link in the bottom corner. It floats over the full-screen globe but
+   stays clickable. */
 footer {
   position: fixed;
   left: 0;

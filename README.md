@@ -41,22 +41,24 @@ deaths/year is preserved exactly.
   white **double flash** (a near-instant first pulse, a brief dark minimum, then a longer
   second pulse — the bhangmeter signature, slowed to be visible) followed by a single subtle
   **shockwave** that refracts the surface like one expanding water ripple (implemented in the
-  earth fragment shader). The UI is otherwise text-free — the globe fills the screen, the
-  north pole stays up while you drag, and a single **Data and Methodology** link
-  (`/methodology`) explains the sources. D3, topojson-client, three.js, and the
+  earth fragment shader). The UI is otherwise minimal — the globe fills the screen, the north
+  pole stays up while you drag, a small **last-deaths feed** scrolls generated personas at the
+  bottom, and a single **Data and Methodology** link (`/methodology`) explains the sources. D3,
+  topojson-client, three.js, and the
   [`world-atlas`](https://github.com/topojson/world-atlas) TopoJSON are vendored from npm and
   served by the backend (no CDN dependency). Load with `?calibrate` to drop fixed city markers
   for visually checking globe alignment.
 
-- **Per-country persona data** (`public/persona.js`): real, per-country distributions for the
-  age, sex, and cause behind a death — **age + sex** from the **UN World Population Prospects**
-  ("Deaths by age and sex", via the
+- **Deaths feed** (`public/persona.js`): the bottom of the screen lists the last ~6 deaths as
+  short generated personas, e.g. *"Woman 78, breast cancer – Spain"*. Each is drawn from
+  **real, per-country distributions** so it matches where the death fired — **age + sex** from
+  the **UN World Population Prospects** ("Deaths by age and sex", via the
   [UN Data Portal API](https://population.un.org/dataportal/about/dataapi)) and **cause** from
-  the **IHME Global Burden of Disease**, pre-built into committed JSON
+  the **IHME Global Burden of Disease** — pre-built into committed JSON
   (`data/mortality-age-sex.json`, `data/causes.json`) with a bundled sample fallback
-  (`data/sample-personas.json`). The current UI is text-free, so these aren't displayed on
-  screen, but the data and build pipeline remain for reuse. See *Building the persona data* for
-  the `npm run build:mortality` / `build:causes` commands and the inputs they need.
+  (`data/sample-personas.json`), and an illustrative WHO-style table as a last resort, so the
+  feed always reads sensibly. Identities are representative, not real people. See *Building the
+  persona data* for the `npm run build:mortality` / `build:causes` commands.
 
 - **Viewer location** (`/api/geo`): on load the globe gently rotates to centre on the viewer's
   approximate location. The server looks up the caller's IP via the free, no-key
