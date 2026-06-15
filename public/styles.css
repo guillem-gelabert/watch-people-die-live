@@ -93,17 +93,13 @@ body {
   height: 33.333dvh;
   padding-bottom: 1.5rem; /* breathing room at the bottom edge */
   overflow-y: auto;
-  display: flex;
-  flex-direction: column; /* newest is the LAST child (bottom) */
-  align-items: center;
-  gap: 0.1rem;
   font-size: 1rem;
   line-height: 1.35;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
-  /* Fade the top edge over ~3-4 lines so older lines dissolve gradually as they
-     scroll up; keep the newest (bottom) line fully opaque in both orientations. */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 5.5rem, #000 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 5.5rem, #000 100%);
+  /* Long fade: only the bottom ~4 lines are fully opaque; everything above fades
+     gradually toward the top. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 calc(100% - 5.5rem), #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 calc(100% - 5.5rem), #000 100%);
   scrollbar-width: none; /* Firefox: hide scrollbar chrome */
 }
 
@@ -111,10 +107,16 @@ body {
   display: none; /* WebKit: hide scrollbar chrome */
 }
 
-/* Keep the lines pinned to the bottom of the band when there aren't enough to fill
-   it, without the flex + overflow clipping bug that justify-content: flex-end causes. */
-#death-feed > :first-child {
-  margin-top: auto;
+/* The scrolled content. Bottom-anchored (newest = last child = bottom) without the
+   flex+overflow clipping bug, and transformed for the FLIP slide-up animation. */
+#feed-track {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 100%;
+  gap: 0.1rem;
+  will-change: transform;
 }
 
 /* Landscape: split view — list on the left, Earth on the right. */
@@ -127,6 +129,8 @@ body {
     height: auto;
     padding: 1rem 1.25rem;
     text-align: left;
+  }
+  #feed-track {
     align-items: stretch;
   }
   #globe {
@@ -153,19 +157,14 @@ body {
 }
 
 .feed-new {
-  /* Same color/weight as every other line. Rises in from the bottom on arrival,
-     pushing the older lines up. */
-  animation: feed-in 0.4s ease-out;
+  /* Same color/weight as every other line; just a fade-in (the FLIP transform on
+     #feed-track handles the upward slide of the whole stack). */
+  animation: feed-in 0.35s ease-out;
 }
 
 @keyframes feed-in {
   from {
     opacity: 0;
-    transform: translateY(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 

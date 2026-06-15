@@ -6,8 +6,8 @@ import {
   earthFragmentShader,
   atmosphereVertexShader,
   atmosphereFragmentShader,
-} from "./shaders.js";
-import { makePersona, initPersona } from "./persona.js";
+} from "shaders";
+import { makePersona, initPersona } from "persona";
 
 // --- Death frequency (real time, Poisson) --------------------------------
 // Each dot = one real death. A country's real deaths per year are
@@ -420,10 +420,22 @@ async function main() {
   // when the user scrolls back to the bottom.
   const FEED_SOFT_MAX = 60; // trimmed back to this while following
   const FEED_HARD_MAX = 200; // absolute cap, even when paused (with scroll compensation)
-  const feedEl = document.getElementById("death-feed");
+  const feedEl = document.getElementById("death-feed"); // scroll viewport
+  const trackEl = document.getElementById("feed-track"); // transformed content
   const feedBottomBtn = document.getElementById("feed-bottom");
   let following = true;
   let smoothing = false; // a button-triggered smooth catch-up is animating
+
+  // FLIP: after the new line is in place (stack already shifted up by `dy`), invert
+  // the track by `dy` then animate to 0, so the whole stack glides up smoothly.
+  function flipUp(dy) {
+    if (!trackEl || !(dy > 0)) return;
+    trackEl.style.transition = "none";
+    trackEl.style.transform = `translateY(${dy}px)`;
+    void trackEl.offsetHeight; // force reflow so the inverted start is committed
+    trackEl.style.transition = "transform 0.35s ease-out";
+    trackEl.style.transform = "translateY(0)";
+  }
 
   function setFollowing(v) {
     following = v;
@@ -463,27 +475,30 @@ async function main() {
   feedBottomBtn?.addEventListener("click", scrollToNewest);
 
   function pushDeath(m49) {
-    if (!feedEl) return;
+    if (!feedEl || !trackEl) return;
     const country = nameById.get(m49) || "Unknown";
-    const prevNewest = feedEl.lastElementChild;
+    const prevNewest = trackEl.lastElementChild;
     if (prevNewest) prevNewest.classList.remove("feed-new");
     const line = document.createElement("div");
     line.className = "feed-line feed-new";
     line.textContent = makePersona(m49, country).text;
-    feedEl.appendChild(line);
+    trackEl.appendChild(line);
+    const gap = parseFloat(getComputedStyle(trackEl).rowGap) || 0;
+    const dy = line.offsetHeight + gap; // one line's worth of upward shift
 
     if (following) {
       // Stick to the newest; trim oldest back to the soft cap (safe: we re-stick below).
-      while (feedEl.childElementCount > FEED_SOFT_MAX && feedEl.firstElementChild) {
-        feedEl.removeChild(feedEl.firstElementChild);
+      while (trackEl.childElementCount > FEED_SOFT_MAX && trackEl.firstElementChild) {
+        trackEl.removeChild(trackEl.firstElementChild);
       }
       stickToBottom(smoothing); // smooth during a button catch-up, instant for the live tail
-    } else if (feedEl.childElementCount > FEED_HARD_MAX && feedEl.firstElementChild) {
+      if (!smoothing) flipUp(dy); // glide the stack up (button catch-up animates via scroll)
+    } else if (trackEl.childElementCount > FEED_HARD_MAX && trackEl.firstElementChild) {
       // Paused but over the hard cap: drop the oldest and compensate scrollTop so the
       // lines being read stay put.
-      const removed = feedEl.firstElementChild;
-      const h = removed.offsetHeight + parseFloat(getComputedStyle(feedEl).rowGap || 0);
-      feedEl.removeChild(removed);
+      const removed = trackEl.firstElementChild;
+      const h = removed.offsetHeight + gap;
+      trackEl.removeChild(removed);
       feedEl.scrollTop = Math.max(0, feedEl.scrollTop - h);
     }
   }

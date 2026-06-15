@@ -22,6 +22,21 @@ const REQUEST_TIMEOUT_MS = 20000;
 
 const app = express();
 
+// Per-deploy version stamped into the HTML's asset URLs (?v=...), so every deploy
+// busts any browser/CDN cache automatically — no manual hard-refresh needed. Uses the
+// Railway commit SHA when available, else the process start time (changes each deploy).
+const VERSION =
+  (process.env.RAILWAY_GIT_COMMIT_SHA || "").slice(0, 8) || String(Date.now());
+const INDEX_HTML = fs
+  .readFileSync(path.join(__dirname, "public/index.html"), "utf8")
+  .replaceAll("__V__", VERSION);
+
+// Serve the app shell with the version injected (before static, so "/" hits this).
+app.get(["/", "/index.html"], (_req, res) => {
+  res.setHeader("Cache-Control", "no-cache");
+  res.type("html").send(INDEX_HTML);
+});
+
 // --- Static frontend + vendored libraries (no CDN, works offline / on Railway) ---
 // no-cache = the browser may keep a copy but must revalidate (via ETag) every load,
 // so a new deploy shows up on the next refresh instead of serving a stale page/bundle.
