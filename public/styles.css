@@ -100,10 +100,10 @@ body {
   font-size: 1rem;
   line-height: 1.35;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
-  /* Fade the top edge so older lines dissolve as they scroll up; keep the newest
-     (bottom) line fully opaque in both orientations. */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18%, #000 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 18%, #000 100%);
+  /* Fade the top edge over ~3-4 lines so older lines dissolve gradually as they
+     scroll up; keep the newest (bottom) line fully opaque in both orientations. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 5.5rem, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 5.5rem, #000 100%);
   scrollbar-width: none; /* Firefox: hide scrollbar chrome */
 }
 
@@ -156,8 +156,7 @@ body {
 }
 
 .feed-new {
-  color: var(--accent);
-  font-weight: 600;
+  /* Same color/weight as every other line — only a subtle slide-in on arrival. */
   animation: feed-in 0.4s ease-out;
 }
 
