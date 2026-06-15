@@ -40,8 +40,8 @@ uniform vec2 uBlastUv[N_BLASTS];
 uniform float uBlastProg[N_BLASTS];
 
 const float BLAST_MAXR = 0.10;  // max ripple radius (texture v-units; ~18 deg)
-const float BLAST_WIDTH = 0.045; // crest thickness
-const float BLAST_AMP = 0.006;  // max UV displacement (subtle)
+const float BLAST_WIDTH = 0.022; // crest thickness (narrower = tighter ring)
+const float BLAST_AMP = 0.0032; // max UV displacement (subtle)
 
 varying vec2 vUv;
 varying vec3 vNormal;
