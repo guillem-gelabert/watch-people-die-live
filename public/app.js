@@ -423,6 +423,7 @@ async function main() {
   const feedEl = document.getElementById("death-feed");
   const feedBottomBtn = document.getElementById("feed-bottom");
   let following = true;
+  let smoothing = false; // a button-triggered smooth catch-up is animating
 
   function setFollowing(v) {
     following = v;
@@ -432,14 +433,29 @@ async function main() {
     if (!feedEl) return true;
     return feedEl.scrollHeight - feedEl.clientHeight - feedEl.scrollTop <= 4;
   }
+  function stickToBottom(smooth) {
+    if (feedEl) feedEl.scrollTo({ top: feedEl.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+  }
   function scrollToNewest() {
-    if (feedEl) feedEl.scrollTop = feedEl.scrollHeight;
+    smoothing = true; // animate down, don't jump; keep button hidden until we arrive
     setFollowing(true);
+    stickToBottom(true);
   }
   if (feedEl) {
-    feedEl.addEventListener("scroll", () => setFollowing(isAtBottom()), { passive: true });
+    feedEl.addEventListener(
+      "scroll",
+      () => {
+        const atBottom = isAtBottom();
+        if (atBottom) smoothing = false;
+        if (!smoothing) setFollowing(atBottom); // ignore intermediate smooth-scroll positions
+      },
+      { passive: true }
+    );
     // Pressing / wheeling = the user takes manual control until they return to bottom.
-    const pause = () => setFollowing(false);
+    const pause = () => {
+      smoothing = false;
+      setFollowing(false);
+    };
     feedEl.addEventListener("pointerdown", pause, { passive: true });
     feedEl.addEventListener("wheel", pause, { passive: true });
     feedEl.addEventListener("touchstart", pause, { passive: true });
@@ -461,7 +477,7 @@ async function main() {
       while (feedEl.childElementCount > FEED_SOFT_MAX && feedEl.firstElementChild) {
         feedEl.removeChild(feedEl.firstElementChild);
       }
-      feedEl.scrollTop = feedEl.scrollHeight;
+      stickToBottom(smoothing); // smooth during a button catch-up, instant for the live tail
     } else if (feedEl.childElementCount > FEED_HARD_MAX && feedEl.firstElementChild) {
       // Paused but over the hard cap: drop the oldest and compensate scrollTop so the
       // lines being read stay put.
