@@ -99,6 +99,13 @@ const CALIBRATION = [
 ];
 
 async function main() {
+  const loaderEl = document.getElementById("loader");
+  // Kick the IP geolocation off immediately so it overlaps asset loading and is
+  // likely ready in time to center the very first rendered frame.
+  const geoReady = fetch("/api/geo")
+    .then((r) => r.json())
+    .catch(() => null);
+
   let topo, grid, mortality;
   try {
     [topo, grid, mortality] = await Promise.all([
@@ -111,6 +118,7 @@ async function main() {
     ]);
   } catch (err) {
     console.error("Failed to load data:", err);
+    loaderEl?.classList.add("hidden"); // don't leave the spinner up forever
     return;
   }
 
@@ -195,8 +203,8 @@ async function main() {
   // --- Realistic earth: day/night/clouds + atmosphere (Bruno Simon shaders) ---
   const maxAniso = renderer.capabilities.getMaxAnisotropy();
   const loader = new THREE.TextureLoader();
-  const loadTex = (url, srgb) => {
-    const t = loader.load(url);
+  const loadTex = async (url, srgb) => {
+    const t = await loader.loadAsync(url);
     if (srgb) t.colorSpace = THREE.SRGBColorSpace;
     t.anisotropy = maxAniso;
     return t;
@@ -205,14 +213,21 @@ async function main() {
   const twilightColor = new THREE.Color(ATMOSPHERE_TWILIGHT_COLOR);
   const sunDirection = sunDirectionNow(new THREE.Vector3());
 
+  // Wait for the earth textures up front so the globe is never revealed blank.
+  const [dayTexture, nightTexture, specularCloudsTexture] = await Promise.all([
+    loadTex("/earth/day.jpg", true),
+    loadTex("/earth/night.jpg", true),
+    loadTex("/earth/specularClouds.jpg", false),
+  ]);
+
   const earthGeometry = new THREE.SphereGeometry(GLOBE_R, 64, 64);
   const earthMaterial = new THREE.ShaderMaterial({
     vertexShader: earthVertexShader,
     fragmentShader: earthFragmentShader,
     uniforms: {
-      uDayTexture: new THREE.Uniform(loadTex("/earth/day.jpg", true)),
-      uNightTexture: new THREE.Uniform(loadTex("/earth/night.jpg", true)),
-      uSpecularCloudsTexture: new THREE.Uniform(loadTex("/earth/specularClouds.jpg", false)),
+      uDayTexture: new THREE.Uniform(dayTexture),
+      uNightTexture: new THREE.Uniform(nightTexture),
+      uSpecularCloudsTexture: new THREE.Uniform(specularCloudsTexture),
       uSunDirection: new THREE.Uniform(sunDirection.clone()),
       uAtmosphereDayColor: new THREE.Uniform(dayColor),
       uAtmosphereTwilightColor: new THREE.Uniform(twilightColor),
@@ -272,8 +287,11 @@ async function main() {
 
   let didInitZoom = false;
   function resize() {
-    const w = container.clientWidth;
-    const h = container.clientHeight || Math.round(w * 0.6);
+    const w = container.clientWidth || window.innerWidth;
+    const h = container.clientHeight || window.innerHeight || Math.round(w * 0.6);
+    // Track the device pixel ratio too (it can change when a window moves between
+    // displays or the browser zoom changes), capped at 2 to spare the GPU.
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(w, h); // updates the canvas CSS size too (buffer scaled by pixelRatio)
     const aspect = w / h;
     camera.aspect = aspect;
@@ -283,18 +301,37 @@ async function main() {
       (GLOBE_R * FIT_MARGIN) /
       Math.tan((FOV * Math.PI) / 360) /
       Math.min(aspect, 1);
-    // Start on a tighter zoom than the fit (bigger globe); only on first layout,
-    // so a later window resize doesn't yank the user's zoom back.
+    const maxDist = fitDist * 1.25;
+    controls.minDistance = GLOBE_R * 1.1;
+    controls.maxDistance = maxDist;
     if (!didInitZoom) {
+      // Start on a tighter zoom than the fit (bigger globe), only on first layout.
       camera.position.setLength(Math.max(fitDist * START_ZOOM, GLOBE_R * 1.15));
       didInitZoom = true;
+    } else {
+      // Preserve the user's zoom across resizes, but keep it within the new bounds
+      // so an orientation change (e.g. landscape -> portrait) can't leave the globe
+      // clipped or floating past the fit distance.
+      const d = Math.min(Math.max(camera.position.length(), controls.minDistance), maxDist);
+      camera.position.setLength(d);
     }
-    controls.minDistance = GLOBE_R * 1.1;
-    controls.maxDistance = fitDist * 1.25;
     controls.update();
   }
   resize();
-  window.addEventListener("resize", resize);
+  // Drive resizing from the container's actual box (handles orientation changes and
+  // mobile browser-chrome show/hide better than window 'resize' alone), debounced to
+  // one update per frame.
+  let resizeQueued = false;
+  const onResize = () => {
+    if (resizeQueued) return;
+    resizeQueued = true;
+    requestAnimationFrame(() => {
+      resizeQueued = false;
+      resize();
+    });
+  };
+  new ResizeObserver(onResize).observe(container);
+  window.addEventListener("orientationchange", onResize);
 
   // --- Death blasts: a white flash sprite + a shader-driven surface ripple ---
   // Soft radial white gradient (bright centre -> transparent) for the flash,
@@ -340,7 +377,6 @@ async function main() {
       return { feature, bounds: d3.geoBounds(feature), mean, next: expGap(mean) };
     });
   const blasts = [];
-  const start = performance.now();
 
   // Spawn one death blast: a camera-facing additive white flash at the surface
   // point, plus the data the earth shader needs to draw an expanding ripple
@@ -399,22 +435,37 @@ async function main() {
   const uBlastUv = earthMaterial.uniforms.uBlastUv.value;
   const uBlastProg = earthMaterial.uniforms.uBlastProg.value;
 
-  // Center on a lon/lat by orbiting the CAMERA to that point's direction (the
-  // globe itself is never rotated, so north stays up). The frame loop eases the
-  // camera toward camTarget until the user takes over (OrbitControls "start").
-  function centerOn(lon, lat) {
-    camTarget = lonLatToVec3(lon, lat, 1).normalize();
+  // Point the camera at a lon/lat by orbiting (the globe is never rotated, so north
+  // stays up). `instant` snaps now (for the initial centered reveal); otherwise it
+  // sets camTarget and the frame loop eases there until the user takes over.
+  function viewLonLat(lon, lat, instant) {
+    const dir = lonLatToVec3(lon, lat, 1).normalize();
+    if (instant) {
+      camera.position.copy(dir.multiplyScalar(camera.position.length()));
+      camera.up.set(0, 1, 0);
+      controls.update();
+      camTarget = null;
+    } else {
+      camTarget = dir;
+    }
   }
 
-  // Best-effort: center on the viewer's approximate IP location (see /api/geo).
-  fetch("/api/geo")
-    .then((r) => r.json())
-    .then((geo) => {
-      if (geo && Number.isFinite(geo.lat) && Number.isFinite(geo.lon)) {
-        centerOn(geo.lon, geo.lat);
-      }
-    })
-    .catch(() => {});
+  // Center on the viewer's IP location (best-effort). If it resolves before reveal,
+  // snap so the first visible frame is already centered; if it arrives later (or the
+  // lookup is slow/unavailable), don't hold up the reveal and ease in if it shows up.
+  const geo = await Promise.race([
+    geoReady,
+    new Promise((res) => setTimeout(() => res(null), 1200)),
+  ]);
+  const hasGeo = (g) => g && Number.isFinite(g.lat) && Number.isFinite(g.lon);
+  if (hasGeo(geo)) {
+    viewLonLat(geo.lon, geo.lat, true);
+  } else {
+    geoReady.then((g) => hasGeo(g) && viewLonLat(g.lon, g.lat, false));
+  }
+
+  let revealed = false; // hide the loader once the first real frame is on screen
+  const start = performance.now();
 
   function frame(now) {
     const t = now - start;
@@ -481,6 +532,13 @@ async function main() {
 
     controls.update();
     renderer.render(scene, camera);
+
+    // First real frame is on screen — fade the loader out.
+    if (!revealed) {
+      revealed = true;
+      loaderEl?.classList.add("hidden");
+    }
+
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);

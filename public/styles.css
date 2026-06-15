@@ -39,6 +39,39 @@ body {
   touch-action: none; /* let OrbitControls handle drag/pinch instead of scrolling */
 }
 
+/* Full-screen cover shown until data + textures are loaded and the first frame is
+   rendered, then faded out. Nothing else is visible behind it until then. */
+#loader {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: #000011;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.5s ease;
+}
+
+#loader.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+#loader .spinner {
+  width: 30px;
+  height: 30px;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Last-deaths feed: short generated personas, floating over the globe just above
    the footer link. Newest sits at the bottom (column-reverse) and is brightest;
    older lines rise and dim. Lets pointer events through to the globe. */
@@ -46,17 +79,31 @@ body {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 2.75rem;
+  bottom: 0;
   z-index: 1;
   pointer-events: none;
   text-align: center;
+  /* Occupy the bottom third of the viewport (a fifth in landscape); the newest
+     line sits at the bottom and older lines stack upward, clipped to the band. */
+  height: 33.333vh;
+  height: 33.333dvh;
+  padding-bottom: 2.5rem; /* clear the footer link */
+  overflow: hidden;
   display: flex;
   flex-direction: column-reverse;
+  justify-content: flex-start; /* with column-reverse, anchors lines to the bottom */
   align-items: center;
   gap: 0.1rem;
   font-size: 1rem;
   line-height: 1.35;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+}
+
+@media (orientation: landscape) {
+  #death-feed {
+    height: 20vh;
+    height: 20dvh;
+  }
 }
 
 .feed-line {
