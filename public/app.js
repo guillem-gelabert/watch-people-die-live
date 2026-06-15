@@ -336,6 +336,11 @@ async function main() {
     tex.colorSpace = THREE.SRGBColorSpace;
     return tex;
   })();
+  // The flash is a flat disc lying tangent to the surface (not a camera-facing
+  // billboard), so it reads as a 2D flash on the ground, foreshortens near the
+  // limb, and stays contained under the atmosphere shell.
+  const flashGeo = new THREE.PlaneGeometry(1, 1);
+  const PLANE_NORMAL = new THREE.Vector3(0, 0, 1); // PlaneGeometry faces +Z
 
   // Random lon/lat inside a country via rejection sampling over its geographic
   // bounds; falls back to the centroid for thin/tiny shapes.
@@ -362,17 +367,20 @@ async function main() {
   // point, plus the data the earth shader needs to draw an expanding ripple
   // there. The ripple itself is rendered by the shader (no mesh) from blast.u/v.
   function spawnBlast(lon, lat, t0) {
-    const mat = new THREE.SpriteMaterial({
+    const mat = new THREE.MeshBasicMaterial({
       map: flashTexture,
       color: 0xffffff,
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false, // additive: don't occlude later flashes
       depthTest: true, //  but let the globe hide far-side flashes
+      side: THREE.DoubleSide,
       opacity: 0,
     });
-    const flash = new THREE.Sprite(mat);
-    flash.position.copy(lonLatToVec3(lon, lat, GLOBE_R * 1.01)); // just above surface
+    const flash = new THREE.Mesh(flashGeo, mat);
+    const normal = lonLatToVec3(lon, lat, 1); // unit surface normal
+    flash.position.copy(normal).multiplyScalar(GLOBE_R * 1.002); // just above surface
+    flash.quaternion.setFromUnitVectors(PLANE_NORMAL, normal); // lie tangent to surface
     flash.scale.setScalar(1e-4);
     dotsGroup.add(flash);
     // Texture UV of the detonation (equirectangular day map). vUv.y runs south->
