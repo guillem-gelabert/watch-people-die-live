@@ -420,6 +420,29 @@ async function main() {
   const uBlastUv = earthMaterial.uniforms.uBlastUv.value;
   const uBlastProg = earthMaterial.uniforms.uBlastProg.value;
 
+  // Rotate the globe so a lon/lat faces the camera (+Z), keeping north roughly up.
+  // Set as a tween target; the frame loop eases the globe toward it once.
+  let centerTarget = null;
+  function centerOn(lon, lat) {
+    const v = lonLatToVec3(lon, lat, 1).normalize();
+    const toCamera = new THREE.Vector3(0, 0, 1);
+    const q1 = new THREE.Quaternion().setFromUnitVectors(v, toCamera);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q1); // north pole after q1
+    const roll = Math.atan2(up.x, up.y); // bring north to screen-up
+    const q2 = new THREE.Quaternion().setFromAxisAngle(toCamera, -roll);
+    centerTarget = q2.multiply(q1);
+  }
+
+  // Best-effort: center on the viewer's approximate IP location (see /api/geo).
+  fetch("/api/geo")
+    .then((r) => r.json())
+    .then((geo) => {
+      if (geo && Number.isFinite(geo.lat) && Number.isFinite(geo.lon)) {
+        centerOn(geo.lon, geo.lat);
+      }
+    })
+    .catch(() => {});
+
   function frame(now) {
     const t = now - start;
     for (const s of state) {
@@ -469,6 +492,12 @@ async function main() {
       }
     }
     earthMaterial.uniforms.uBlastCount.value = nBlasts;
+
+    // Ease the globe toward the viewer's location, then release control.
+    if (centerTarget) {
+      globe.quaternion.slerp(centerTarget, 0.12);
+      if (globe.quaternion.angleTo(centerTarget) < 0.001) centerTarget = null;
+    }
 
     controls.update();
     renderer.render(scene, camera);

@@ -61,6 +61,13 @@ deaths/year is preserved exactly.
 - **Persona data build**: see *Building the persona data* below for the `npm run build:mortality`
   / `build:causes` commands and the inputs they need.
 
+- **Viewer location** (`/api/geo`): on load the globe gently rotates to centre on the viewer's
+  approximate location. The server looks up the caller's IP via the free, no-key
+  [ip-api.com](https://ip-api.com) (using the `X-Forwarded-For` client IP behind Railway's
+  proxy) and returns only coordinates + a place name, cached briefly in memory — nothing is
+  persisted. It's best-effort: if the lookup fails or the host is unreachable, the globe just
+  keeps its default orientation.
+
 - **Fallback**: if the World Bank API is unreachable, the server serves `data/sample-cdr.json`
   (clearly marked as sample data) so the UI still renders, and the client shows a banner. If
   the raw population CSV can't be fetched at build time, `build-density.mjs` emits a coarse

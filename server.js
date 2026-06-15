@@ -221,6 +221,60 @@ app.get("/api/mortality", async (_req, res) => {
   }
 });
 
+// --- Basic IP geolocation: lets the client center the globe on the viewer ---
+// Best-effort and privacy-light: we look up the caller's approximate lat/lon via
+// the free, no-key ip-api.com and return only coordinates + a place name. Nothing
+// is stored beyond a short in-memory cache.
+const GEO_TTL_MS = 60 * 60 * 1000;
+const geoCache = new Map(); // ip -> { payload, ts }
+
+function clientIp(req) {
+  const xff = req.headers["x-forwarded-for"]; // set by Railway's proxy to the real client
+  const ip = (xff ? xff.split(",")[0] : req.socket?.remoteAddress || "").trim();
+  return ip.replace(/^::ffff:/, ""); // unwrap IPv4-mapped IPv6
+}
+
+function isPrivateIp(ip) {
+  return (
+    !ip ||
+    ip === "::1" ||
+    ip.startsWith("127.") ||
+    ip.startsWith("10.") ||
+    ip.startsWith("192.168.") ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(ip)
+  );
+}
+
+async function geolocate(ip) {
+  const cached = geoCache.get(ip);
+  if (cached && Date.now() - cached.ts < GEO_TTL_MS) return cached.payload;
+  let payload = { lat: null, lon: null, name: null, source: "none" };
+  try {
+    // Omit the IP for local/private callers (dev) so ip-api uses the requester IP
+    // it sees. ip-api free is HTTP-only, which is fine for a server-side call.
+    const path = isPrivateIp(ip) ? "" : encodeURIComponent(ip);
+    const data = await fetchJson(
+      `http://ip-api.com/json/${path}?fields=status,lat,lon,country,city`
+    );
+    if (data && data.status === "success" && Number.isFinite(data.lat)) {
+      payload = {
+        lat: data.lat,
+        lon: data.lon,
+        name: data.city ? `${data.city}, ${data.country}` : data.country || null,
+        source: "ip-api",
+      };
+    }
+  } catch (err) {
+    console.error("Geo lookup failed:", err.message);
+  }
+  geoCache.set(ip, { payload, ts: Date.now() });
+  return payload;
+}
+
+app.get("/api/geo", async (req, res) => {
+  res.json(await geolocate(clientIp(req)));
+});
+
 app.listen(PORT, () => {
   console.log(`watch-people-die-live listening on http://localhost:${PORT}`);
 });
