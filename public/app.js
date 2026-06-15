@@ -18,14 +18,19 @@ import { makePersona, initPersona } from "./persona.js";
 // than on a fixed beat. Populous countries emit a dot every few seconds; tiny
 // ones almost never — and across the whole world it sums to ~2 deaths/second.
 const MS_PER_YEAR_REAL = 365.25 * 24 * 3600 * 1000;
-const DOT_MS = 3500; // lifetime of one death dot: appear, grow, fade, vanish
-const DOT_MAX_R = 0.07; // max dot radius in globe units (earth radius = 1)
-const MAX_DOTS = 600; // safety cap on concurrent dots
-const CATCHUP_CAP = DOT_MS; // events older than this (e.g. backgrounded tab) don't spawn
+// Each death is an "atomic blast seen from space": a brief diffuse white flash,
+// then a single subtle shockwave that refracts the surface (in the earth shader)
+// and dissipates.
+const FLASH_MS = 260; // white detonation flash: appear, bloom, fade
+const SHOCK_MS = 2600; // surface shockwave ripple: expand outward and dissipate
+const BLAST_MS = SHOCK_MS; // total blast lifetime (the ripple outlasts the flash)
+const FLASH_R = 0.1; // flash sprite radius in globe units (earth radius = 1)
+const N_BLASTS = 16; // max concurrent ripples; MUST match N_BLASTS in shaders.js
+const MAX_DOTS = 600; // safety cap on concurrent blasts
+const CATCHUP_CAP = BLAST_MS; // events older than this (e.g. backgrounded tab) don't spawn
 
 // Globe.
 const GLOBE_R = 1;
-const DOT_COLOR = 0xff5252;
 const ATMOSPHERE_DAY_COLOR = "#00aaff";
 const ATMOSPHERE_TWILIGHT_COLOR = "#ff6600";
 // -------------------------------------------------------------------------
@@ -219,6 +224,11 @@ async function main() {
       uSunDirection: new THREE.Uniform(sunDirection.clone()),
       uAtmosphereDayColor: new THREE.Uniform(dayColor),
       uAtmosphereTwilightColor: new THREE.Uniform(twilightColor),
+      // Active death shockwaves (filled each frame). Centres in texture UV; the
+      // shader refracts the surface around each as an expanding ripple.
+      uBlastCount: { value: 0 },
+      uBlastUv: { value: Array.from({ length: N_BLASTS }, () => new THREE.Vector2()) },
+      uBlastProg: { value: new Array(N_BLASTS).fill(0) },
     },
   });
 
@@ -289,8 +299,25 @@ async function main() {
   resize();
   window.addEventListener("resize", resize);
 
-  // --- Death dots (3D spheres intersecting the surface) ---
-  const dotGeo = new THREE.SphereGeometry(1, 12, 12);
+  // --- Death blasts: a white flash sprite + a shader-driven surface ripple ---
+  // Soft radial white gradient (bright centre -> transparent) for the flash,
+  // generated procedurally so there's no asset to ship.
+  const flashTexture = (() => {
+    const size = 128;
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = size;
+    const ctx = cv.getContext("2d");
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    g.addColorStop(0.0, "rgba(255,255,255,1)");
+    g.addColorStop(0.25, "rgba(255,255,255,0.85)");
+    g.addColorStop(0.55, "rgba(255,255,255,0.25)");
+    g.addColorStop(1.0, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  })();
 
   // Random lon/lat inside a country via rejection sampling over its geographic
   // bounds; falls back to the centroid for thin/tiny shapes.
@@ -310,16 +337,31 @@ async function main() {
       const mean = blinkById.get(Number(feature.id)).meanMs;
       return { feature, bounds: d3.geoBounds(feature), mean, next: expGap(mean) };
     });
-  const dots = [];
+  const blasts = [];
   const start = performance.now();
 
-  function spawnDot(lon, lat, t0) {
-    const mat = new THREE.MeshBasicMaterial({ color: DOT_COLOR, transparent: true });
-    const m = new THREE.Mesh(dotGeo, mat);
-    m.position.copy(lonLatToVec3(lon, lat, GLOBE_R)); // centered on surface -> straddles it
-    m.scale.setScalar(1e-4);
-    dotsGroup.add(m);
-    dots.push({ m, mat, t0 });
+  // Spawn one death blast: a camera-facing additive white flash at the surface
+  // point, plus the data the earth shader needs to draw an expanding ripple
+  // there. The ripple itself is rendered by the shader (no mesh) from blast.u/v.
+  function spawnBlast(lon, lat, t0) {
+    const mat = new THREE.SpriteMaterial({
+      map: flashTexture,
+      color: 0xffffff,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false, // additive: don't occlude later flashes
+      depthTest: true, //  but let the globe hide far-side flashes
+      opacity: 0,
+    });
+    const flash = new THREE.Sprite(mat);
+    flash.position.copy(lonLatToVec3(lon, lat, GLOBE_R * 1.01)); // just above surface
+    flash.scale.setScalar(1e-4);
+    dotsGroup.add(flash);
+    // Texture UV of the detonation (equirectangular day map). vUv.y runs south->
+    // north like latitude, so v = (lat+90)/180; u = (lon+180)/360.
+    const u = (lon + 180) / 360;
+    const v = (lat + 90) / 180;
+    blasts.push({ t0, u, v, flash, flashMat: mat });
   }
 
   // --- "Last deaths" feed: a generated persona per death, newest 6 kept. ----
@@ -349,32 +391,58 @@ async function main() {
       .join("");
   }
 
+  const uBlastUv = earthMaterial.uniforms.uBlastUv.value;
+  const uBlastProg = earthMaterial.uniforms.uBlastProg.value;
+
   function frame(now) {
     const t = now - start;
     for (const s of state) {
       while (t >= s.next) {
         // Skip events too far in the past (e.g. backgrounded tab) to avoid a burst.
-        if (t - s.next <= CATCHUP_CAP && dots.length < MAX_DOTS) {
+        if (t - s.next <= CATCHUP_CAP && blasts.length < MAX_DOTS) {
           const [lon, lat] =
             densityLonLat(Number(s.feature.id)) || randomLonLat(s.feature, s.bounds);
-          spawnDot(lon, lat, s.next);
+          spawnBlast(lon, lat, s.next);
           pushDeath(Number(s.feature.id));
         }
         s.next += expGap(s.mean);
       }
     }
-    // Grow + fade active dots; remove once their lifetime is spent.
-    for (let i = dots.length - 1; i >= 0; i--) {
-      const p = (t - dots[i].t0) / DOT_MS;
-      if (p >= 1) {
-        dotsGroup.remove(dots[i].m);
-        dots[i].mat.dispose();
-        dots.splice(i, 1);
+
+    // Update each blast: the flash sprite (short) and the ripple progress (longer).
+    // Drop a blast once both phases are done; feed the newest live ripples to the
+    // earth shader (capped at N_BLASTS).
+    let nBlasts = 0;
+    for (let i = blasts.length - 1; i >= 0; i--) {
+      const b = blasts[i];
+      const age = t - b.t0;
+      const fp = age / FLASH_MS; // flash progress
+      const rp = age / SHOCK_MS; // ripple progress
+
+      if (fp >= 1 && b.flash) {
+        dotsGroup.remove(b.flash);
+        b.flashMat.dispose();
+        b.flash = null;
+      } else if (b.flash) {
+        // Quick bloom then fade; bright attack (additive) then ease-out decay.
+        const grow = 0.4 + 0.6 * Math.min(fp / 0.3, 1);
+        b.flash.scale.setScalar(Math.max(FLASH_R * grow, 1e-4));
+        b.flashMat.opacity = fp < 0.15 ? fp / 0.15 : Math.pow(1 - (fp - 0.15) / 0.85, 2);
+      }
+
+      if (fp >= 1 && rp >= 1) {
+        blasts.splice(i, 1);
         continue;
       }
-      dots[i].m.scale.setScalar(Math.max(DOT_MAX_R * p, 1e-4));
-      dots[i].mat.opacity = 1 - p;
+      // Newest ripples win the limited shader slots.
+      if (rp < 1 && nBlasts < N_BLASTS) {
+        uBlastUv[nBlasts].set(b.u, b.v);
+        uBlastProg[nBlasts] = rp;
+        nBlasts++;
+      }
     }
+    earthMaterial.uniforms.uBlastCount.value = nBlasts;
+
     controls.update();
     renderer.render(scene, camera);
     requestAnimationFrame(frame);
@@ -483,7 +551,7 @@ function drawLegend() {
     .html("")
     .append("div")
     .html(
-      `<span style="color:var(--accent)">●</span> each dot is a death, ` +
+      `<span style="color:var(--accent)">●</span> each flash is a death, ` +
         `placed where people live (denser regions die more), in real time (Poisson). ` +
         `Drag to rotate · scroll/pinch to zoom · hover a country for its rate.`
     );
