@@ -21,9 +21,13 @@ const MS_PER_YEAR_REAL = 365.25 * 24 * 3600 * 1000;
 // Each death is an "atomic blast seen from space": a brief diffuse white flash,
 // then a single subtle shockwave that refracts the surface (in the earth shader)
 // and dissipates.
-const FLASH_MS = 260; // white detonation flash: appear, bloom, fade
+// The flash is the atomic "double flash": a near-instant first pulse, a brief
+// dark minimum, then a longer, brighter second pulse that slowly fades (the
+// bhangmeter signature). The real first pulse is ~1ms — sub-frame at 60fps — so
+// it's scaled up here to stay perceptible while keeping the character.
+const FLASH_MS = 2200; // full double-flash lifetime: pulse, dark, second flash, fade
 const SHOCK_MS = 2600; // surface shockwave ripple: expand outward and dissipate
-const BLAST_MS = SHOCK_MS; // total blast lifetime (the ripple outlasts the flash)
+const BLAST_MS = Math.max(FLASH_MS, SHOCK_MS); // total blast lifetime
 const FLASH_R = 0.1; // flash sprite radius in globe units (earth radius = 1)
 const N_BLASTS = 16; // max concurrent ripples; MUST match N_BLASTS in shaders.js
 const MAX_DOTS = 600; // safety cap on concurrent blasts
@@ -54,6 +58,20 @@ function sunDirectionNow(out) {
 // Exponential inter-arrival time for a Poisson process with the given mean.
 function expGap(mean) {
   return -Math.log(1 - Math.random()) * mean;
+}
+
+// Atomic "double flash" brightness over the flash lifetime (age in ms): a sharp,
+// near-instant first pulse, a brief dark minimum, then a more prolonged (slightly
+// dimmer) second pulse that slowly fades. Each pulse is an asymmetric Gaussian
+// (fast rise, slower fall); the gap between them dips to ~0 = the dark minimum.
+function flashIntensity(age) {
+  const bump = (a, peak, riseW, fallW) => {
+    const x = (a - peak) / (a < peak ? riseW : fallW);
+    return Math.exp(-x * x);
+  };
+  const first = bump(age, 12, 9, 26); //   ~instant initial pulse (scaled from ~1ms)
+  const second = bump(age, 460, 190, 720); // prolonged second flash, hundreds of ms
+  return Math.min(first * 1.0 + second * 0.8, 1.0);
 }
 
 // lon/lat (degrees) -> point on a sphere textured with a standard equirectangular
@@ -424,10 +442,11 @@ async function main() {
         b.flashMat.dispose();
         b.flash = null;
       } else if (b.flash) {
-        // Quick bloom then fade; bright attack (additive) then ease-out decay.
-        const grow = 0.4 + 0.6 * Math.min(fp / 0.3, 1);
+        // Double-flash brightness; a tight bright point first, then a larger bloom
+        // (the fireball grows) for the second, prolonged flash.
+        const grow = 0.4 + 0.6 * Math.min(age / 460, 1);
         b.flash.scale.setScalar(Math.max(FLASH_R * grow, 1e-4));
-        b.flashMat.opacity = fp < 0.15 ? fp / 0.15 : Math.pow(1 - (fp - 0.15) / 0.85, 2);
+        b.flashMat.opacity = flashIntensity(age);
       }
 
       if (fp >= 1 && rp >= 1) {
