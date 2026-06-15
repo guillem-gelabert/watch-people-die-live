@@ -23,11 +23,18 @@ const REQUEST_TIMEOUT_MS = 20000;
 const app = express();
 
 // --- Static frontend + vendored libraries (no CDN, works offline / on Railway) ---
-app.use(express.static(path.join(__dirname, "public")));
-// Clean URL for the data & methodology page.
-app.get("/methodology", (_req, res) =>
-  res.sendFile(path.join(__dirname, "public/methodology.html"))
+// no-cache = the browser may keep a copy but must revalidate (via ETag) every load,
+// so a new deploy shows up on the next refresh instead of serving a stale page/bundle.
+app.use(
+  express.static(path.join(__dirname, "public"), {
+    setHeaders: (res) => res.setHeader("Cache-Control", "no-cache"),
+  })
 );
+// Clean URL for the data & methodology page.
+app.get("/methodology", (_req, res) => {
+  res.setHeader("Cache-Control", "no-cache");
+  res.sendFile(path.join(__dirname, "public/methodology.html"));
+});
 app.get("/vendor/d3.min.js", (_req, res) =>
   res.sendFile(path.join(__dirname, "node_modules/d3/dist/d3.min.js"))
 );
