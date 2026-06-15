@@ -213,12 +213,20 @@ async function main() {
   const twilightColor = new THREE.Color(ATMOSPHERE_TWILIGHT_COLOR);
   const sunDirection = sunDirectionNow(new THREE.Vector3());
 
-  // Wait for the earth textures up front so the globe is never revealed blank.
-  const [dayTexture, nightTexture, specularCloudsTexture] = await Promise.all([
-    loadTex("/earth/day.jpg", true),
-    loadTex("/earth/night.jpg", true),
-    loadTex("/earth/specularClouds.jpg", false),
-  ]);
+  // Wait for the earth textures up front so the globe is never revealed blank. If a
+  // texture fails, don't leave the loader spinning forever — hide it and bail.
+  let dayTexture, nightTexture, specularCloudsTexture;
+  try {
+    [dayTexture, nightTexture, specularCloudsTexture] = await Promise.all([
+      loadTex("/earth/day.jpg", true),
+      loadTex("/earth/night.jpg", true),
+      loadTex("/earth/specularClouds.jpg", false),
+    ]);
+  } catch (err) {
+    console.error("Failed to load earth textures:", err);
+    loaderEl?.classList.add("hidden");
+    return;
+  }
 
   const earthGeometry = new THREE.SphereGeometry(GLOBE_R, 64, 64);
   const earthMaterial = new THREE.ShaderMaterial({
@@ -405,31 +413,53 @@ async function main() {
     blasts.push({ t0, u, v, flash, flashMat: mat });
   }
 
-  // --- "Last deaths" feed: a generated persona per death, newest 6 kept. ----
-  const FEED_MAX = 6;
+  // --- "Last deaths" feed: a scrollable list of generated personas ----------
+  // Each death appends one line (newest at the bottom). It auto-follows the newest
+  // line, but pauses when the user scrolls or presses it: while paused, new lines
+  // append below the viewport so the lines being read don't move. Following resumes
+  // when the user scrolls back to the bottom.
+  const FEED_SOFT_MAX = 60; // trimmed back to this while following
+  const FEED_HARD_MAX = 200; // absolute cap, even when paused (with scroll compensation)
   const feedEl = document.getElementById("death-feed");
-  const feed = []; // newest first
+  let following = true;
 
-  function pushDeath(m49) {
-    const country = nameById.get(m49) || "Unknown";
-    feed.unshift(makePersona(m49, country).text);
-    if (feed.length > FEED_MAX) feed.length = FEED_MAX;
-    renderFeed();
+  function isAtBottom() {
+    if (!feedEl) return true;
+    return feedEl.scrollHeight - feedEl.clientHeight - feedEl.scrollTop <= 4;
+  }
+  if (feedEl) {
+    feedEl.addEventListener("scroll", () => (following = isAtBottom()), { passive: true });
+    // Pressing / wheeling = the user takes manual control until they return to bottom.
+    const pause = () => (following = false);
+    feedEl.addEventListener("pointerdown", pause, { passive: true });
+    feedEl.addEventListener("wheel", pause, { passive: true });
+    feedEl.addEventListener("touchstart", pause, { passive: true });
   }
 
-  function renderFeed() {
+  function pushDeath(m49) {
     if (!feedEl) return;
-    // feed[0] is newest: brightest, and (via column-reverse CSS) sits at the bottom;
-    // older lines rise and dim.
-    feedEl.innerHTML = feed
-      .map((text, i) => {
-        const opacity = (1 - i / FEED_MAX).toFixed(2);
-        const cls = i === 0 ? ' class="feed-new"' : "";
-        return `<div class="feed-line"${cls} style="opacity:${opacity}">${escapeHtml(
-          text
-        )}</div>`;
-      })
-      .join("");
+    const country = nameById.get(m49) || "Unknown";
+    const prevNewest = feedEl.lastElementChild;
+    if (prevNewest) prevNewest.classList.remove("feed-new");
+    const line = document.createElement("div");
+    line.className = "feed-line feed-new";
+    line.textContent = makePersona(m49, country).text;
+    feedEl.appendChild(line);
+
+    if (following) {
+      // Stick to the newest; trim oldest back to the soft cap (safe: we re-stick below).
+      while (feedEl.childElementCount > FEED_SOFT_MAX && feedEl.firstElementChild) {
+        feedEl.removeChild(feedEl.firstElementChild);
+      }
+      feedEl.scrollTop = feedEl.scrollHeight;
+    } else if (feedEl.childElementCount > FEED_HARD_MAX && feedEl.firstElementChild) {
+      // Paused but over the hard cap: drop the oldest and compensate scrollTop so the
+      // lines being read stay put.
+      const removed = feedEl.firstElementChild;
+      const h = removed.offsetHeight + parseFloat(getComputedStyle(feedEl).rowGap || 0);
+      feedEl.removeChild(removed);
+      feedEl.scrollTop = Math.max(0, feedEl.scrollTop - h);
+    }
   }
 
   const uBlastUv = earthMaterial.uniforms.uBlastUv.value;
@@ -553,13 +583,6 @@ function addCalibrationMarkers(group) {
     m.position.copy(lonLatToVec3(lon, lat, GLOBE_R * 1.01)); // just above the surface
     group.add(m);
   }
-}
-
-function escapeHtml(s) {
-  return s.replace(
-    /[&<>"']/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
-  );
 }
 
 main();

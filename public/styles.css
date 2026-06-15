@@ -3,6 +3,7 @@
   --fg: #e8eaed;
   --muted: #9aa3af;
   --accent: #ff5252;
+  --list-w: clamp(280px, 40vw, 460px); /* deaths-list width in landscape split view */
 }
 
 * {
@@ -72,37 +73,68 @@ body {
   }
 }
 
-/* Last-deaths feed: short generated personas, floating over the globe just above
-   the footer link. Newest sits at the bottom (column-reverse) and is brightest;
-   older lines rise and dim. Lets pointer events through to the globe. */
+/* Last-deaths feed: short generated personas, floating over the globe. A scrollable
+   list — newest at the bottom — that auto-follows the newest line but pauses when you
+   scroll or press it (so incoming deaths don't push the lines you're reading). Edges
+   fade out via a gradient mask.
+   Portrait: a band across the bottom third. Landscape: a full-height left panel
+   (split view, with the globe on the right). */
 #death-feed {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 1;
-  pointer-events: none;
+  pointer-events: auto; /* interactive: scroll / press */
+  touch-action: pan-y;
+  overscroll-behavior: contain;
   text-align: center;
-  /* Occupy the bottom third of the viewport (a fifth in landscape); the newest
-     line sits at the bottom and older lines stack upward, clipped to the band. */
   height: 33.333vh;
   height: 33.333dvh;
   padding-bottom: 2.5rem; /* clear the footer link */
-  overflow: hidden;
+  overflow-y: auto;
   display: flex;
-  flex-direction: column-reverse;
-  justify-content: flex-start; /* with column-reverse, anchors lines to the bottom */
+  flex-direction: column; /* newest is the LAST child (bottom) */
   align-items: center;
   gap: 0.1rem;
   font-size: 1rem;
   line-height: 1.35;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+  /* Fade the top edge so older lines dissolve as they scroll up; keep the newest
+     (bottom) line fully opaque in both orientations. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 18%, #000 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 18%, #000 100%);
+  scrollbar-width: none; /* Firefox: hide scrollbar chrome */
 }
 
+#death-feed::-webkit-scrollbar {
+  display: none; /* WebKit: hide scrollbar chrome */
+}
+
+/* Keep the lines pinned to the bottom of the band when there aren't enough to fill
+   it, without the flex + overflow clipping bug that justify-content: flex-end causes. */
+#death-feed > :first-child {
+  margin-top: auto;
+}
+
+/* Landscape: split view — list on the left, Earth on the right. */
 @media (orientation: landscape) {
   #death-feed {
-    height: 20vh;
-    height: 20dvh;
+    top: 0;
+    right: auto;
+    bottom: 0;
+    width: var(--list-w);
+    height: auto;
+    padding: 1rem 1.25rem;
+    text-align: left;
+    align-items: stretch;
+  }
+  #globe {
+    left: var(--list-w);
+    width: calc(100vw - var(--list-w));
+  }
+  footer {
+    left: var(--list-w);
   }
 }
 
@@ -113,6 +145,13 @@ body {
   max-width: 92vw;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+@media (orientation: landscape) {
+  .feed-line {
+    white-space: normal; /* allow wrapping in the narrow left panel */
+    max-width: none;
+  }
 }
 
 .feed-new {
