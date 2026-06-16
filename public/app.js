@@ -250,7 +250,7 @@ async function main() {
   globe.add(earth);
 
   const atmosphere = new THREE.Mesh(earthGeometry, atmosphereMaterial);
-  atmosphere.scale.setScalar(1.04);
+  atmosphere.scale.setScalar(1.02); // narrower halo than the example (closer camera)
   globe.add(atmosphere);
 
   // Keep the terminator matching wall-clock time as a long session runs (the

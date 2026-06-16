@@ -119,8 +119,10 @@ export function createEarth({
   globeMaterial.normalNode = bumpMap(bumpElevation);
 
   // --- Atmosphere shell (back-side) ------------------------------------------
+  // Tighter rim than the example's 0.73 floor since our camera sits closer/wider,
+  // which would otherwise make the halo read as too thick.
   const atmosphereMaterial = new MeshBasicNodeMaterial({ side: BackSide, transparent: true });
-  let alpha = fresnel.remap(0.73, 1, 1, 0).pow(3);
+  let alpha = fresnel.remap(0.8, 1, 1, 0).pow(3);
   alpha = alpha.mul(sunOrientation.smoothstep(-0.5, 1));
   atmosphereMaterial.outputNode = vec4(atmosphereColor, alpha);
 
