@@ -1,12 +1,7 @@
 /* global d3, topojson */
 import * as THREE from "three";
 import { OrbitControls } from "/vendor/OrbitControls.js";
-import {
-  earthVertexShader,
-  earthFragmentShader,
-  atmosphereVertexShader,
-  atmosphereFragmentShader,
-} from "shaders";
+import { createEarth } from "shaders";
 import { makePersona, initPersona } from "persona";
 
 // --- Death frequency (real time, Poisson) --------------------------------
@@ -35,8 +30,8 @@ const CATCHUP_CAP = BLAST_MS; // events older than this (e.g. backgrounded tab) 
 
 // Globe.
 const GLOBE_R = 1;
-const ATMOSPHERE_DAY_COLOR = "#00aaff";
-const ATMOSPHERE_TWILIGHT_COLOR = "#ff6600";
+const ATMOSPHERE_DAY_COLOR = "#4db2ff";
+const ATMOSPHERE_TWILIGHT_COLOR = "#bc490b";
 // -------------------------------------------------------------------------
 
 // Direction to the sun, as a unit vector in the same frame as the earth texture:
@@ -182,14 +177,15 @@ async function main() {
     return [c.lon[lo] + Math.random() * cs, c.lat[lo] + Math.random() * cs];
   }
 
-  // --- three.js scene ---
+  // --- three.js scene (WebGPU) ---
   const container = document.getElementById("globe");
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  const renderer = new THREE.WebGPURenderer({ antialias: true });
+  await renderer.init(); // picks WebGPU, falls back to WebGL2 automatically
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setClearColor(0x000011); // deep space
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000011); // deep space
   const FOV = 45;
   const FIT_MARGIN = 1.5; // > 1 leaves breathing room (atmosphere extends past the globe)
   const START_ZOOM = 0.58; // initial distance as a fraction of the fit distance (tighter)
@@ -200,27 +196,24 @@ async function main() {
   // OrbitControls "start" handler below can clear it.
   let camTarget = null;
 
-  // --- Realistic earth: day/night/clouds + atmosphere (Bruno Simon shaders) ---
-  const maxAniso = renderer.capabilities.getMaxAnisotropy();
+  // --- Realistic earth: day/night/clouds + bump + atmosphere (webgpu_tsl_earth) ---
   const loader = new THREE.TextureLoader();
   const loadTex = async (url, srgb) => {
     const t = await loader.loadAsync(url);
     if (srgb) t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = maxAniso;
+    t.anisotropy = 8;
     return t;
   };
-  const dayColor = new THREE.Color(ATMOSPHERE_DAY_COLOR);
-  const twilightColor = new THREE.Color(ATMOSPHERE_TWILIGHT_COLOR);
   const sunDirection = sunDirectionNow(new THREE.Vector3());
 
   // Wait for the earth textures up front so the globe is never revealed blank. If a
   // texture fails, don't leave the loader spinning forever — hide it and bail.
-  let dayTexture, nightTexture, specularCloudsTexture;
+  let dayTexture, nightTexture, bumpRoughnessCloudsTexture;
   try {
-    [dayTexture, nightTexture, specularCloudsTexture] = await Promise.all([
-      loadTex("/earth/day.jpg", true),
-      loadTex("/earth/night.jpg", true),
-      loadTex("/earth/specularClouds.jpg", false),
+    [dayTexture, nightTexture, bumpRoughnessCloudsTexture] = await Promise.all([
+      loadTex("/earth/earth_day_4096.jpg", true),
+      loadTex("/earth/earth_night_4096.jpg", true),
+      loadTex("/earth/earth_bump_roughness_clouds_4096.jpg", false),
     ]);
   } catch (err) {
     console.error("Failed to load earth textures:", err);
@@ -229,40 +222,33 @@ async function main() {
   }
 
   const earthGeometry = new THREE.SphereGeometry(GLOBE_R, 64, 64);
-  const earthMaterial = new THREE.ShaderMaterial({
-    vertexShader: earthVertexShader,
-    fragmentShader: earthFragmentShader,
-    uniforms: {
-      uDayTexture: new THREE.Uniform(dayTexture),
-      uNightTexture: new THREE.Uniform(nightTexture),
-      uSpecularCloudsTexture: new THREE.Uniform(specularCloudsTexture),
-      uSunDirection: new THREE.Uniform(sunDirection.clone()),
-      uAtmosphereDayColor: new THREE.Uniform(dayColor),
-      uAtmosphereTwilightColor: new THREE.Uniform(twilightColor),
-      // Active death shockwaves (filled each frame). Centres in texture UV; the
-      // shader refracts the surface around each as an expanding ripple.
-      uBlastCount: { value: 0 },
-      uBlastUv: { value: Array.from({ length: N_BLASTS }, () => new THREE.Vector2()) },
-      uBlastProg: { value: new Array(N_BLASTS).fill(0) },
-    },
-  });
+
+  // The MeshStandardNodeMaterial is lit by a directional "sun" so its PBR shading
+  // (roughness-driven ocean glint, bump relief) reads like the example. The light
+  // sits at the real subsolar point so it tracks wall-clock day/night.
+  const sunLight = new THREE.DirectionalLight(0xffffff, 2);
+  sunLight.position.copy(sunDirection).multiplyScalar(10);
+  scene.add(sunLight);
+
+  const { globeMaterial, atmosphereMaterial, sunDir, blastUv, blastProg, blastCount } =
+    createEarth({
+      dayTexture,
+      nightTexture,
+      bumpRoughnessCloudsTexture,
+      sunDirection,
+      atmosphereDayColor: ATMOSPHERE_DAY_COLOR,
+      atmosphereTwilightColor: ATMOSPHERE_TWILIGHT_COLOR,
+      nBlasts: N_BLASTS,
+      blastMaxR: 0.1, // max ripple radius (texture v-units; ~18 deg)
+      blastWidth: 0.018, // crest thickness
+      blastAmp: 0.006, // max UV displacement (subtle)
+    });
 
   const globe = new THREE.Group();
   scene.add(globe);
-  const earth = new THREE.Mesh(earthGeometry, earthMaterial);
+  const earth = new THREE.Mesh(earthGeometry, globeMaterial);
   globe.add(earth);
 
-  const atmosphereMaterial = new THREE.ShaderMaterial({
-    side: THREE.BackSide,
-    transparent: true,
-    vertexShader: atmosphereVertexShader,
-    fragmentShader: atmosphereFragmentShader,
-    uniforms: {
-      uSunDirection: new THREE.Uniform(sunDirection.clone()),
-      uAtmosphereDayColor: new THREE.Uniform(dayColor),
-      uAtmosphereTwilightColor: new THREE.Uniform(twilightColor),
-    },
-  });
   const atmosphere = new THREE.Mesh(earthGeometry, atmosphereMaterial);
   atmosphere.scale.setScalar(1.04);
   globe.add(atmosphere);
@@ -271,8 +257,8 @@ async function main() {
   // subsolar point drifts 15°/hour). Recompute periodically — no need per frame.
   function updateSun() {
     sunDirectionNow(sunDirection);
-    earthMaterial.uniforms.uSunDirection.value.copy(sunDirection);
-    atmosphereMaterial.uniforms.uSunDirection.value.copy(sunDirection);
+    sunDir.value.copy(sunDirection);
+    sunLight.position.copy(sunDirection).multiplyScalar(10);
   }
   setInterval(updateSun, 60000);
 
@@ -503,9 +489,6 @@ async function main() {
     }
   }
 
-  const uBlastUv = earthMaterial.uniforms.uBlastUv.value;
-  const uBlastProg = earthMaterial.uniforms.uBlastProg.value;
-
   // Point the camera at a lon/lat by orbiting (the globe is never rotated, so north
   // stays up). `instant` snaps now (for the initial centered reveal); otherwise it
   // sets camTarget and the frame loop eases there until the user takes over.
@@ -581,12 +564,12 @@ async function main() {
       }
       // Newest ripples win the limited shader slots.
       if (rp < 1 && nBlasts < N_BLASTS) {
-        uBlastUv[nBlasts].set(b.u, b.v);
-        uBlastProg[nBlasts] = rp;
+        blastUv.array[nBlasts].set(b.u, b.v);
+        blastProg.array[nBlasts] = rp;
         nBlasts++;
       }
     }
-    earthMaterial.uniforms.uBlastCount.value = nBlasts;
+    blastCount.value = nBlasts;
 
     // Ease the camera around to the viewer's location (preserving zoom), then
     // release. Keeping up = +Y means north stays up throughout.
@@ -609,10 +592,8 @@ async function main() {
       revealed = true;
       loaderEl?.classList.add("hidden");
     }
-
-    requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  renderer.setAnimationLoop(frame); // WebGPU drives its own loop
 }
 
 // Fixed, non-fading markers at known cities (see CALIBRATION). Each should sit on
