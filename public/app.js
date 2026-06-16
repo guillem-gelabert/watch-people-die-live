@@ -240,7 +240,7 @@ async function main() {
       atmosphereTwilightColor: ATMOSPHERE_TWILIGHT_COLOR,
       nBlasts: N_BLASTS,
       blastMaxR: 0.1, // max ripple radius (texture v-units; ~18 deg)
-      blastWidth: 0.018, // crest thickness
+      blastWidth: 0.013, // crest thickness (narrower)
       blastAmp: 0.006, // max UV displacement (subtle)
     });
 

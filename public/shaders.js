@@ -72,7 +72,11 @@ export function createEarth({
       const prog = blastProg.element(i);
       const radius = prog.mul(blastMaxR);
       const x = dist.sub(radius).div(blastWidth);
-      const wave = x.negate().mul(x.mul(x).negate().exp()); // single ripple lobe
+      const x2 = x.mul(x);
+      // Narrow push/pull lobe with a quartic exp(-x^4) envelope: the surface snaps
+      // back to flat quickly on both sides of the crest instead of trailing off
+      // slowly like a Gaussian (exp(-x^2)) would.
+      const wave = x.negate().mul(x2.mul(x2).negate().exp());
       const om = prog.oneMinus();
       const fade = om.mul(om);
       const dir = dd.div(max(dist, float(1e-4)));
