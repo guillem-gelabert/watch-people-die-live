@@ -73,10 +73,10 @@ export function createEarth({
       const radius = prog.mul(blastMaxR);
       const x = dist.sub(radius).div(blastWidth);
       const x2 = x.mul(x);
-      // Narrow push/pull lobe with a quartic exp(-x^4) envelope: the surface snaps
-      // back to flat quickly on both sides of the crest instead of trailing off
-      // slowly like a Gaussian (exp(-x^2)) would.
-      const wave = x.negate().mul(x2.mul(x2).negate().exp());
+      // A single narrow ring: one positive bump (exp(-x^4)) centred on the
+      // expanding radius, with no trailing trough, so the surface pushes out once
+      // and snaps back flat on both sides.
+      const wave = x2.mul(x2).negate().exp();
       const om = prog.oneMinus();
       const fade = om.mul(om);
       const dir = dd.div(max(dist, float(1e-4)));

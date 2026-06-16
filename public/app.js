@@ -240,8 +240,8 @@ async function main() {
       atmosphereTwilightColor: ATMOSPHERE_TWILIGHT_COLOR,
       nBlasts: N_BLASTS,
       blastMaxR: 0.1, // max ripple radius (texture v-units; ~18 deg)
-      blastWidth: 0.013, // crest thickness (narrower)
-      blastAmp: 0.006, // max UV displacement (subtle)
+      blastWidth: 0.009, // crest thickness (narrow single ring)
+      blastAmp: 0.004, // max UV displacement (subtle; single bump peaks at 1.0)
     });
 
   const globe = new THREE.Group();
