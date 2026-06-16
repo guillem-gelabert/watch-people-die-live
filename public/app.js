@@ -35,8 +35,8 @@ const CATCHUP_CAP = BLAST_MS; // events older than this (e.g. backgrounded tab) 
 
 // Globe.
 const GLOBE_R = 1;
-const ATMOSPHERE_DAY_COLOR = "#00aaff";
-const ATMOSPHERE_TWILIGHT_COLOR = "#ff6600";
+const ATMOSPHERE_DAY_COLOR = "#4db2ff"; // matches the three.js webgpu_tsl_earth example
+const ATMOSPHERE_TWILIGHT_COLOR = "#bc490b";
 // -------------------------------------------------------------------------
 
 // Direction to the sun, as a unit vector in the same frame as the earth texture:
@@ -215,12 +215,12 @@ async function main() {
 
   // Wait for the earth textures up front so the globe is never revealed blank. If a
   // texture fails, don't leave the loader spinning forever — hide it and bail.
-  let dayTexture, nightTexture, specularCloudsTexture;
+  let dayTexture, nightTexture, bumpRoughnessCloudsTexture;
   try {
-    [dayTexture, nightTexture, specularCloudsTexture] = await Promise.all([
+    [dayTexture, nightTexture, bumpRoughnessCloudsTexture] = await Promise.all([
       loadTex("/earth/day.jpg", true),
       loadTex("/earth/night.jpg", true),
-      loadTex("/earth/specularClouds.jpg", false),
+      loadTex("/earth/bump_roughness_clouds.jpg", false),
     ]);
   } catch (err) {
     console.error("Failed to load earth textures:", err);
@@ -235,7 +235,7 @@ async function main() {
     uniforms: {
       uDayTexture: new THREE.Uniform(dayTexture),
       uNightTexture: new THREE.Uniform(nightTexture),
-      uSpecularCloudsTexture: new THREE.Uniform(specularCloudsTexture),
+      uBumpRoughnessCloudsTexture: new THREE.Uniform(bumpRoughnessCloudsTexture),
       uSunDirection: new THREE.Uniform(sunDirection.clone()),
       uAtmosphereDayColor: new THREE.Uniform(dayColor),
       uAtmosphereTwilightColor: new THREE.Uniform(twilightColor),
