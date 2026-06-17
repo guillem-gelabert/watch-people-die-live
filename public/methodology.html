@@ -75,19 +75,30 @@
       <h1>Data and Methodology</h1>
       <p class="lead">
         Each flash on the globe represents one real human death, timed and placed from
-        public demographic data. No flash corresponds to a specific identifiable person —
-        the events are statistical, not records of individuals.
+        public demographic data; the feed at the bottom gives each one a
+        <em>statistically representative</em> identity — an age, a sex and a cause drawn
+        from real distributions. No flash or persona corresponds to a specific identifiable
+        person: every event is statistical, not a record of an individual.
       </p>
 
-      <h2>How often people die (rate &amp; timing)</h2>
+      <h2>How often people die (the points)</h2>
       <p>
         Each country emits deaths as an independent
         <a href="https://en.wikipedia.org/wiki/Poisson_point_process" target="_blank" rel="noopener">Poisson process</a>.
         A country's deaths per year are computed as
-        <code>crude death rate × population ÷ 1000</code>, which sets the mean interval
-        between flashes; individual gaps are drawn from an exponential distribution, so
-        deaths arrive irregularly (clustering and spacing out) rather than on a fixed beat.
-        Worldwide this sums to roughly two deaths every second.
+      </p>
+      <p style="text-align:center">
+        <code>deaths/year = crude death rate × population ÷ 1000</code>
+      </p>
+      <p>
+        That annual total sets the <strong>mean interval</strong> between flashes
+        (<code>one year ÷ deaths-per-year</code>). Each gap between consecutive deaths is
+        then drawn from an
+        <a href="https://en.wikipedia.org/wiki/Exponential_distribution" target="_blank" rel="noopener">exponential distribution</a>
+        with that mean, so deaths arrive irregularly — clustering and spacing out — rather
+        than on a fixed beat, while the long-run count still matches the country's real
+        annual total. Summed over every country this is roughly two deaths every second
+        worldwide.
       </p>
       <ul>
         <li>
@@ -111,9 +122,72 @@
           <strong>Population density</strong> —
           <a href="https://sedac.ciesin.columbia.edu/data/collection/gpw-v4" target="_blank" rel="noopener">Gridded Population of the World, v4 (GPWv4)</a>,
           aggregated to a 0.5° grid. Each cell's population sets how likely a death is to
-          land there.
+          land there: a country's annual deaths are split across its cells in proportion to
+          the people living in each, so dense regions flash far more often than empty ones.
         </li>
       </ul>
+
+      <h2>Who each person is (the personas)</h2>
+      <p>
+        When a flash fires we generate one short persona for the feed, e.g.
+        <em>"Woman 84, lung cancer – Japan"</em>. Because the dot is a synthetic Poisson
+        event there is no real person behind it, so we fabricate an identity that is
+        <strong>statistically representative of who actually dies in that country</strong>.
+        It is built in three steps, each from real, sex- and age-specific data.
+      </p>
+      <p>
+        Deaths are binned into nine age bands —
+        <code>&lt;1, 1–4, 5–14, 15–29, 30–49, 50–64, 65–74, 75–84, 85+</code> — used
+        consistently for sex, age and cause.
+      </p>
+      <ol>
+        <li>
+          <strong>Sex.</strong> We take the country's total male vs. female deaths and pick
+          the decedent's sex in that proportion — so a flash inherits the real
+          sex balance of mortality where it fired.
+        </li>
+        <li>
+          <strong>Age.</strong> Given that sex, we pick an age band with probability
+          proportional to the <em>real number of deaths</em> in each band for that country
+          and sex, then choose a uniform age within the band. This is why a death in Japan
+          or Spain almost always reads as elderly while one in Nigeria is far more likely to
+          be an infant or child — it reflects each country's actual age-at-death curve, not
+          a global average.
+        </li>
+        <li>
+          <strong>Cause.</strong> Given the sex and age band, we draw a cause of death from a
+          <strong>sex- and age-stratified</strong> cause table: only causes plausible for
+          that sex and age are eligible (e.g. prostate cancer for older men, breast cancer
+          for women, neonatal complications only for infants, road injuries and suicide
+          weighted toward young adults, ischaemic heart disease, stroke and dementia toward
+          the old), each with a weight reflecting how common it is in that band. A cause is
+          then chosen at random in proportion to those weights.
+        </li>
+      </ol>
+      <ul>
+        <li>
+          <strong>Age &amp; sex of deaths</strong> —
+          <a href="https://population.un.org/dataportal/" target="_blank" rel="noopener">UN World Population Prospects, Data Portal API</a>,
+          indicator <em>"Deaths by 5-year age groups and sex"</em> (median variant, most
+          recent year, ~170 countries). The absolute death counts per age group and sex are
+          the sampling weights for steps 1 and 2 above, re-binned into the nine bands.
+        </li>
+        <li>
+          <strong>Cause of death</strong> — a compact, sex- and age-band-stratified table of
+          causes informed by the
+          <a href="https://www.healthdata.org/research-analysis/gbd" target="_blank" rel="noopener">Global Burden of Disease</a>
+          and
+          <a href="https://www.who.int/data/gho/data/themes/mortality-and-global-health-estimates" target="_blank" rel="noopener">WHO Global Health Estimates</a>
+          cause-of-death patterns. The eligibility ranges and weights are accurate by sex and
+          age band; they are applied globally rather than re-estimated per country, so the
+          cause matches the persona's sex and age, but not the country's specific
+          epidemiological profile.
+        </li>
+      </ul>
+      <p>
+        Identities are representative, never real: the same age, sex and cause distributions
+        could describe thousands of people, and no line is tied to an actual individual.
+      </p>
 
       <h2>What you see (visualization)</h2>
       <p>
@@ -146,14 +220,18 @@
       <p>
         This is an illustrative visualization, not a surveillance or forecasting tool.
         Rates are national averages applied uniformly in time; density placement is
-        approximate; and the blast imagery is a metaphor, not a depiction of cause or
-        manner of death. Figures reflect the latest available data, which lags real time by
-        one or more years.
+        approximate; and the blast imagery is a metaphor, not a depiction of cause or manner
+        of death. Personas are statistically representative, not real people — age and sex
+        are real per-country distributions, but the cause is drawn from a global sex/age
+        table, so it fits the persona's sex and age rather than the country's specific
+        disease mix. Figures reflect the latest available data, which lags real time by one
+        or more years.
       </p>
 
       <footer>
         Built with <a href="https://threejs.org/" target="_blank" rel="noopener">three.js</a>.
-        Source data: World Bank, UN World Population Prospects, CIESIN GPWv4.
+        Source data: World Bank Open Data, UN World Population Prospects (Data Portal API),
+        CIESIN GPWv4, with cause-of-death patterns informed by IHME GBD and WHO.
       </footer>
     </main>
   </body>

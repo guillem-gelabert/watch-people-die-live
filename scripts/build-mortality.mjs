@@ -69,8 +69,15 @@ async function main() {
   const m49s = atlasM49(); // real, mappable countries only
   console.log(`Targeting ${m49s.length} countries from world-atlas.`);
 
-  const indicatorId = await findIndicator(/deaths\s+by\s+age\s+and\s+sex/i);
-  console.log(`Using indicator ${indicatorId} ("Deaths by age and sex").`);
+  // The Data Portal exposes deaths split by age + sex as "Deaths by 5-year age groups
+  // and sex" (id 64) and "Deaths by 1-year age groups and sex" (id 69). We want the
+  // 5-year version — it matches our band scheme and is far smaller to fetch. Match it
+  // by name (id may change across revisions) and fall back to a 1-year groups variant.
+  const indicatorId =
+    (await findIndicator(/deaths\s+by\s+5-year\s+age\s+groups?\s+and\s+sex/i)) ??
+    (await findIndicator(/deaths\s+by\s+.*age\s+groups?\s+and\s+sex/i));
+  if (!indicatorId) throw new Error('No "Deaths by ... age groups and sex" indicator found.');
+  console.log(`Using indicator ${indicatorId} ("Deaths by 5-year age groups and sex").`);
 
   // Fetch in location chunks to keep URLs and responses manageable.
   const byCountry = new Map(); // m49 -> { m:[9], f:[9] }
@@ -142,12 +149,13 @@ async function getJson(url) {
   return res.json();
 }
 
-// Find an indicator id by matching its name. /indicators is itself paginated.
+// Find an indicator id by matching its name, or null if none match. /indicators is
+// itself paginated. (Callers chain matchers with ?? to degrade gracefully.)
 async function findIndicator(re) {
   for await (const ind of paged(`${API}/indicators/`)) {
     if (re.test(ind.name || "")) return ind.id;
   }
-  throw new Error(`No indicator matching ${re}`);
+  return null;
 }
 
 // Yield every record across the Data Portal's paginated responses. The API returns
@@ -162,7 +170,10 @@ async function* paged(url) {
     }
     const rows = Array.isArray(j.data) ? j.data : [];
     yield* rows;
-    next = j.nextPage || null;
+    // The API hands back an http:// nextPage; following it would 301 to https and
+    // Node's fetch drops the Authorization header across that redirect (-> 401). Force
+    // https so the bearer token survives.
+    next = j.nextPage ? j.nextPage.replace(/^http:\/\//i, "https://") : null;
   }
 }
 
