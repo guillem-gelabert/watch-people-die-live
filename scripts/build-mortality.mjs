@@ -140,13 +140,34 @@ function headers() {
   return { Authorization: `Bearer ${TOKEN}`, Accept: "application/json" };
 }
 
-async function getJson(url) {
-  const res = await fetch(url, { headers: headers() });
-  if (!res.ok) {
-    const body = (await res.text()).slice(0, 300);
-    throw new Error(`HTTP ${res.status} for ${url}\n${body}`);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Fetch one page with retries. population.un.org occasionally returns a transient
+// 5xx (e.g. a 502 from its nginx) or drops a connection mid-build; without a retry a
+// single hiccup aborts the whole deploy build. Retry on network errors and 5xx/429
+// with linear backoff; only a non-retryable 4xx (e.g. 401 bad token) fails fast.
+async function getJson(url, attempt = 1) {
+  const MAX = 5;
+  try {
+    const res = await fetch(url, { headers: headers() });
+    if (!res.ok) {
+      const body = (await res.text()).slice(0, 300);
+      const retryable = res.status >= 500 || res.status === 429;
+      if (retryable && attempt < MAX) {
+        await sleep(1500 * attempt);
+        return getJson(url, attempt + 1);
+      }
+      throw new Error(`HTTP ${res.status} for ${url}\n${body}`);
+    }
+    return await res.json();
+  } catch (err) {
+    // Network-level failure (reset/timeout) — retry, then give up.
+    if (attempt < MAX && !/^HTTP \d/.test(err.message || "")) {
+      await sleep(1500 * attempt);
+      return getJson(url, attempt + 1);
+    }
+    throw err;
   }
-  return res.json();
 }
 
 // Find an indicator id by matching its name, or null if none match. /indicators is
