@@ -1,0 +1,4 @@
+# Notebook linting tools (see pyproject.toml's [tool.ruff] section for rules).
+# Install with: pip install -r notebooks/requirements-lint.txt
+ruff==0.15.20
+nbqa==1.9.1

@@ -3,9 +3,9 @@
 A real-time 3D globe where **each dot is one real death**. Death rates come from the
 [World Bank API](https://data.worldbank.org/indicator/SP.DYN.CDRT.IN) (Crude Death Rate,
 indicator `SP.DYN.CDRT.IN`), but instead of dropping each death at a random point in its
-country, deaths are placed on a **population-density grid** — so they land where people
-actually live and denser regions die far more often, while each country's real total
-deaths/year is preserved exactly.
+country, deaths are placed on a **combined population-density + country-rate grid** — so
+they land where people actually live and denser/higher-mortality regions fire far more
+often, while each country's real total deaths/year is preserved exactly.
 
 > The World Bank's crude death rate is itself derived from the UN World Population Prospects.
 > The UN Data Portal API was the original source, but its data endpoint now requires a Bearer
@@ -13,64 +13,58 @@ deaths/year is preserved exactly.
 
 ## How it works
 
-- **Backend** (`server.js`, Express): a `/api/mortality` endpoint that fetches the most recent
-  non-empty CDR value per economy from the World Bank (`?mrnev=1`), maps each country's
-  **ISO3 code → numeric M49 id** (via `i18n-iso-countries`), drops aggregates/regions, and
-  caches the result in memory (~24h). Returns
-  `{ indicator, year, source, values: [{ id, iso3, name, value, year }] }`, where `id` is the
-  numeric **M49 code** — the same key used by the map geometry, so the join is direct.
+- **Framework**: [Next.js 16](https://nextjs.org) (App Router, React 19), written in strict
+  TypeScript. `app/api/*` route handlers replace the old Express server; `app/globe/*` is the
+  globe itself (Three.js via `@react-three/fiber`/`drei`).
 
-- **Density grid** (`data/density-grid.json`, built by `scripts/build-density.mjs`): a
-  0.5° (30 arc-min) grid of cells, each `[lon, lat, population, M49]`, derived from
-  **GPWv4** (Gridded Population of the World, v4 — population count adjusted to 2015 UN
-  totals) via the [`openaddresses/population`](https://github.com/openaddresses/population)
-  CSV. The build aggregates the high-res 0.1° rows to 0.5° and maps each cell's ISO3 to the
-  numeric **M49** id. Because a cell's *count* already equals density × area, splitting a
-  country's deaths in proportion to cell count both preserves the country total and
-  concentrates deaths in dense cells. Run with `npm run build:density` (pass `--force` to
-  rebuild); the multi-MB raw CSV lives in `data/source/` (git-ignored) — only the ~1 MB
-  derived grid is committed.
+- **The combined rate grid** (`data/rate-grid.json`, baked offline by
+  `notebooks/combine.ipynb`): one row per populated 0.5° cell, `[lon, lat, countryId, w]`,
+  where `w` is that cell's expected deaths/year — population × that country's crude death
+  rate relative to the global mean. There is no runtime WHEN/WHERE split anymore: the globe
+  runs a single global Poisson process and samples one cell per death, which gives both the
+  location and the country in one step. See `docs/DENSITY-MORTALITY-JOIN.md` for the full
+  model, including how new realism layers (subnational rates, conflicts, time-of-day) plug
+  in without changing this runtime shape.
 
-- **Frontend** (`public/`): a **three.js** globe (realistic day/night earth, clouds, and
-  atmosphere, lit from the real-time subsolar point) with `OrbitControls` for drag/zoom.
-  Each country runs its own Poisson process (mean interval `MS_PER_YEAR / deathsPerYear`,
-  so the country total is preserved); when a death fires, its **location** is chosen by
-  sampling one of the country's density-grid cells with probability proportional to the
-  people living there, then jittering within that 0.5° cell — so deaths cluster where
-  population is dense. Each death is rendered as an **"atomic blast seen from space"**: a
-  white **double flash** (a near-instant first pulse, a brief dark minimum, then a longer
-  second pulse — the bhangmeter signature, slowed to be visible) followed by a single subtle
-  **shockwave** that refracts the surface like one expanding water ripple (implemented in the
-  earth fragment shader). The UI is otherwise minimal — the globe fills the screen, the north
-  pole stays up while you drag, a small **last-deaths feed** scrolls generated personas at the
-  bottom, and a single **Data and Methodology** link (`/methodology`) explains the sources. D3,
-  topojson-client, three.js, and the
-  [`world-atlas`](https://github.com/topojson/world-atlas) TopoJSON are vendored from npm and
-  served by the backend (no CDN dependency). Load with `?calibrate` to drop fixed city markers
-  for visually checking globe alignment.
+- **Seasonality** (`data/seasonality.json`): a 12-month multiplier per country (mean 1),
+  built from UN Demographic Yearbook monthly deaths, with a latitude-scaled fallback for
+  countries that don't report monthly data. It's the one layer still recomputed in the
+  browser (deaths speed up in winter, slow down in summer) rather than baked into the grid,
+  since it's the only thing that changes _during_ a session.
 
-- **Deaths feed** (`public/persona.js`): the bottom of the screen lists the last ~6 deaths as
-  short generated personas, e.g. *"Woman 78, breast cancer – Spain"*. Each is drawn from
-  **real, per-country distributions** so it matches where the death fired — **age + sex** from
-  the **UN World Population Prospects** ("Deaths by age and sex", via the
-  [UN Data Portal API](https://population.un.org/dataportal/about/dataapi)) and **cause** from
-  the **IHME Global Burden of Disease** — pre-built into committed JSON
+- **Frontend** (`app/globe/`): a **three.js** globe (realistic day/night earth, clouds, and
+  atmosphere, lit from the real-time subsolar point) with `OrbitControls` for drag/zoom. Each
+  death is rendered as an **"atomic blast seen from space"**: a white **double flash** (a
+  near-instant first pulse, a brief dark minimum, then a longer second pulse — the
+  bhangmeter signature, slowed to be visible) followed by a single subtle **shockwave** that
+  refracts the surface like one expanding water ripple (implemented in the earth fragment
+  shader). The UI is otherwise minimal — the globe fills the screen, the north pole stays up
+  while you drag, a small **last-deaths feed** scrolls generated personas at the bottom, and
+  a `/roadmap` page walks through each layer of realism (implemented vs. planned). Load with
+  `?calibrate` to drop fixed city markers for visually checking globe alignment.
+
+- **Deaths feed** (`app/globe/persona.ts`): the bottom of the screen lists the last ~60
+  deaths as short generated personas, e.g. _"Woman 78, breast cancer – Spain"_. Each is drawn
+  from **real, per-country distributions** so it matches where the death fired — **age +
+  sex** from the **UN World Population Prospects** ("Deaths by age and sex", via the
+  [UN Data Portal API](https://population.un.org/dataportal/about/dataapi)) and **cause**
+  from the **IHME Global Burden of Disease** — pre-built into committed JSON
   (`data/mortality-age-sex.json`, `data/causes.json`) with a bundled sample fallback
   (`data/sample-personas.json`), and an illustrative WHO-style table as a last resort, so the
-  feed always reads sensibly. Identities are representative, not real people. See *Building the
-  persona data* for the `npm run build:mortality` / `build:causes` commands.
+  feed always reads sensibly. Identities are representative, not real people. See _Building
+  the persona data_ for the `build:mortality` / `build:causes` commands.
 
-- **Viewer location** (`/api/geo`): on load the globe gently rotates to centre on the viewer's
-  approximate location. The server looks up the caller's IP via the free, no-key
+- **Viewer location** (`/api/geo`): on load the globe gently rotates to centre on the
+  viewer's approximate location. The server looks up the caller's IP via the free, no-key
   [ip-api.com](https://ip-api.com) (using the `X-Forwarded-For` client IP behind Railway's
   proxy) and returns only coordinates + a place name, cached briefly in memory — nothing is
   persisted. It's best-effort: if the lookup fails or the host is unreachable, the globe just
   keeps its default orientation.
 
-- **Fallback**: if the World Bank API is unreachable, the server serves `data/sample-cdr.json`
-  (clearly marked as sample data) so the UI still renders, and the client shows a banner. If
-  the raw population CSV can't be fetched at build time, `build-density.mjs` emits a coarse
-  synthetic grid from the bundled `world-atlas` geometry so the app still builds offline.
+- **Fallback**: if the World Bank API is unreachable, `/api/mortality` serves
+  `data/sample-cdr.json` (clearly marked as sample data). If the raw population CSV can't be
+  fetched at build time, `build-density.ts` emits a coarse synthetic grid from the bundled
+  `world-atlas` geometry so the app still builds offline.
 
 - **`/api/debug`**: probes the live World Bank endpoint and reports the HTTP status + a body
   snippet — handy for diagnosing a deployment-only fetch issue.
@@ -78,13 +72,47 @@ deaths/year is preserved exactly.
 ## Run locally
 
 ```bash
-npm install
-npm start
+pnpm install
+pnpm dev
 # open http://localhost:3000
 ```
 
-The density grid (`data/density-grid.json`) is committed, so no build step is needed to run.
-To regenerate it from the source raster: `npm run build:density -- --force`.
+`data/density-grid.json` and `data/rate-grid.json` are committed, so no build/bake step is
+needed to run. `predev`/`prebuild` sync `data/*.json` into `public/data/` automatically.
+
+## Tooling
+
+Strict TypeScript throughout (`tsconfig.json`). ESLint checks correctness only — Prettier
+owns all formatting (JS/TS/CSS/JSON/MD), Stylelint checks CSS, and ruff + nbqa lint the
+notebooks. Husky + lint-staged run all of this (plus `tsc --noEmit` and the Vitest suite) on
+every commit; a commit with errors is rejected.
+
+```bash
+pnpm run lint          # eslint
+pnpm run typecheck     # tsc --noEmit
+pnpm run format        # prettier --write
+pnpm run stylelint     # stylelint app/**/*.css
+pnpm run lint:notebooks
+pnpm test              # vitest
+```
+
+## Regenerating the combined rate grid
+
+`data/rate-grid.json` is committed, so it's optional day to day. To rebuild it from a fresh
+World Bank snapshot:
+
+```bash
+pnpm run dump:cdr              # writes data/source/cdr-snapshot.json
+pnpm run gen:synthetic-cells   # writes data/source/synthetic-cells.json
+```
+
+Then, with the Jupyter server running (see `.mcp.json` / `CLAUDE.md`), re-execute
+`notebooks/layers/country-rate.ipynb` and `notebooks/combine.ipynb` to re-bake
+`data/layers/country-rate.json` and `data/rate-grid.json`.
+
+To regenerate the underlying population density grid from the GPWv4 raster:
+`pnpm run build:density -- --force` (the multi-MB raw CSV lives in `data/source/`,
+git-ignored — only the ~1 MB derived grid is committed).
 
 ## Building the persona data
 
@@ -95,11 +123,11 @@ the app runs without rebuilding them. To regenerate from source:
 
 ```bash
 # UN_API_KEY = your UN Data Portal Bearer token (on Railway: the un_api_key variable).
-UN_API_KEY=eyJ... npm run build:mortality -- --force
+UN_API_KEY=eyJ... pnpm run build:mortality -- --force
 ```
 
-This calls the [UN Data Portal API](https://population.un.org/dataportalapi/api/v1), finds the
-"Deaths by age and sex" indicator, and fetches it for every mapped country. The host
+This calls the [UN Data Portal API](https://population.un.org/dataportalapi/api/v1), finds
+the "Deaths by age and sex" indicator, and fetches it for every mapped country. The host
 `population.un.org` must be reachable — some sandboxed/CI networks block it via an egress
 allowlist; add it there (or run where it's reachable) before building.
 
@@ -117,8 +145,8 @@ request):
 Save it under `data/source/` (git-ignored, like the GPWv4 raster), then:
 
 ```bash
-npm run build:causes -- --force          # auto-discovers the CSV in data/source/
-# or: npm run build:causes -- --src=path/to/gbd.csv --top=8 --force
+pnpm run build:causes -- --force          # auto-discovers the CSV in data/source/
+# or: pnpm run build:causes -- --src=path/to/gbd.csv --top=8 --force
 ```
 
 GBD cause names are mapped to short labels and the strongest `--top` (default 8) causes per
@@ -126,22 +154,23 @@ country/sex/age band are kept, the rest folded into "other causes".
 
 > Note: some sandboxed/CI networks block outbound hosts. There, `/api/mortality` returns
 > `source: "sample"`. On a normal network (including Railway) it returns `source: "worldbank"`
-> with real data for ~190 countries.
+> with real data for ~170 countries.
 
 ## Deploy on Railway
 
 1. Push this repo to GitHub.
 2. In Railway: **New Project → Deploy from GitHub repo** and select it.
-3. Railway builds with Nixpacks. Its build command runs `npm run build:mortality` (see
+3. Railway builds with Nixpacks. Its build command runs `build:mortality` (see
    `railway.json`) so the UN age/sex distribution (`data/mortality-age-sex.json`) is fetched
    fresh at deploy time — Railway's egress reaches `population.un.org`. Set the Data Portal
    token as the `un_api_key` (or `UN_API_KEY`) service variable; if it's missing or the fetch
    fails the build still succeeds and the app falls back to the bundled persona sample. Then
-   `npm start` runs the server (`PORT` is injected automatically).
-4. Open the generated domain — Railway's egress reaches the World Bank API too, so the map
-   shows live data.
+   `next start` runs the server (`PORT` is injected automatically).
+4. Open the generated domain — Railway's egress reaches the World Bank API too, so the globe
+   shows live death rates.
 
-Runtime needs no keys (the World Bank API is public). `un_api_key`/`UN_API_KEY` is used only by
-the **build** to fetch the UN data. Cause data (`data/causes.json`) is *not* fetched on build —
-IHME GBD has no API — so until it's built and committed (see *Building the persona data*),
-causes come from the bundled sample.
+Runtime needs no keys (the World Bank API is public, and `data/rate-grid.json` is baked
+offline ahead of time). `un_api_key`/`UN_API_KEY` is used only by the **build** to fetch the
+UN age/sex data. Cause data (`data/causes.json`) is _not_ fetched on build — IHME GBD has no
+API — so until it's rebuilt and committed (see _Building the persona data_), causes come from
+the bundled sample.

@@ -1,0 +1,19 @@
+# GUI git clients (VS Code, etc.) spawn hooks in a non-interactive shell that never
+# sources ~/.zshrc, so the tools this hook needs aren't on PATH: pnpm lives under nvm,
+# and nbqa/ruff under Homebrew. Put both on PATH so the hook works from a GUI too.
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+export PATH="/opt/homebrew/bin:$PATH"
+
+# Abort (block the commit) on the first failing step. Placed AFTER the nvm sourcing
+# above so a missing nvm.sh doesn't trip it.
+set -e
+
+# Per-file lint/format on staged files (fast). Notebook linting is NOT here: nbqa reads
+# whole .ipynb files and doesn't play well with lint-staged's staged-only stash, so it
+# runs wholesale below (like typecheck/test) against the real working tree.
+pnpm exec lint-staged
+
+pnpm run typecheck
+pnpm run lint:notebooks
+pnpm test

@@ -1,5 +1,5 @@
 {
-  "note": "Bundled OFFLINE SAMPLE used by public/persona.js only when the real build outputs (mortality-age-sex.json from UN WPP, causes.json from IHME GBD) are absent. Weights are illustrative and hand-tuned to show per-country variation (old-skewed Japan vs young-skewed Nigeria), not authoritative. Run npm run build:mortality / build:causes to replace with real data.",
+  "note": "Bundled OFFLINE SAMPLE used by app/globe/persona.js only when the real build outputs (mortality-age-sex.json from UN WPP, causes.json from IHME GBD) are absent. Weights are illustrative and hand-tuned to show per-country variation (old-skewed Japan vs young-skewed Nigeria), not authoritative. Run npm run build:mortality / build:causes to replace with real data.",
   "mortality": {
     "source": "sample",
     "year": 2023,

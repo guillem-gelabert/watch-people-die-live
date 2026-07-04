@@ -3,22 +3,79 @@
   "version": "1.0.0",
   "description": "World map of Crude Death Rate (deaths per 1,000 population) from the UN Data Portal API, rendered with D3.",
   "type": "module",
-  "main": "server.js",
+  "packageManager": "pnpm@10.30.3",
   "scripts": {
-    "start": "node server.js",
-    "build:density": "node scripts/build-density.mjs",
-    "build:mortality": "node scripts/build-mortality.mjs",
-    "build:causes": "node scripts/build-causes.mjs"
+    "predev": "tsx scripts/sync-data.ts",
+    "dev": "next dev",
+    "prebuild": "tsx scripts/sync-data.ts",
+    "build": "next build",
+    "start": "next start",
+    "build:density": "tsx scripts/build-density.ts",
+    "build:mortality": "tsx scripts/build-mortality.ts",
+    "build:causes": "tsx scripts/build-causes.ts",
+    "build:seasonality": "tsx scripts/build-seasonality.ts",
+    "dump:cdr": "tsx scripts/dump-cdr.ts",
+    "gen:synthetic-cells": "tsx scripts/gen-synthetic-cells.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "stylelint": "stylelint \"app/**/*.css\"",
+    "lint:notebooks": "nbqa \"ruff check\" notebooks",
+    "test": "vitest run",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{js,jsx,mjs,ts,tsx}": [
+      "eslint"
+    ],
+    "*.{js,jsx,mjs,ts,tsx,css,json,md}": [
+      "prettier --check"
+    ],
+    "*.css": [
+      "stylelint"
+    ]
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
     "d3": "^7.9.0",
-    "express": "^4.21.2",
     "i18n-iso-countries": "^7.14.0",
+    "katex": "^0.17.0",
+    "next": "^16.2.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "three": "^0.184.0",
     "topojson-client": "^3.1.0",
     "world-atlas": "^2.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@next/eslint-plugin-next": "^16.2.10",
+    "@types/d3": "^7.4.3",
+    "@types/geojson": "^7946.0.16",
+    "@types/node": "^26.1.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.185.0",
+    "@types/topojson-client": "^3.1.5",
+    "@types/topojson-specification": "^1.0.5",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.10",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
+    "prettier": "^3.9.4",
+    "stylelint": "^17.14.0",
+    "stylelint-config-standard": "^40.0.0",
+    "tsx": "^4.23.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.1",
+    "vitest": "^4.1.9"
   }
 }

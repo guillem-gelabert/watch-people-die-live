@@ -1,0 +1,12 @@
+[tool.ruff]
+target-version = "py311"
+extend-exclude = [".ipynb_checkpoints", "archive"]
+
+[tool.ruff.lint]
+# Defects only (unused/undefined names, real bug patterns) -- no style rules (E501 line
+# length, I001 import order, ...). Notebooks legitimately import mid-file after a
+# sys.path.insert() setup cell, so E402 would misfire as a style rule here too.
+select = ["F", "E9", "B"]
+# B018 (bare expression) is the standard, idiomatic way to display a dataframe/value as a
+# cell's output in a notebook -- not a bug there, unlike in a plain script.
+ignore = ["B018"]

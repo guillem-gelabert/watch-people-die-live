@@ -1,0 +1,435 @@
+:root {
+  --bg: #0d0f14;
+  --fg: #e8eaed;
+  --muted: #9aa3af;
+  --accent: #ff5252;
+  --line: rgb(255 255 255 / 12%);
+  --panel: #141821;
+  --done: #4ade80;
+  --todo: var(--fg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.55;
+}
+
+main {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 3rem 1.25rem 5rem;
+}
+
+h1 {
+  margin: 0 0 0.35rem;
+  font-size: 1.9rem;
+  letter-spacing: 0.2px;
+}
+
+h3 {
+  margin: 0 0 0.2rem;
+  font-size: 1rem;
+}
+
+p,
+li {
+  color: #d6dae0;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.back {
+  display: inline-block;
+  margin-bottom: 2rem;
+  color: var(--muted);
+}
+
+.lead {
+  max-width: 760px;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+/* Legend */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin: 1.75rem 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.key {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  flex: none;
+}
+
+.key.is-done {
+  background: var(--done);
+}
+
+.key.is-todo {
+  background: transparent;
+  border: 2px solid var(--todo);
+}
+
+/* Track layout — a flex row so a second track (Causes) can sit beside it later */
+.tracks {
+  display: flex;
+  gap: 3rem;
+  margin-top: 2.25rem;
+}
+
+.track {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.track-label {
+  display: block;
+  margin: 0 0 1.5rem;
+  padding-left: 0.1rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  column-gap: 0.9rem;
+  padding-bottom: 2.1rem;
+}
+
+.step:last-child {
+  padding-bottom: 0;
+}
+
+/* Connecting line segment: drawn downward from each ring to the next step.
+   Colored by the step's own state, so the line turns from green to white
+   at the boundary between implemented and planned steps. */
+.step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 19px; /* center of the 40px ring gutter (ring is 16px wide) */
+  top: 18px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--todo);
+}
+
+.step.done:not(:last-child)::before {
+  background: var(--done);
+}
+
+.ring {
+  position: relative;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  margin: 1px auto 0;
+  border-radius: 50%;
+  background: var(--bg);
+  border: 2px solid var(--todo);
+}
+
+.step.done .ring {
+  background: var(--done);
+  border-color: var(--done);
+  box-shadow: 0 0 0 4px rgb(74 222 128 / 15%);
+}
+
+.step-body {
+  min-width: 0;
+}
+
+.step-body h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.num {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.step-body p {
+  margin: 0.2rem 0 0.5rem;
+}
+
+.source {
+  display: block;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.source.tbd {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.seasonality-explainer,
+.rate-explainer,
+.density-explainer {
+  margin-top: 1rem;
+}
+
+.seasonality-explainer p,
+.rate-explainer p,
+.density-explainer p {
+  margin: 0 0 0.85rem;
+  color: #cfd5de;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-top: 0.9rem;
+}
+
+.chart-panel {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgb(255 255 255 / 3%);
+  padding: 0.85rem;
+}
+
+.chart-panel.wide {
+  grid-column: 1 / -1;
+}
+
+.chart-title {
+  margin: 0 0 0.1rem;
+  color: var(--fg);
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.chart-copy,
+.chart-status {
+  margin: 0 0 0.65rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.chart-status {
+  margin-top: 0.7rem;
+}
+
+.speed-toggle {
+  display: inline-flex;
+  gap: 0.4rem;
+  margin: 0 0 0.65rem;
+}
+
+.speed-toggle button {
+  border: 1px solid var(--line);
+  background: rgb(255 255 255 / 3%);
+  color: var(--muted);
+  font-size: 0.72rem;
+  padding: 0.28rem 0.6rem;
+  border-radius: 999px;
+  cursor: pointer;
+  line-height: 1.2;
+}
+
+.speed-toggle button:hover {
+  color: var(--fg);
+}
+
+.speed-toggle button.active {
+  background: rgb(255 255 255 / 14%);
+  color: var(--fg);
+  border-color: rgb(255 255 255 / 35%);
+}
+
+.seasonality-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart-axis,
+.chart-gridline {
+  stroke: rgb(255 255 255 / 16%);
+  shape-rendering: crispedges;
+}
+
+.chart-gridline {
+  stroke-dasharray: 3 4;
+}
+
+.chart-label,
+.chart-tick {
+  fill: var(--muted);
+  font-size: 11px;
+}
+
+.chart-line-north {
+  fill: none;
+  stroke: #ff6b6b;
+  stroke-width: 2.4;
+}
+
+.chart-line-south {
+  fill: none;
+  stroke: #4ade80;
+  stroke-width: 2.4;
+}
+
+.chart-point {
+  fill: #ff6b6b;
+  fill-opacity: 0.78;
+  stroke: rgb(13 15 20 / 80%);
+  stroke-width: 1;
+}
+
+.chart-fit {
+  stroke: #e8eaed;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 5;
+}
+
+.climate-band-boundary {
+  stroke: rgb(255 255 255 / 22%);
+  stroke-width: 0.75;
+  stroke-dasharray: 2 3;
+}
+
+.map-country {
+  fill: rgb(255 255 255 / 8%);
+  stroke: rgb(255 255 255 / 18%);
+  stroke-width: 0.45;
+}
+
+.map-band {
+  stroke: none;
+}
+
+/* No fill here (unlike .map-country) — the choropleth sets fill per-path via
+   attr(), and a CSS fill rule would win over that presentation attribute. */
+.map-country-fill {
+  stroke: none;
+  cursor: pointer;
+}
+
+.map-country-fill.is-calculated {
+  fill-opacity: 0.62;
+}
+
+.map-country-fill.has-data {
+  fill-opacity: 0.92;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 0.55rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.swatch {
+  width: 14px;
+  height: 3px;
+  border-radius: 999px;
+  background: currentcolor;
+}
+
+.swatch.north {
+  color: #ff6b6b;
+}
+
+.swatch.south {
+  color: #4ade80;
+}
+
+.note {
+  border-left: 2px solid var(--accent);
+  margin-top: 3rem;
+  padding-left: 1rem;
+  color: #d6dae0;
+}
+
+footer {
+  margin-top: 3rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* Shared hover tooltip for all 7 charts (Stage 3). */
+.chart-tooltip {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.78rem;
+  color: var(--fg);
+  box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.08s ease-out;
+}
+
+.chart-tooltip.visible {
+  opacity: 1;
+}
+
+@media (width <= 680px) {
+  main {
+    padding-top: 2rem;
+  }
+
+  .tracks {
+    gap: 1.5rem;
+  }
+
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+}
