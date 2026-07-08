@@ -231,6 +231,32 @@ export default function Earth({
     };
   }, [perspCamera, gl]);
 
+  // Landscape split view: the death-feed list overlays the left edge of the
+  // (always full-width) canvas. Rather than shrinking the canvas — which would feed
+  // a narrower aspect ratio into the fit-distance math above — nudge the sphere right
+  // with an off-axis camera, keeping the full canvas for projection/fit purposes.
+  useEffect(() => {
+    const feedEl = document.getElementById("death-feed");
+    function updateViewOffset() {
+      const w = gl.domElement.clientWidth || window.innerWidth;
+      const h = gl.domElement.clientHeight || window.innerHeight;
+      const isSplitView = window.matchMedia("(orientation: landscape)").matches;
+      const listW = isSplitView ? (feedEl?.getBoundingClientRect().width ?? 0) : 0;
+      if (listW > 0) {
+        perspCamera.setViewOffset(w + listW, h, 0, 0, w, h);
+      } else {
+        perspCamera.clearViewOffset();
+      }
+    }
+    updateViewOffset();
+    window.addEventListener("resize", updateViewOffset);
+    window.addEventListener("orientationchange", updateViewOffset);
+    return () => {
+      window.removeEventListener("resize", updateViewOffset);
+      window.removeEventListener("orientationchange", updateViewOffset);
+    };
+  }, [perspCamera, gl]);
+
   // Center on the viewer's IP location once geo resolves (best-effort, non-blocking).
   useEffect(() => {
     if (centeredOnce.current) return;

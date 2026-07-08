@@ -118,7 +118,10 @@ body {
   will-change: transform;
 }
 
-/* Landscape: split view — list on the left, Earth on the right. */
+/* Landscape: split view — transparent list overlaid on the left, full-width globe
+   behind it (kept full-width/full-height so its aspect ratio and fit-distance math
+   never sees a narrower canvas; the sphere itself is nudged right via an off-axis
+   camera in Earth.tsx so it isn't hidden under the list). */
 @media (orientation: landscape) {
   #death-feed {
     top: 0;
@@ -132,11 +135,6 @@ body {
 
   #feed-track {
     align-items: stretch;
-  }
-
-  #globe {
-    left: var(--list-w);
-    width: calc(100vw - var(--list-w));
   }
 }
 
