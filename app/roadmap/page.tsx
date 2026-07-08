@@ -13,7 +13,20 @@ import Step7Epidemics from "./steps/Step7Epidemics";
 import Step8TimeOfDay from "./steps/Step8TimeOfDay";
 
 export default function RoadmapPage() {
-  const { status, features, seasonality, unified, grid, deathsPerYearById } = useRoadmapData();
+  const {
+    status,
+    features,
+    seasonality,
+    unified,
+    grid,
+    deathsPerYearById,
+    admin1Features,
+    nuts2Features,
+    ratePer100kByKey,
+    ratePer100kByCountry,
+    nutsCountries,
+    subnational,
+  } = useRoadmapData();
   const activeSeasonality = unified || seasonality;
   const seasonalityStatusText =
     status === "seasonality-error"
@@ -59,7 +72,14 @@ export default function RoadmapPage() {
               unified={unified}
               seasonalityStatusText={seasonalityStatusText}
             />
-            <Step5Region />
+            <Step5Region
+              admin1Features={admin1Features}
+              nuts2Features={nuts2Features}
+              ratePer100kByKey={ratePer100kByKey}
+              ratePer100kByCountry={ratePer100kByCountry}
+              nutsCountries={nutsCountries}
+              subnational={subnational}
+            />
             <Step6Conflicts />
             <Step7Epidemics />
             <Step8TimeOfDay />

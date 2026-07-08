@@ -14,13 +14,16 @@ const SRC = path.join(ROOT, "data");
 const DEST = path.join(ROOT, "public", "data");
 
 const FILES = [
+  "admin1-10m.json",
   "causes.json",
   "density-grid.json",
   "mortality-age-sex.json",
+  "nuts2-20m.json",
   "rate-grid.json",
   "sample-personas.json",
   "seasonality-unified.json",
   "seasonality.json",
+  "subnational-cdr.json",
 ];
 
 fs.mkdirSync(DEST, { recursive: true });

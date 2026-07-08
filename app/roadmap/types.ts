@@ -64,3 +64,60 @@ export interface RateGrid {
 }
 
 export type DeathsPerYearById = Map<number, number>;
+
+// --- data/admin1-10m.json (Natural Earth 10m Admin-1, topojson) ---------------------
+// One feature per first-level region; joined to subnational rates by `adm1_code`.
+export interface Admin1Properties {
+  adm1_code: string;
+  name: string;
+  adm0_a3: string;
+  iso_3166_2?: string;
+  type_en?: string;
+  latitude?: number;
+  longitude?: number;
+}
+export type Admin1Feature = Feature<Geometry, Admin1Properties>;
+
+// --- data/nuts2-20m.json (Eurostat GISCO NUTS-2, topojson) --------------------------
+// Europe's finer layer; joined to subnational rates by `NUTS_ID`.
+export interface Nuts2Properties {
+  NUTS_ID: string;
+  NAME_LATN: string;
+  NAME_ENGL?: string;
+  CNTR_CODE?: string;
+}
+export type Nuts2Feature = Feature<Geometry, Nuts2Properties>;
+
+// --- data/subnational-cdr.json (baked by notebooks/data/build-subnational.ipynb) ----
+// One flat list across both geometry layers; `key` joins to Admin-1 `adm1_code`
+// (geo:"adm1") or NUTS-2 `NUTS_ID` (geo:"nuts2").
+export interface SubnationalRegion {
+  geo: "adm1" | "nuts2";
+  key: string;
+  name: string;
+  country: string; // ISO3
+  cdrPer1000: number;
+  ratePer100k: number;
+}
+export interface SubnationalCdr {
+  meta: {
+    sources: string[];
+    year: number;
+    unit: string;
+    note: string;
+    geoLayers: Record<string, string>;
+    nutsCountriesIso3: string[]; // Natural Earth features in these countries are drawn as NUTS instead
+    regionCount: number;
+    adm1Count: number;
+    nuts2Count: number;
+    countryCount: number;
+    countryFallbackCount: number;
+    license: string;
+  };
+  regions: SubnationalRegion[];
+  countryRates: Record<string, number>; // ISO3 -> rate per 100k, national fallback for regionless countries
+}
+// region key (adm1_code or NUTS_ID) -> rate per 100k, for the choropleth join.
+export type RatePer100kByKey = Map<string, number>;
+// ISO3 country code -> national rate per 100k, drawn where a region has no subnational rate.
+export type RatePer100kByCountry = Map<string, number>;

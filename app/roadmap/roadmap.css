@@ -284,6 +284,22 @@ a:hover {
   overflow: visible;
 }
 
+.choropleth-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.choropleth-legend-bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #ffc, #fed976, #fd8d3c, #e31a1c, #800026);
+}
+
 .chart-axis,
 .chart-gridline {
   stroke: rgb(255 255 255 / 16%);
@@ -341,6 +357,13 @@ a:hover {
   stroke: none;
 }
 
+/* Country outlines on the animated-dot maps: border only, no fill. */
+.map-outline {
+  fill: none;
+  stroke: rgb(255 255 255 / 18%);
+  stroke-width: 0.45;
+}
+
 /* No fill here (unlike .map-country) — the choropleth sets fill per-path via
    attr(), and a CSS fill rule would win over that presentation attribute. */
 .map-country-fill {
@@ -354,6 +377,25 @@ a:hover {
 
 .map-country-fill.has-data {
   fill-opacity: 0.92;
+}
+
+/* Subnational choropleth regions: fill is set per-path via attr(); a faint stroke
+   separates neighbours. */
+.map-region {
+  stroke: rgb(0 0 0 / 28%);
+  stroke-width: 0.2;
+  cursor: pointer;
+}
+
+.map-callout-label {
+  fill: rgb(255 255 255 / 92%);
+  font-size: 11px;
+  font-weight: 600;
+  paint-order: stroke;
+  stroke: rgb(0 0 0 / 55%);
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  pointer-events: none;
 }
 
 .chart-legend {

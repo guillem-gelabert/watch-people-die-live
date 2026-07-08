@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import {
   expGap,
@@ -13,7 +13,9 @@ import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature } from "../types";
 
 interface Dot {
-  xy: [number, number];
+  id: number;
+  x: number;
+  y: number;
   born: number;
 }
 
@@ -21,120 +23,111 @@ interface GlobalRandomMapProps {
   features: CountryFeature[] | null;
 }
 
-// Chart 1: animated Poisson-dot world map (canvas, rAF loop).
+const WIDTH = 860;
+const HEIGHT = 360;
+const DOT_LIFETIME_MS = 5200;
+
+// Chart 1: animated Poisson-dot world map, rendered as SVG.
 export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [status, setStatus] = useState("Loading random simulation…");
+  const ref = useRef<SVGSVGElement | null>(null);
   const [fast, setFast] = useState(false);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !features) return;
+  // Derived (not effect state) so the status can't trigger a cascading render.
+  const status = useMemo(() => {
+    if (!features) return "Loading random simulation…";
+    const meanGapMs = fast ? FAST_MEAN_GAP_MS : REAL_MEAN_GAP_MS;
+    return `Running at ${fast ? "a sped-up preview rate" : "the global average"}: one randomly placed dot every ${formatMeanGap(meanGapMs)} on average.`;
+  }, [features, fast]);
 
-    const width = canvas.width;
-    const height = canvas.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+  useEffect(() => {
+    if (!ref.current || !features) return;
+    const svg = d3.select(ref.current);
+    svg.selectAll("*").remove();
+
     const projection = d3.geoEqualEarth().fitExtent(
       [
         [18, 18],
-        [width - 18, height - 18],
+        [WIDTH - 18, HEIGHT - 18],
       ],
       { type: "Sphere" },
     );
-    const path = d3.geoPath(projection, ctx);
-    const dots: Dot[] = [];
-    const meanGapMs = fast ? FAST_MEAN_GAP_MS : REAL_MEAN_GAP_MS;
-    const dotLifetimeMs = 5200;
-    let nextAt = performance.now() + expGap(meanGapMs);
-    let rafId: number;
-    let cancelled = false;
+    const path = d3.geoPath(projection);
 
-    setStatus(
-      `Running at ${fast ? "a sped-up preview rate" : "the global average"}: one randomly placed dot every ${formatMeanGap(meanGapMs)} on average.`,
-    );
+    svg
+      .append("path")
+      .datum<d3.GeoSphere>({ type: "Sphere" })
+      .attr("d", path)
+      .attr("fill", "rgba(255,255,255,0.025)")
+      .attr("stroke", "rgba(255,255,255,0.16)");
+    svg
+      .append("g")
+      .selectAll("path")
+      .data(features)
+      .join("path")
+      .attr("class", "map-outline")
+      .attr("d", path);
+
+    const meanGapMs = fast ? FAST_MEAN_GAP_MS : REAL_MEAN_GAP_MS;
+
+    const dotsG = svg.append("g").attr("class", "map-dots");
+    const dots: Dot[] = [];
+    let nextId = 0;
+    let nextAt = performance.now() + expGap(meanGapMs);
+    let rafId = 0;
+    let cancelled = false;
 
     function frame(now: number) {
       if (cancelled) return;
       while (now >= nextAt) {
         const xy = projection(randomPointOnSphere());
-        if (xy) dots.push({ xy, born: nextAt });
+        if (xy) dots.push({ id: nextId++, x: xy[0], y: xy[1], born: nextAt });
         nextAt += expGap(meanGapMs);
       }
-      draw(now);
+      for (let i = dots.length - 1; i >= 0; i--) {
+        if (now - dots[i]!.born >= DOT_LIFETIME_MS) dots.splice(i, 1);
+      }
+      dotsG
+        .selectAll<SVGCircleElement, Dot>("circle")
+        .data(dots, (d) => d.id)
+        .join((enter) =>
+          enter
+            .append("circle")
+            .attr("cx", (d) => d.x)
+            .attr("cy", (d) => d.y),
+        )
+        .attr("r", (d) => 2.2 + (now - d.born) / 850)
+        .attr("fill", "#ffffff")
+        .attr("fill-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.9)
+        .attr("stroke", "#ffffff")
+        .attr("stroke-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.42);
       rafId = requestAnimationFrame(frame);
     }
 
-    function draw(now: number) {
-      if (!ctx) return;
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "rgba(255,255,255,0.025)";
-      ctx.strokeStyle = "rgba(255,255,255,0.16)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      path({ type: "Sphere" });
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.strokeStyle = "rgba(255,255,255,0.18)";
-      ctx.lineWidth = 0.45;
-      if (features)
-        for (const feature of features) {
-          ctx.beginPath();
-          path(feature);
-          ctx.stroke();
+    // Hover: country under the pointer, or plain coordinates over open ocean.
+    svg
+      .append("rect")
+      .attr("width", WIDTH)
+      .attr("height", HEIGHT)
+      .attr("fill", "transparent")
+      .on("pointermove", (event) => {
+        const [x, y] = d3.pointer(event, ref.current);
+        const lonLat = projection.invert?.([x, y]);
+        if (!lonLat) {
+          hideTooltip();
+          return;
         }
-
-      for (let i = dots.length - 1; i >= 0; i--) {
-        const dot = dots[i];
-        if (!dot) continue;
-        const age = now - dot.born;
-        const alpha = Math.max(0, 1 - age / dotLifetimeMs);
-        if (alpha <= 0) {
-          dots.splice(i, 1);
-          continue;
-        }
-        const [x, y] = dot.xy;
-        const radius = 2.2 + age / 850;
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,255,255,${alpha * 0.9})`;
-        ctx.fill();
-        ctx.strokeStyle = `rgba(255,255,255,${alpha * 0.42})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-    }
-
-    // Hover: report the country under the pointer (hit-test against the same features
-    // used to draw borders); falls back to plain coordinates over open ocean.
-    function onPointerMove(event: PointerEvent) {
-      if (!features) return;
-      const rect = canvas!.getBoundingClientRect();
-      const scaleX = canvas!.width / rect.width;
-      const scaleY = canvas!.height / rect.height;
-      const x = (event.clientX - rect.left) * scaleX;
-      const y = (event.clientY - rect.top) * scaleY;
-      const lonLat = projection.invert?.([x, y]);
-      if (!lonLat) {
-        hideTooltip();
-        return;
-      }
-      const hit = features.find((f) => d3.geoContains(f, lonLat));
-      const label = hit
-        ? (hit.properties?.name ?? "Unknown")
-        : `${lonLat[1].toFixed(1)}°, ${lonLat[0].toFixed(1)}°`;
-      showTooltip(label, event.clientX, event.clientY);
-    }
-    canvas.addEventListener("pointermove", onPointerMove);
-    canvas.addEventListener("pointerleave", hideTooltip);
+        const hit = features.find((f) => d3.geoContains(f, lonLat));
+        const label = hit
+          ? (hit.properties?.name ?? "Unknown")
+          : `${lonLat[1].toFixed(1)}°, ${lonLat[0].toFixed(1)}°`;
+        showTooltip(label, event.clientX, event.clientY);
+      })
+      .on("pointerleave", hideTooltip);
 
     rafId = requestAnimationFrame(frame);
     return () => {
       cancelled = true;
       cancelAnimationFrame(rafId);
-      canvas.removeEventListener("pointermove", onPointerMove);
-      canvas.removeEventListener("pointerleave", hideTooltip);
     };
   }, [features, fast]);
 
@@ -164,12 +157,11 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
           Fast preview ({formatMeanGap(FAST_MEAN_GAP_MS)} avg)
         </button>
       </div>
-      <canvas
-        ref={canvasRef}
+      <svg
+        ref={ref}
         id="global-random-map-chart"
         className="seasonality-chart"
-        width="860"
-        height="360"
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
         aria-label="World map where white dots appear randomly at the global mortality rate"
       />

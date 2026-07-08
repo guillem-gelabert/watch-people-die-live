@@ -1,21 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import { expGap, REAL_MEAN_GAP_MS, FAST_MEAN_GAP_MS, formatMeanGap } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, DeathsPerYearById } from "../types";
 
 interface Dot {
-  xy: [number, number];
+  id: number;
+  x: number;
+  y: number;
   born: number;
 }
 
 interface CountryEntry {
-  feature: CountryFeature;
   name: string;
   deathsPerYear: number;
-  centroid: [number, number];
   xy: [number, number];
 }
 
@@ -24,50 +24,66 @@ interface CountryCentroidMapProps {
   deathsPerYearById: DeathsPerYearById | null;
 }
 
-// Step 2: same animated-dot idea as GlobalRandomMap, but every death lands on its
-// country's geographic centroid instead of a uniformly random point — "right count
-// per country, wrong place within it" (density, step 3, fixes the placement).
+const WIDTH = 860;
+const HEIGHT = 360;
+const DOT_LIFETIME_MS = 5200;
+
+// Step 2: same animated-dot idea as GlobalRandomMap, but every death lands on its country's
+// geographic centroid instead of a uniformly random point — "right count per country, wrong
+// place within it" (density, step 3, fixes the placement). Rendered as SVG.
 export default function CountryCentroidMap({
   features,
   deathsPerYearById,
 }: CountryCentroidMapProps) {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [status, setStatus] = useState("Loading country death rates…");
+  const ref = useRef<SVGSVGElement | null>(null);
   const [fast, setFast] = useState(false);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !features || !deathsPerYearById || !deathsPerYearById.size) return;
+  // Derived (not effect state) so the status can't trigger a cascading render.
+  const status = useMemo(() => {
+    if (!features || !deathsPerYearById || !deathsPerYearById.size)
+      return "Loading country death rates…";
+    const n = features.filter((f) => (deathsPerYearById.get(Number(f.id)) ?? 0) > 0).length;
+    const meanGapMs = fast ? FAST_MEAN_GAP_MS : REAL_MEAN_GAP_MS;
+    return `${n} countries with a known death rate, one dot every ${formatMeanGap(meanGapMs)} on average. Every death lands on its country's single geographic center.`;
+  }, [features, deathsPerYearById, fast]);
 
-    const width = canvas.width;
-    const height = canvas.height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+  useEffect(() => {
+    if (!ref.current || !features || !deathsPerYearById || !deathsPerYearById.size) return;
+    const svg = d3.select(ref.current);
+    svg.selectAll("*").remove();
+
     const projection = d3.geoEqualEarth().fitExtent(
       [
         [18, 18],
-        [width - 18, height - 18],
+        [WIDTH - 18, HEIGHT - 18],
       ],
       { type: "Sphere" },
     );
-    const path = d3.geoPath(projection, ctx);
+    const path = d3.geoPath(projection);
 
-    // One weighted entry per country with a known death rate: centroid, projected
-    // point, and its share of the global total (drives spawn frequency).
+    // Static base: sphere + country outlines.
+    svg
+      .append("path")
+      .datum<d3.GeoSphere>({ type: "Sphere" })
+      .attr("d", path)
+      .attr("fill", "rgba(255,255,255,0.025)")
+      .attr("stroke", "rgba(255,255,255,0.16)");
+    svg
+      .append("g")
+      .selectAll("path")
+      .data(features)
+      .join("path")
+      .attr("class", "map-outline")
+      .attr("d", path);
+
+    // One weighted entry per country with a known death rate.
     const countries: CountryEntry[] = features
       .map((feature): CountryEntry | null => {
         const deathsPerYear = deathsPerYearById.get(Number(feature.id));
         if (!(deathsPerYear && deathsPerYear > 0)) return null;
-        const centroid = d3.geoCentroid(feature);
-        const xy = projection(centroid);
+        const xy = projection(d3.geoCentroid(feature));
         if (!xy) return null;
-        return {
-          feature,
-          name: feature.properties?.name ?? "Unknown",
-          deathsPerYear,
-          centroid,
-          xy,
-        };
+        return { name: feature.properties?.name ?? "Unknown", deathsPerYear, xy };
       })
       .filter((c): c is CountryEntry => c !== null);
     const totalDeathsPerYear = d3.sum(countries, (c) => c.deathsPerYear);
@@ -82,101 +98,68 @@ export default function CountryCentroidMap({
       return countries[countries.length - 1]!;
     }
 
-    const dots: Dot[] = [];
-    const meanGapMs = fast ? FAST_MEAN_GAP_MS : REAL_MEAN_GAP_MS; // same global average as step 1
-    const dotLifetimeMs = 5200;
-    let nextAt = performance.now() + expGap(meanGapMs);
-    let rafId: number;
-    let cancelled = false;
+    const meanGapMs = fast ? FAST_MEAN_GAP_MS : REAL_MEAN_GAP_MS;
 
-    setStatus(
-      `${countries.length} countries with a known death rate, one dot every ${formatMeanGap(meanGapMs)} on average. Every death lands on its country's single geographic center.`,
-    );
+    const dotsG = svg.append("g").attr("class", "map-dots");
+    const dots: Dot[] = [];
+    let nextId = 0;
+    let nextAt = performance.now() + expGap(meanGapMs);
+    let rafId = 0;
+    let cancelled = false;
 
     function frame(now: number) {
       if (cancelled) return;
       while (now >= nextAt) {
-        const country = pickCountry();
-        dots.push({ xy: country.xy, born: nextAt });
+        const c = pickCountry();
+        dots.push({ id: nextId++, x: c.xy[0], y: c.xy[1], born: nextAt });
         nextAt += expGap(meanGapMs);
       }
-      draw(now);
+      for (let i = dots.length - 1; i >= 0; i--) {
+        if (now - dots[i]!.born >= DOT_LIFETIME_MS) dots.splice(i, 1);
+      }
+      dotsG
+        .selectAll<SVGCircleElement, Dot>("circle")
+        .data(dots, (d) => d.id)
+        .join((enter) =>
+          enter
+            .append("circle")
+            .attr("cx", (d) => d.x)
+            .attr("cy", (d) => d.y),
+        )
+        .attr("r", (d) => 2.2 + (now - d.born) / 850)
+        .attr("fill", "#ff6b6b")
+        .attr("fill-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.9)
+        .attr("stroke", "#ff6b6b")
+        .attr("stroke-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.42);
       rafId = requestAnimationFrame(frame);
     }
 
-    function draw(now: number) {
-      if (!ctx || !features) return;
-      ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "rgba(255,255,255,0.025)";
-      ctx.strokeStyle = "rgba(255,255,255,0.16)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      path({ type: "Sphere" });
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.strokeStyle = "rgba(255,255,255,0.18)";
-      ctx.lineWidth = 0.45;
-      for (const feature of features) {
-        ctx.beginPath();
-        path(feature);
-        ctx.stroke();
-      }
-
-      for (let i = dots.length - 1; i >= 0; i--) {
-        const dot = dots[i];
-        if (!dot) continue;
-        const age = now - dot.born;
-        const alpha = Math.max(0, 1 - age / dotLifetimeMs);
-        if (alpha <= 0) {
-          dots.splice(i, 1);
-          continue;
+    // Hover: country under the pointer and its real deaths/year (exact geoContains hit-test).
+    svg
+      .append("rect")
+      .attr("width", WIDTH)
+      .attr("height", HEIGHT)
+      .attr("fill", "transparent")
+      .on("pointermove", (event) => {
+        const [x, y] = d3.pointer(event, ref.current);
+        const lonLat = projection.invert?.([x, y]);
+        const hit = lonLat ? features.find((f) => d3.geoContains(f, lonLat)) : undefined;
+        if (!hit) {
+          hideTooltip();
+          return;
         }
-        const [x, y] = dot.xy;
-        const radius = 2.2 + age / 850;
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(255,107,107,${alpha * 0.9})`;
-        ctx.fill();
-        ctx.strokeStyle = `rgba(255,107,107,${alpha * 0.42})`;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-    }
-
-    // Hover: report the country under the pointer and its real deaths/year.
-    function onPointerMove(event: PointerEvent) {
-      if (!features) return;
-      const rect = canvas!.getBoundingClientRect();
-      const scaleX = canvas!.width / rect.width;
-      const scaleY = canvas!.height / rect.height;
-      const x = (event.clientX - rect.left) * scaleX;
-      const y = (event.clientY - rect.top) * scaleY;
-      const lonLat = projection.invert?.([x, y]);
-      if (!lonLat) {
-        hideTooltip();
-        return;
-      }
-      const hit = features.find((f) => d3.geoContains(f, lonLat));
-      if (!hit) {
-        hideTooltip();
-        return;
-      }
-      const deathsPerYear = deathsPerYearById?.get(Number(hit.id));
-      const label = deathsPerYear
-        ? `${hit.properties?.name ?? "Unknown"}: ${Math.round(deathsPerYear).toLocaleString()} deaths/yr`
-        : `${hit.properties?.name ?? "Unknown"}: no rate data`;
-      showTooltip(label, event.clientX, event.clientY);
-    }
-    canvas.addEventListener("pointermove", onPointerMove);
-    canvas.addEventListener("pointerleave", hideTooltip);
+        const deathsPerYear = deathsPerYearById.get(Number(hit.id));
+        const label = deathsPerYear
+          ? `${hit.properties?.name ?? "Unknown"}: ${Math.round(deathsPerYear).toLocaleString()} deaths/yr`
+          : `${hit.properties?.name ?? "Unknown"}: no rate data`;
+        showTooltip(label, event.clientX, event.clientY);
+      })
+      .on("pointerleave", hideTooltip);
 
     rafId = requestAnimationFrame(frame);
     return () => {
       cancelled = true;
       cancelAnimationFrame(rafId);
-      canvas.removeEventListener("pointermove", onPointerMove);
-      canvas.removeEventListener("pointerleave", hideTooltip);
     };
   }, [features, deathsPerYearById, fast]);
 
@@ -206,12 +189,11 @@ export default function CountryCentroidMap({
           Fast preview ({formatMeanGap(FAST_MEAN_GAP_MS)} avg)
         </button>
       </div>
-      <canvas
-        ref={canvasRef}
+      <svg
+        ref={ref}
         id="country-centroid-map-chart"
         className="seasonality-chart"
-        width="860"
-        height="360"
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
         aria-label="World map where dots appear at each country's real death rate, all landing on that country's geographic center"
       />
