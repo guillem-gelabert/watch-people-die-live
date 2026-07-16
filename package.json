@@ -13,7 +13,6 @@
     "build:density": "tsx scripts/build-density.ts",
     "build:mortality": "tsx scripts/build-mortality.ts",
     "build:causes": "tsx scripts/build-causes.ts",
-    "build:seasonality": "tsx scripts/build-seasonality.ts",
     "dump:cdr": "tsx scripts/dump-cdr.ts",
     "gen:synthetic-cells": "tsx scripts/gen-synthetic-cells.ts",
     "lint": "eslint .",

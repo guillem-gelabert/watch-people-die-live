@@ -23,6 +23,9 @@ const FILES = [
   "sample-personas.json",
   "seasonality-unified.json",
   "seasonality.json",
+  "seasonality-loo-validation.json",
+  "seasonality-proxies.json",
+  "temperature-curves.json",
   "subnational-cdr.json",
 ];
 

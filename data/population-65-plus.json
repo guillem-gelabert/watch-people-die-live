@@ -1,0 +1,1533 @@
+{
+  "meta": {
+    "source": "World Bank World Development Indicators, sourced from UN World Population Prospects",
+    "retrievedAt": "2026-07-14",
+    "sourceLastUpdated": "2026-07-13",
+    "indicators": {
+      "population65Plus": "SP.POP.65UP.TO",
+      "share65Plus": "SP.POP.65UP.TO.ZS"
+    },
+    "unit": {
+      "population65Plus": "people",
+      "share65Plus": "percent"
+    },
+    "coverage": {
+      "countries": 216,
+      "year": 2025
+    }
+  },
+  "countries": {
+    "ABW": {
+      "name": "Aruba",
+      "m49": 533,
+      "year": 2025,
+      "population65Plus": 19321,
+      "share65Plus": 17.760466
+    },
+    "AFG": {
+      "name": "Afghanistan",
+      "m49": 4,
+      "year": 2025,
+      "population65Plus": 1063473,
+      "share65Plus": 2.425579
+    },
+    "AGO": {
+      "name": "Angola",
+      "m49": 24,
+      "year": 2025,
+      "population65Plus": 1130180,
+      "share65Plus": 2.894924
+    },
+    "ALB": {
+      "name": "Albania",
+      "m49": 8,
+      "year": 2025,
+      "population65Plus": 414045,
+      "share65Plus": 17.622106
+    },
+    "AND": {
+      "name": "Andorra",
+      "m49": 20,
+      "year": 2025,
+      "population65Plus": 13731,
+      "share65Plus": 16.56243
+    },
+    "ARE": {
+      "name": "United Arab Emirates",
+      "m49": 784,
+      "year": 2025,
+      "population65Plus": 206352,
+      "share65Plus": 1.792314
+    },
+    "ARG": {
+      "name": "Argentina",
+      "m49": 32,
+      "year": 2025,
+      "population65Plus": 5793062,
+      "share65Plus": 12.634434
+    },
+    "ARM": {
+      "name": "Armenia",
+      "m49": 51,
+      "year": 2025,
+      "population65Plus": 445808,
+      "share65Plus": 14.442864
+    },
+    "ASM": {
+      "name": "American Samoa",
+      "m49": 16,
+      "year": 2025,
+      "population65Plus": 3930,
+      "share65Plus": 8.538188
+    },
+    "ATG": {
+      "name": "Antigua and Barbuda",
+      "m49": 28,
+      "year": 2025,
+      "population65Plus": 11623,
+      "share65Plus": 12.336997
+    },
+    "AUS": {
+      "name": "Australia",
+      "m49": 36,
+      "year": 2025,
+      "population65Plus": 4996279,
+      "share65Plus": 18.093015
+    },
+    "AUT": {
+      "name": "Austria",
+      "m49": 40,
+      "year": 2025,
+      "population65Plus": 1942435,
+      "share65Plus": 21.09471
+    },
+    "AZE": {
+      "name": "Azerbaijan",
+      "m49": 31,
+      "year": 2025,
+      "population65Plus": 939483,
+      "share65Plus": 9.168372
+    },
+    "BDI": {
+      "name": "Burundi",
+      "m49": 108,
+      "year": 2025,
+      "population65Plus": 366673,
+      "share65Plus": 2.548109
+    },
+    "BEL": {
+      "name": "Belgium",
+      "m49": 56,
+      "year": 2025,
+      "population65Plus": 2503103,
+      "share65Plus": 20.960883
+    },
+    "BEN": {
+      "name": "Benin",
+      "m49": 204,
+      "year": 2025,
+      "population65Plus": 467108,
+      "share65Plus": 3.153055
+    },
+    "BFA": {
+      "name": "Burkina Faso",
+      "m49": 854,
+      "year": 2025,
+      "population65Plus": 646212,
+      "share65Plus": 2.684209
+    },
+    "BGD": {
+      "name": "Bangladesh",
+      "m49": 50,
+      "year": 2025,
+      "population65Plus": 11715546,
+      "share65Plus": 6.668424
+    },
+    "BGR": {
+      "name": "Bulgaria",
+      "m49": 100,
+      "year": 2025,
+      "population65Plus": 1430483,
+      "share65Plus": 22.235599
+    },
+    "BHR": {
+      "name": "Bahrain",
+      "m49": 48,
+      "year": 2025,
+      "population65Plus": 64270,
+      "share65Plus": 4.015958
+    },
+    "BHS": {
+      "name": "Bahamas, The",
+      "m49": 44,
+      "year": 2025,
+      "population65Plus": 48745,
+      "share65Plus": 12.094434
+    },
+    "BIH": {
+      "name": "Bosnia and Herzegovina",
+      "m49": 70,
+      "year": 2025,
+      "population65Plus": 717822,
+      "share65Plus": 22.859878
+    },
+    "BLR": {
+      "name": "Belarus",
+      "m49": 112,
+      "year": 2025,
+      "population65Plus": 1661334,
+      "share65Plus": 18.28457
+    },
+    "BLZ": {
+      "name": "Belize",
+      "m49": 84,
+      "year": 2025,
+      "population65Plus": 22110,
+      "share65Plus": 5.228008
+    },
+    "BMU": {
+      "name": "Bermuda",
+      "m49": 60,
+      "year": 2025,
+      "population65Plus": 14596,
+      "share65Plus": 22.609578
+    },
+    "BOL": {
+      "name": "Bolivia",
+      "m49": 68,
+      "year": 2025,
+      "population65Plus": 722204,
+      "share65Plus": 5.740046
+    },
+    "BRA": {
+      "name": "Brazil",
+      "m49": 76,
+      "year": 2025,
+      "population65Plus": 24431586,
+      "share65Plus": 11.480339
+    },
+    "BRB": {
+      "name": "Barbados",
+      "m49": 52,
+      "year": 2025,
+      "population65Plus": 48290,
+      "share65Plus": 17.086513
+    },
+    "BRN": {
+      "name": "Brunei Darussalam",
+      "m49": 96,
+      "year": 2025,
+      "population65Plus": 33755,
+      "share65Plus": 7.238536
+    },
+    "BTN": {
+      "name": "Bhutan",
+      "m49": 64,
+      "year": 2025,
+      "population65Plus": 52799,
+      "share65Plus": 6.627303
+    },
+    "BWA": {
+      "name": "Botswana",
+      "m49": 72,
+      "year": 2025,
+      "population65Plus": 104610,
+      "share65Plus": 4.082924
+    },
+    "CAF": {
+      "name": "Central African Republic",
+      "m49": 140,
+      "year": 2025,
+      "population65Plus": 121181,
+      "share65Plus": 2.197983
+    },
+    "CAN": {
+      "name": "Canada",
+      "m49": 124,
+      "year": 2025,
+      "population65Plus": 8438778,
+      "share65Plus": 20.260367
+    },
+    "CHE": {
+      "name": "Switzerland",
+      "m49": 756,
+      "year": 2025,
+      "population65Plus": 1857777,
+      "share65Plus": 20.43212
+    },
+    "CHL": {
+      "name": "Chile",
+      "m49": 152,
+      "year": 2025,
+      "population65Plus": 2897512,
+      "share65Plus": 14.589746
+    },
+    "CHN": {
+      "name": "China",
+      "m49": 156,
+      "year": 2025,
+      "population65Plus": 209741958,
+      "share65Plus": 14.911431
+    },
+    "CIV": {
+      "name": "Cote d'Ivoire",
+      "m49": 384,
+      "year": 2025,
+      "population65Plus": 867987,
+      "share65Plus": 2.653458
+    },
+    "CMR": {
+      "name": "Cameroon",
+      "m49": 120,
+      "year": 2025,
+      "population65Plus": 841877,
+      "share65Plus": 2.817591
+    },
+    "COD": {
+      "name": "Congo, Dem. Rep.",
+      "m49": 180,
+      "year": 2025,
+      "population65Plus": 3479622,
+      "share65Plus": 3.083883
+    },
+    "COG": {
+      "name": "Congo, Rep.",
+      "m49": 178,
+      "year": 2025,
+      "population65Plus": 198513,
+      "share65Plus": 3.061384
+    },
+    "COL": {
+      "name": "Colombia",
+      "m49": 170,
+      "year": 2025,
+      "population65Plus": 5449470,
+      "share65Plus": 10.200103
+    },
+    "COM": {
+      "name": "Comoros",
+      "m49": 174,
+      "year": 2025,
+      "population65Plus": 39324,
+      "share65Plus": 4.45428
+    },
+    "CPV": {
+      "name": "Cabo Verde",
+      "m49": 132,
+      "year": 2025,
+      "population65Plus": 37725,
+      "share65Plus": 7.153931
+    },
+    "CRI": {
+      "name": "Costa Rica",
+      "m49": 188,
+      "year": 2025,
+      "population65Plus": 657103,
+      "share65Plus": 12.751967
+    },
+    "CUB": {
+      "name": "Cuba",
+      "m49": 192,
+      "year": 2025,
+      "population65Plus": 1863153,
+      "share65Plus": 17.035008
+    },
+    "CUW": {
+      "name": "Curacao",
+      "m49": 531,
+      "year": 2025,
+      "population65Plus": 27035,
+      "share65Plus": 17.300673
+    },
+    "CYM": {
+      "name": "Cayman Islands",
+      "m49": 136,
+      "year": 2025,
+      "population65Plus": 7216,
+      "share65Plus": 9.51367
+    },
+    "CYP": {
+      "name": "Cyprus",
+      "m49": 196,
+      "year": 2025,
+      "population65Plus": 204686,
+      "share65Plus": 14.932329
+    },
+    "CZE": {
+      "name": "Czechia",
+      "m49": 203,
+      "year": 2025,
+      "population65Plus": 2305849,
+      "share65Plus": 21.180071
+    },
+    "DEU": {
+      "name": "Germany",
+      "m49": 276,
+      "year": 2025,
+      "population65Plus": 19790096,
+      "share65Plus": 23.703198
+    },
+    "DJI": {
+      "name": "Djibouti",
+      "m49": 262,
+      "year": 2025,
+      "population65Plus": 58873,
+      "share65Plus": 4.972061
+    },
+    "DMA": {
+      "name": "Dominica",
+      "m49": 212,
+      "year": 2025,
+      "population65Plus": 8694,
+      "share65Plus": 13.198424
+    },
+    "DNK": {
+      "name": "Denmark",
+      "m49": 208,
+      "year": 2025,
+      "population65Plus": 1269074,
+      "share65Plus": 21.118967
+    },
+    "DOM": {
+      "name": "Dominican Republic",
+      "m49": 214,
+      "year": 2025,
+      "population65Plus": 943281,
+      "share65Plus": 8.187853
+    },
+    "DZA": {
+      "name": "Algeria",
+      "m49": 12,
+      "year": 2025,
+      "population65Plus": 3228415,
+      "share65Plus": 6.805931
+    },
+    "ECU": {
+      "name": "Ecuador",
+      "m49": 218,
+      "year": 2025,
+      "population65Plus": 1572279,
+      "share65Plus": 8.596432
+    },
+    "EGY": {
+      "name": "Egypt, Arab Rep.",
+      "m49": 818,
+      "year": 2025,
+      "population65Plus": 6239303,
+      "share65Plus": 5.271195
+    },
+    "ERI": {
+      "name": "Eritrea",
+      "m49": 232,
+      "year": 2025,
+      "population65Plus": 153590,
+      "share65Plus": 4.258106
+    },
+    "ESP": {
+      "name": "Spain",
+      "m49": 724,
+      "year": 2025,
+      "population65Plus": 10681480,
+      "share65Plus": 21.642081
+    },
+    "EST": {
+      "name": "Estonia",
+      "m49": 233,
+      "year": 2025,
+      "population65Plus": 297914,
+      "share65Plus": 21.801631
+    },
+    "ETH": {
+      "name": "Ethiopia",
+      "m49": 231,
+      "year": 2025,
+      "population65Plus": 4464796,
+      "share65Plus": 3.295732
+    },
+    "FIN": {
+      "name": "Finland",
+      "m49": 246,
+      "year": 2025,
+      "population65Plus": 1366544,
+      "share65Plus": 24.20189
+    },
+    "FJI": {
+      "name": "Fiji",
+      "m49": 242,
+      "year": 2025,
+      "population65Plus": 61913,
+      "share65Plus": 6.634861
+    },
+    "FRA": {
+      "name": "France",
+      "m49": 250,
+      "year": 2025,
+      "population65Plus": 15490863,
+      "share65Plus": 22.541891
+    },
+    "FRO": {
+      "name": "Faroe Islands",
+      "m49": 234,
+      "year": 2025,
+      "population65Plus": 9762,
+      "share65Plus": 17.781667
+    },
+    "FSM": {
+      "name": "Micronesia, Fed. Sts.",
+      "m49": 583,
+      "year": 2025,
+      "population65Plus": 7029,
+      "share65Plus": 6.182983
+    },
+    "GAB": {
+      "name": "Gabon",
+      "m49": 266,
+      "year": 2025,
+      "population65Plus": 107099,
+      "share65Plus": 4.130087
+    },
+    "GBR": {
+      "name": "United Kingdom",
+      "m49": 826,
+      "year": 2025,
+      "population65Plus": 13690810,
+      "share65Plus": 19.702693
+    },
+    "GEO": {
+      "name": "Georgia",
+      "m49": 268,
+      "year": 2025,
+      "population65Plus": 629382,
+      "share65Plus": 15.991335
+    },
+    "GHA": {
+      "name": "Ghana",
+      "m49": 288,
+      "year": 2025,
+      "population65Plus": 1328128,
+      "share65Plus": 3.787696
+    },
+    "GIB": {
+      "name": "Gibraltar",
+      "m49": 292,
+      "year": 2025,
+      "population65Plus": 7156,
+      "share65Plus": 17.83507
+    },
+    "GIN": {
+      "name": "Guinea",
+      "m49": 324,
+      "year": 2025,
+      "population65Plus": 524418,
+      "share65Plus": 3.473026
+    },
+    "GMB": {
+      "name": "Gambia, The",
+      "m49": 270,
+      "year": 2025,
+      "population65Plus": 89883,
+      "share65Plus": 3.184959
+    },
+    "GNB": {
+      "name": "Guinea-Bissau",
+      "m49": 624,
+      "year": 2025,
+      "population65Plus": 72822,
+      "share65Plus": 3.237231
+    },
+    "GNQ": {
+      "name": "Equatorial Guinea",
+      "m49": 226,
+      "year": 2025,
+      "population65Plus": 72964,
+      "share65Plus": 3.764101
+    },
+    "GRC": {
+      "name": "Greece",
+      "m49": 300,
+      "year": 2025,
+      "population65Plus": 2540992,
+      "share65Plus": 24.399859
+    },
+    "GRD": {
+      "name": "Grenada",
+      "m49": 308,
+      "year": 2025,
+      "population65Plus": 14810,
+      "share65Plus": 12.625369
+    },
+    "GRL": {
+      "name": "Greenland",
+      "m49": 304,
+      "year": 2025,
+      "population65Plus": 6553,
+      "share65Plus": 11.530285
+    },
+    "GTM": {
+      "name": "Guatemala",
+      "m49": 320,
+      "year": 2025,
+      "population65Plus": 927531,
+      "share65Plus": 4.963275
+    },
+    "GUM": {
+      "name": "Guam",
+      "m49": 316,
+      "year": 2025,
+      "population65Plus": 22131,
+      "share65Plus": 13.095087
+    },
+    "GUY": {
+      "name": "Guyana",
+      "m49": 328,
+      "year": 2025,
+      "population65Plus": 58358,
+      "share65Plus": 6.980739
+    },
+    "HKG": {
+      "name": "Hong Kong SAR, China",
+      "m49": 344,
+      "year": 2025,
+      "population65Plus": 1774789,
+      "share65Plus": 23.66732
+    },
+    "HND": {
+      "name": "Honduras",
+      "m49": 340,
+      "year": 2025,
+      "population65Plus": 499897,
+      "share65Plus": 4.542103
+    },
+    "HRV": {
+      "name": "Croatia",
+      "m49": 191,
+      "year": 2025,
+      "population65Plus": 915154,
+      "share65Plus": 23.609569
+    },
+    "HTI": {
+      "name": "Haiti",
+      "m49": 332,
+      "year": 2025,
+      "population65Plus": 570507,
+      "share65Plus": 4.791722
+    },
+    "HUN": {
+      "name": "Hungary",
+      "m49": 348,
+      "year": 2025,
+      "population65Plus": 2012974,
+      "share65Plus": 21.157462
+    },
+    "IDN": {
+      "name": "Indonesia",
+      "m49": 360,
+      "year": 2025,
+      "population65Plus": 21551294,
+      "share65Plus": 7.542769
+    },
+    "IMN": {
+      "name": "Isle of Man",
+      "m49": 833,
+      "year": 2025,
+      "population65Plus": 19860,
+      "share65Plus": 23.609551
+    },
+    "IND": {
+      "name": "India",
+      "m49": 356,
+      "year": 2025,
+      "population65Plus": 107983087,
+      "share65Plus": 7.376571
+    },
+    "IRL": {
+      "name": "Ireland",
+      "m49": 372,
+      "year": 2025,
+      "population65Plus": 888912,
+      "share65Plus": 16.208104
+    },
+    "IRN": {
+      "name": "Iran, Islamic Rep.",
+      "m49": 364,
+      "year": 2025,
+      "population65Plus": 7930494,
+      "share65Plus": 8.581143
+    },
+    "IRQ": {
+      "name": "Iraq",
+      "m49": 368,
+      "year": 2025,
+      "population65Plus": 1621835,
+      "share65Plus": 3.449187
+    },
+    "ISL": {
+      "name": "Iceland",
+      "m49": 352,
+      "year": 2025,
+      "population65Plus": 62694,
+      "share65Plus": 15.97701
+    },
+    "ISR": {
+      "name": "Israel",
+      "m49": 376,
+      "year": 2025,
+      "population65Plus": 1284748,
+      "share65Plus": 12.691626
+    },
+    "ITA": {
+      "name": "Italy",
+      "m49": 380,
+      "year": 2025,
+      "population65Plus": 14786733,
+      "share65Plus": 25.098138
+    },
+    "JAM": {
+      "name": "Jamaica",
+      "m49": 388,
+      "year": 2025,
+      "population65Plus": 243395,
+      "share65Plus": 8.579075
+    },
+    "JOR": {
+      "name": "Jordan",
+      "m49": 400,
+      "year": 2025,
+      "population65Plus": 547646,
+      "share65Plus": 4.753593
+    },
+    "JPN": {
+      "name": "Japan",
+      "m49": 392,
+      "year": 2025,
+      "population65Plus": 37002737,
+      "share65Plus": 29.994097
+    },
+    "KAZ": {
+      "name": "Kazakhstan",
+      "m49": 398,
+      "year": 2025,
+      "population65Plus": 1876501,
+      "share65Plus": 9.002702
+    },
+    "KEN": {
+      "name": "Kenya",
+      "m49": 404,
+      "year": 2025,
+      "population65Plus": 1738029,
+      "share65Plus": 3.020951
+    },
+    "KGZ": {
+      "name": "Kyrgyz Republic",
+      "m49": 417,
+      "year": 2025,
+      "population65Plus": 438056,
+      "share65Plus": 5.965572
+    },
+    "KHM": {
+      "name": "Cambodia",
+      "m49": 116,
+      "year": 2025,
+      "population65Plus": 1138183,
+      "share65Plus": 6.377096
+    },
+    "KIR": {
+      "name": "Kiribati",
+      "m49": 296,
+      "year": 2025,
+      "population65Plus": 5971,
+      "share65Plus": 4.375094
+    },
+    "KNA": {
+      "name": "St. Kitts and Nevis",
+      "m49": 659,
+      "year": 2025,
+      "population65Plus": 5500,
+      "share65Plus": 11.72064
+    },
+    "KOR": {
+      "name": "Korea, Rep.",
+      "m49": 410,
+      "year": 2025,
+      "population65Plus": 10507688,
+      "share65Plus": 20.330419
+    },
+    "KWT": {
+      "name": "Kuwait",
+      "m49": 414,
+      "year": 2025,
+      "population65Plus": 154468,
+      "share65Plus": 3.174901
+    },
+    "LAO": {
+      "name": "Lao PDR",
+      "m49": 418,
+      "year": 2025,
+      "population65Plus": 378540,
+      "share65Plus": 4.80805
+    },
+    "LBN": {
+      "name": "Lebanon",
+      "m49": 422,
+      "year": 2025,
+      "population65Plus": 610855,
+      "share65Plus": 10.443
+    },
+    "LBR": {
+      "name": "Liberia",
+      "m49": 430,
+      "year": 2025,
+      "population65Plus": 191132,
+      "share65Plus": 3.334935
+    },
+    "LBY": {
+      "name": "Libya",
+      "m49": 434,
+      "year": 2025,
+      "population65Plus": 387216,
+      "share65Plus": 5.191569
+    },
+    "LCA": {
+      "name": "St. Lucia",
+      "m49": 662,
+      "year": 2025,
+      "population65Plus": 17949,
+      "share65Plus": 9.963697
+    },
+    "LIE": {
+      "name": "Liechtenstein",
+      "m49": 438,
+      "year": 2025,
+      "population65Plus": 8769,
+      "share65Plus": 21.375349
+    },
+    "LKA": {
+      "name": "Sri Lanka",
+      "m49": 144,
+      "year": 2025,
+      "population65Plus": 2713999,
+      "share65Plus": 12.474714
+    },
+    "LSO": {
+      "name": "Lesotho",
+      "m49": 426,
+      "year": 2025,
+      "population65Plus": 91708,
+      "share65Plus": 3.880466
+    },
+    "LTU": {
+      "name": "Lithuania",
+      "m49": 440,
+      "year": 2025,
+      "population65Plus": 598610,
+      "share65Plus": 20.721945
+    },
+    "LUX": {
+      "name": "Luxembourg",
+      "m49": 442,
+      "year": 2025,
+      "population65Plus": 108626,
+      "share65Plus": 15.812396
+    },
+    "LVA": {
+      "name": "Latvia",
+      "m49": 428,
+      "year": 2025,
+      "population65Plus": 410117,
+      "share65Plus": 22.195058
+    },
+    "MAC": {
+      "name": "Macao SAR, China",
+      "m49": 446,
+      "year": 2025,
+      "population65Plus": 103535,
+      "share65Plus": 15.094798
+    },
+    "MAF": {
+      "name": "St. Martin (French part)",
+      "m49": 663,
+      "year": 2025,
+      "population65Plus": 4902,
+      "share65Plus": 19.654778
+    },
+    "MAR": {
+      "name": "Morocco",
+      "m49": 504,
+      "year": 2025,
+      "population65Plus": 3247518,
+      "share65Plus": 8.450307
+    },
+    "MCO": {
+      "name": "Monaco",
+      "m49": 492,
+      "year": 2025,
+      "population65Plus": 13807,
+      "share65Plus": 36.011059
+    },
+    "MDA": {
+      "name": "Moldova",
+      "m49": 498,
+      "year": 2025,
+      "population65Plus": 397930,
+      "share65Plus": 16.857667
+    },
+    "MDG": {
+      "name": "Madagascar",
+      "m49": 450,
+      "year": 2025,
+      "population65Plus": 1137051,
+      "share65Plus": 3.4729
+    },
+    "MDV": {
+      "name": "Maldives",
+      "m49": 462,
+      "year": 2025,
+      "population65Plus": 26262,
+      "share65Plus": 4.95822
+    },
+    "MEX": {
+      "name": "Mexico",
+      "m49": 484,
+      "year": 2025,
+      "population65Plus": 11243769,
+      "share65Plus": 8.521434
+    },
+    "MHL": {
+      "name": "Marshall Islands",
+      "m49": 584,
+      "year": 2025,
+      "population65Plus": 1769,
+      "share65Plus": 4.875696
+    },
+    "MKD": {
+      "name": "North Macedonia",
+      "m49": 807,
+      "year": 2025,
+      "population65Plus": 337300,
+      "share65Plus": 18.523716
+    },
+    "MLI": {
+      "name": "Mali",
+      "m49": 466,
+      "year": 2025,
+      "population65Plus": 595468,
+      "share65Plus": 2.363079
+    },
+    "MLT": {
+      "name": "Malta",
+      "m49": 470,
+      "year": 2025,
+      "population65Plus": 119076,
+      "share65Plus": 20.540791
+    },
+    "MMR": {
+      "name": "Myanmar",
+      "m49": 104,
+      "year": 2025,
+      "population65Plus": 4125987,
+      "share65Plus": 7.52222
+    },
+    "MNE": {
+      "name": "Montenegro",
+      "m49": 499,
+      "year": 2025,
+      "population65Plus": 113995,
+      "share65Plus": 18.294009
+    },
+    "MNG": {
+      "name": "Mongolia",
+      "m49": 496,
+      "year": 2025,
+      "population65Plus": 193834,
+      "share65Plus": 5.431065
+    },
+    "MNP": {
+      "name": "Northern Mariana Islands",
+      "m49": 580,
+      "year": 2025,
+      "population65Plus": 4698,
+      "share65Plus": 10.788806
+    },
+    "MOZ": {
+      "name": "Mozambique",
+      "m49": 508,
+      "year": 2025,
+      "population65Plus": 974127,
+      "share65Plus": 2.733881
+    },
+    "MRT": {
+      "name": "Mauritania",
+      "m49": 478,
+      "year": 2025,
+      "population65Plus": 172566,
+      "share65Plus": 3.246734
+    },
+    "MUS": {
+      "name": "Mauritius",
+      "m49": 480,
+      "year": 2025,
+      "population65Plus": 175549,
+      "share65Plus": 14.114554
+    },
+    "MWI": {
+      "name": "Malawi",
+      "m49": 454,
+      "year": 2025,
+      "population65Plus": 575082,
+      "share65Plus": 2.58858
+    },
+    "MYS": {
+      "name": "Malaysia",
+      "m49": 458,
+      "year": 2025,
+      "population65Plus": 2890165,
+      "share65Plus": 8.033181
+    },
+    "NAM": {
+      "name": "Namibia",
+      "m49": 516,
+      "year": 2025,
+      "population65Plus": 117312,
+      "share65Plus": 3.793048
+    },
+    "NCL": {
+      "name": "New Caledonia",
+      "m49": 540,
+      "year": 2025,
+      "population65Plus": 34783,
+      "share65Plus": 11.777722
+    },
+    "NER": {
+      "name": "Niger",
+      "m49": 562,
+      "year": 2025,
+      "population65Plus": 730889,
+      "share65Plus": 2.617999
+    },
+    "NGA": {
+      "name": "Nigeria",
+      "m49": 566,
+      "year": 2025,
+      "population65Plus": 7291002,
+      "share65Plus": 3.069536
+    },
+    "NIC": {
+      "name": "Nicaragua",
+      "m49": 558,
+      "year": 2025,
+      "population65Plus": 399256,
+      "share65Plus": 5.697551
+    },
+    "NLD": {
+      "name": "Netherlands",
+      "m49": 528,
+      "year": 2025,
+      "population65Plus": 3774667,
+      "share65Plus": 20.86877
+    },
+    "NOR": {
+      "name": "Norway",
+      "m49": 578,
+      "year": 2025,
+      "population65Plus": 1070567,
+      "share65Plus": 19.080223
+    },
+    "NPL": {
+      "name": "Nepal",
+      "m49": 524,
+      "year": 2025,
+      "population65Plus": 1961960,
+      "share65Plus": 6.624189
+    },
+    "NRU": {
+      "name": "Nauru",
+      "m49": 520,
+      "year": 2025,
+      "population65Plus": 362,
+      "share65Plus": 3.01027
+    },
+    "NZL": {
+      "name": "New Zealand",
+      "m49": 554,
+      "year": 2025,
+      "population65Plus": 937643,
+      "share65Plus": 17.609307
+    },
+    "OMN": {
+      "name": "Oman",
+      "m49": 512,
+      "year": 2025,
+      "population65Plus": 147645,
+      "share65Plus": 2.687039
+    },
+    "PAK": {
+      "name": "Pakistan",
+      "m49": 586,
+      "year": 2025,
+      "population65Plus": 11132326,
+      "share65Plus": 4.361862
+    },
+    "PAN": {
+      "name": "Panama",
+      "m49": 591,
+      "year": 2025,
+      "population65Plus": 441442,
+      "share65Plus": 9.65705
+    },
+    "PER": {
+      "name": "Peru",
+      "m49": 604,
+      "year": 2025,
+      "population65Plus": 3273221,
+      "share65Plus": 9.466561
+    },
+    "PHL": {
+      "name": "Philippines",
+      "m49": 608,
+      "year": 2025,
+      "population65Plus": 6684893,
+      "share65Plus": 5.724006
+    },
+    "PLW": {
+      "name": "Palau",
+      "m49": 585,
+      "year": 2025,
+      "population65Plus": 2090,
+      "share65Plus": 11.832979
+    },
+    "PNG": {
+      "name": "Papua New Guinea",
+      "m49": 598,
+      "year": 2025,
+      "population65Plus": 386177,
+      "share65Plus": 3.588071
+    },
+    "POL": {
+      "name": "Poland",
+      "m49": 616,
+      "year": 2025,
+      "population65Plus": 7561836,
+      "share65Plus": 20.753827
+    },
+    "PRI": {
+      "name": "Puerto Rico (US)",
+      "m49": 630,
+      "year": 2025,
+      "population65Plus": 804899,
+      "share65Plus": 25.27287
+    },
+    "PRK": {
+      "name": "Korea, Dem. People's Rep.",
+      "m49": 408,
+      "year": 2025,
+      "population65Plus": 3377200,
+      "share65Plus": 12.71008
+    },
+    "PRT": {
+      "name": "Portugal",
+      "m49": 620,
+      "year": 2025,
+      "population65Plus": 2695018,
+      "share65Plus": 24.942619
+    },
+    "PRY": {
+      "name": "Paraguay",
+      "m49": 600,
+      "year": 2025,
+      "population65Plus": 471180,
+      "share65Plus": 6.718584
+    },
+    "PSE": {
+      "name": "West Bank and Gaza",
+      "m49": 275,
+      "year": 2025,
+      "population65Plus": 208514,
+      "share65Plus": 3.851673
+    },
+    "PYF": {
+      "name": "French Polynesia",
+      "m49": 258,
+      "year": 2025,
+      "population65Plus": 33751,
+      "share65Plus": 11.948737
+    },
+    "QAT": {
+      "name": "Qatar",
+      "m49": 634,
+      "year": 2025,
+      "population65Plus": 50552,
+      "share65Plus": 1.700815
+    },
+    "ROU": {
+      "name": "Romania",
+      "m49": 642,
+      "year": 2025,
+      "population65Plus": 3830379,
+      "share65Plus": 20.138404
+    },
+    "RUS": {
+      "name": "Russian Federation",
+      "m49": 643,
+      "year": 2025,
+      "population65Plus": 25533586,
+      "share65Plus": 17.791787
+    },
+    "RWA": {
+      "name": "Rwanda",
+      "m49": 646,
+      "year": 2025,
+      "population65Plus": 586295,
+      "share65Plus": 4.024166
+    },
+    "SAU": {
+      "name": "Saudi Arabia",
+      "m49": 682,
+      "year": 2025,
+      "population65Plus": 1130201,
+      "share65Plus": 3.056781
+    },
+    "SDN": {
+      "name": "Sudan",
+      "m49": 729,
+      "year": 2025,
+      "population65Plus": 1749805,
+      "share65Plus": 3.387016
+    },
+    "SEN": {
+      "name": "Senegal",
+      "m49": 686,
+      "year": 2025,
+      "population65Plus": 690291,
+      "share65Plus": 3.646166
+    },
+    "SGP": {
+      "name": "Singapore",
+      "m49": 702,
+      "year": 2025,
+      "population65Plus": 868461,
+      "share65Plus": 14.211038
+    },
+    "SLB": {
+      "name": "Solomon Islands",
+      "m49": 90,
+      "year": 2025,
+      "population65Plus": 30767,
+      "share65Plus": 3.668713
+    },
+    "SLE": {
+      "name": "Sierra Leone",
+      "m49": 694,
+      "year": 2025,
+      "population65Plus": 289611,
+      "share65Plus": 3.283648
+    },
+    "SLV": {
+      "name": "El Salvador",
+      "m49": 222,
+      "year": 2025,
+      "population65Plus": 528918,
+      "share65Plus": 8.309131
+    },
+    "SMR": {
+      "name": "San Marino",
+      "m49": 674,
+      "year": 2025,
+      "population65Plus": 7896,
+      "share65Plus": 23.14841
+    },
+    "SOM": {
+      "name": "Somalia, Fed. Rep.",
+      "m49": 706,
+      "year": 2025,
+      "population65Plus": 514457,
+      "share65Plus": 2.617471
+    },
+    "SRB": {
+      "name": "Serbia",
+      "m49": 688,
+      "year": 2025,
+      "population65Plus": 1509604,
+      "share65Plus": 23.050411
+    },
+    "SSD": {
+      "name": "South Sudan",
+      "m49": 728,
+      "year": 2025,
+      "population65Plus": 374840,
+      "share65Plus": 3.075289
+    },
+    "STP": {
+      "name": "Sao Tome and Principe",
+      "m49": 678,
+      "year": 2025,
+      "population65Plus": 9477,
+      "share65Plus": 3.944575
+    },
+    "SUR": {
+      "name": "Suriname",
+      "m49": 740,
+      "year": 2025,
+      "population65Plus": 52412,
+      "share65Plus": 8.191295
+    },
+    "SVK": {
+      "name": "Slovak Republic",
+      "m49": 703,
+      "year": 2025,
+      "population65Plus": 1030590,
+      "share65Plus": 19.036304
+    },
+    "SVN": {
+      "name": "Slovenia",
+      "m49": 705,
+      "year": 2025,
+      "population65Plus": 473316,
+      "share65Plus": 22.211148
+    },
+    "SWE": {
+      "name": "Sweden",
+      "m49": 752,
+      "year": 2025,
+      "population65Plus": 2216050,
+      "share65Plus": 20.912797
+    },
+    "SWZ": {
+      "name": "Eswatini",
+      "m49": 748,
+      "year": 2025,
+      "population65Plus": 54592,
+      "share65Plus": 4.345855
+    },
+    "SXM": {
+      "name": "Sint Maarten (Dutch part)",
+      "m49": 534,
+      "year": 2025,
+      "population65Plus": 6360,
+      "share65Plus": 14.479885
+    },
+    "SYC": {
+      "name": "Seychelles",
+      "m49": 690,
+      "year": 2025,
+      "population65Plus": 10733,
+      "share65Plus": 8.745392
+    },
+    "SYR": {
+      "name": "Syrian Arab Republic",
+      "m49": 760,
+      "year": 2025,
+      "population65Plus": 1239819,
+      "share65Plus": 4.839182
+    },
+    "TCA": {
+      "name": "Turks and Caicos Islands",
+      "m49": 796,
+      "year": 2025,
+      "population65Plus": 5472,
+      "share65Plus": 11.678707
+    },
+    "TCD": {
+      "name": "Chad",
+      "m49": 148,
+      "year": 2025,
+      "population65Plus": 445058,
+      "share65Plus": 2.118948
+    },
+    "TGO": {
+      "name": "Togo",
+      "m49": 768,
+      "year": 2025,
+      "population65Plus": 298718,
+      "share65Plus": 3.476851
+    },
+    "THA": {
+      "name": "Thailand",
+      "m49": 764,
+      "year": 2025,
+      "population65Plus": 11471655,
+      "share65Plus": 16.017421
+    },
+    "TJK": {
+      "name": "Tajikistan",
+      "m49": 762,
+      "year": 2025,
+      "population65Plus": 438786,
+      "share65Plus": 4.06783
+    },
+    "TKM": {
+      "name": "Turkmenistan",
+      "m49": 795,
+      "year": 2025,
+      "population65Plus": 366298,
+      "share65Plus": 4.807788
+    },
+    "TLS": {
+      "name": "Timor-Leste",
+      "m49": 626,
+      "year": 2025,
+      "population65Plus": 74178,
+      "share65Plus": 5.229297
+    },
+    "TON": {
+      "name": "Tonga",
+      "m49": 776,
+      "year": 2025,
+      "population65Plus": 7107,
+      "share65Plus": 6.850649
+    },
+    "TTO": {
+      "name": "Trinidad and Tobago",
+      "m49": 780,
+      "year": 2025,
+      "population65Plus": 176790,
+      "share65Plus": 12.925478
+    },
+    "TUN": {
+      "name": "Tunisia",
+      "m49": 788,
+      "year": 2025,
+      "population65Plus": 1227158,
+      "share65Plus": 9.93765
+    },
+    "TUR": {
+      "name": "Turkiye",
+      "m49": 792,
+      "year": 2025,
+      "population65Plus": 9078171,
+      "share65Plus": 10.570941
+    },
+    "TUV": {
+      "name": "Tuvalu",
+      "m49": 798,
+      "year": 2025,
+      "population65Plus": 668,
+      "share65Plus": 7.042773
+    },
+    "TZA": {
+      "name": "Tanzania",
+      "m49": 834,
+      "year": 2025,
+      "population65Plus": 2145839,
+      "share65Plus": 3.041764
+    },
+    "UGA": {
+      "name": "Uganda",
+      "m49": 800,
+      "year": 2025,
+      "population65Plus": 1145113,
+      "share65Plus": 2.228502
+    },
+    "UKR": {
+      "name": "Ukraine",
+      "m49": 804,
+      "year": 2025,
+      "population65Plus": 7395255,
+      "share65Plus": 18.971738
+    },
+    "URY": {
+      "name": "Uruguay",
+      "m49": 858,
+      "year": 2025,
+      "population65Plus": 551091,
+      "share65Plus": 16.2819
+    },
+    "USA": {
+      "name": "United States",
+      "m49": 840,
+      "year": 2025,
+      "population65Plus": 62844750,
+      "share65Plus": 18.387225
+    },
+    "UZB": {
+      "name": "Uzbekistan",
+      "m49": 860,
+      "year": 2025,
+      "population65Plus": 2248889,
+      "share65Plus": 6.069314
+    },
+    "VCT": {
+      "name": "St. Vincent and the Grenadines",
+      "m49": 670,
+      "year": 2025,
+      "population65Plus": 12241,
+      "share65Plus": 12.250249
+    },
+    "VEN": {
+      "name": "Venezuela, RB",
+      "m49": 862,
+      "year": 2025,
+      "population65Plus": 2856896,
+      "share65Plus": 10.018255
+    },
+    "VGB": {
+      "name": "British Virgin Islands",
+      "m49": 92,
+      "year": 2025,
+      "population65Plus": 4016,
+      "share65Plus": 10.107722
+    },
+    "VIR": {
+      "name": "Virgin Islands (U.S.)",
+      "m49": 850,
+      "year": 2025,
+      "population65Plus": 24001,
+      "share65Plus": 23.123778
+    },
+    "VNM": {
+      "name": "Viet Nam",
+      "m49": 704,
+      "year": 2025,
+      "population65Plus": 9646309,
+      "share65Plus": 9.494536
+    },
+    "VUT": {
+      "name": "Vanuatu",
+      "m49": 548,
+      "year": 2025,
+      "population65Plus": 14677,
+      "share65Plus": 4.378836
+    },
+    "WSM": {
+      "name": "Samoa",
+      "m49": 882,
+      "year": 2025,
+      "population65Plus": 13309,
+      "share65Plus": 6.068904
+    },
+    "XKX": {
+      "name": "Kosovo",
+      "m49": 383,
+      "year": 2025,
+      "population65Plus": 165729,
+      "share65Plus": 10.509968
+    },
+    "YEM": {
+      "name": "Yemen, Rep.",
+      "m49": 887,
+      "year": 2025,
+      "population65Plus": 1063290,
+      "share65Plus": 2.545345
+    },
+    "ZAF": {
+      "name": "South Africa",
+      "m49": 710,
+      "year": 2025,
+      "population65Plus": 4457873,
+      "share65Plus": 6.885031
+    },
+    "ZMB": {
+      "name": "Zambia",
+      "m49": 894,
+      "year": 2025,
+      "population65Plus": 438288,
+      "share65Plus": 2.00005
+    },
+    "ZWE": {
+      "name": "Zimbabwe",
+      "m49": 716,
+      "year": 2025,
+      "population65Plus": 603698,
+      "share65Plus": 3.561476
+    }
+  }
+}
