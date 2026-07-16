@@ -156,6 +156,27 @@ country/sex/age band are kept, the rest folded into "other causes".
 > `source: "sample"`. On a normal network (including Railway) it returns `source: "worldbank"`
 > with real data for ~170 countries.
 
+## Conflict data (ACLED, runtime)
+
+Step 6 ("Ongoing Conflicts") and the globe's conflict layer are served by the `/api/conflicts`
+route, which pulls fatal events from the [ACLED API](https://acleddata.com) over the trailing
+12 months, aggregates their fatalities onto the same 0.5° grid the globe samples, and caches the
+result for ~a day (an in-process memo + Next's fetch cache — no scheduler, no committed data).
+
+Unlike the build-time keys above, these are **runtime** secrets. Set a myACLED account's
+credentials locally in `.env` and as Railway service variables:
+
+```bash
+ACLED_USERNAME=you@example.edu
+ACLED_PASSWORD=your-myacled-password
+# Optional: shrink the window for a fast local pull (default 365).
+ACLED_WINDOW_DAYS=7
+```
+
+ACLED uses OAuth2 (the old key+email scheme is gone); the route exchanges these for a bearer
+token per pull. If they're unset or a fetch fails, `/api/conflicts` returns an empty-but-valid
+payload and both the globe and Step 6 simply skip the conflict layer.
+
 ## Deploy on Railway
 
 1. Push this repo to GitHub.
@@ -169,8 +190,10 @@ country/sex/age band are kept, the rest folded into "other causes".
 4. Open the generated domain — Railway's egress reaches the World Bank API too, so the globe
    shows live death rates.
 
-Runtime needs no keys (the World Bank API is public, and `data/rate-grid.json` is baked
-offline ahead of time). `un_api_key`/`UN_API_KEY` is used only by the **build** to fetch the
+At runtime only the optional conflict layer needs keys (`ACLED_USERNAME` / `ACLED_PASSWORD`,
+see _Conflict data_ above); without them the globe and Step 6 just drop conflicts. Everything
+else is keyless — the World Bank API is public and `data/rate-grid.json` is baked offline ahead
+of time. `un_api_key`/`UN_API_KEY` is used only by the **build** to fetch the
 UN age/sex data. Cause data (`data/causes.json`) is _not_ fetched on build — IHME GBD has no
 API — so until it's rebuilt and committed (see _Building the persona data_), causes come from
 the bundled sample.
