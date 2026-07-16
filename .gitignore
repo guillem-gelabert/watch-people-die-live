@@ -111,6 +111,12 @@ public/data/
 # Raw data sources consumed only by build scripts / notebooks at build time.
 # The derived JSON in data/ is committed; the multi-MB sources are not.
 data/source/
+climate-zones/
+data/era5-t2m-monthly-climatology-05deg.tif
+
+# Scratch exploration figure and draft correspondence, not part of the build.
+kg-subzone.png
+acled-api-access-request.txt
 
 # GSD planning docs are local-only for this project.
 .planning/
