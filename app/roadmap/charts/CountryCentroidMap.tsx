@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as d3 from "d3";
-import { expGap, REAL_MEAN_GAP_MS, FAST_MEAN_GAP_MS, formatMeanGap } from "../chartHelpers";
+import { expGap, REAL_MEAN_GAP_MS, formatMeanGap } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, DeathsPerYearById } from "../types";
 
@@ -36,16 +36,14 @@ export default function CountryCentroidMap({
   deathsPerYearById,
 }: CountryCentroidMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
-  const [fast, setFast] = useState(false);
 
   // Derived (not effect state) so the status can't trigger a cascading render.
   const status = useMemo(() => {
     if (!features || !deathsPerYearById || !deathsPerYearById.size)
       return "Loading country death rates…";
     const n = features.filter((f) => (deathsPerYearById.get(Number(f.id)) ?? 0) > 0).length;
-    const meanGapMs = fast ? FAST_MEAN_GAP_MS : REAL_MEAN_GAP_MS;
-    return `${n} countries with a known death rate, one dot every ${formatMeanGap(meanGapMs)} on average. Every death lands on its country's single geographic center.`;
-  }, [features, deathsPerYearById, fast]);
+    return `${n} countries with a known death rate, one dot every ${formatMeanGap(REAL_MEAN_GAP_MS)} on average. Every death lands on its country's single geographic center.`;
+  }, [features, deathsPerYearById]);
 
   useEffect(() => {
     if (!ref.current || !features || !deathsPerYearById || !deathsPerYearById.size) return;
@@ -98,7 +96,7 @@ export default function CountryCentroidMap({
       return countries[countries.length - 1]!;
     }
 
-    const meanGapMs = fast ? FAST_MEAN_GAP_MS : REAL_MEAN_GAP_MS;
+    const meanGapMs = REAL_MEAN_GAP_MS;
 
     const dotsG = svg.append("g").attr("class", "map-dots");
     const dots: Dot[] = [];
@@ -161,7 +159,7 @@ export default function CountryCentroidMap({
       cancelled = true;
       cancelAnimationFrame(rafId);
     };
-  }, [features, deathsPerYearById, fast]);
+  }, [features, deathsPerYearById]);
 
   return (
     <section className="chart-panel wide">
@@ -171,24 +169,6 @@ export default function CountryCentroidMap({
         every death still lands on the same single point: that country&apos;s geographic center.
         Step 3 spreads them out realistically inside each border.
       </p>
-      <div className="speed-toggle" role="group" aria-label="Simulation speed">
-        <button
-          type="button"
-          className={!fast ? "active" : ""}
-          aria-pressed={!fast}
-          onClick={() => setFast(false)}
-        >
-          Real speed ({formatMeanGap(REAL_MEAN_GAP_MS)} avg)
-        </button>
-        <button
-          type="button"
-          className={fast ? "active" : ""}
-          aria-pressed={fast}
-          onClick={() => setFast(true)}
-        >
-          Fast preview ({formatMeanGap(FAST_MEAN_GAP_MS)} avg)
-        </button>
-      </div>
       <svg
         ref={ref}
         id="country-centroid-map-chart"

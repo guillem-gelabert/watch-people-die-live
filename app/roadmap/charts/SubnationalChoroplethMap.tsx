@@ -12,6 +12,7 @@ interface SubnationalChoroplethMapProps {
   ratePer100kByKey: RatePer100kByKey | null;
   ratePer100kByCountry: RatePer100kByCountry | null;
   nutsCountries: Set<string> | null;
+  nutsIso2ToIso3: Map<string, string> | null;
 }
 
 interface DrawnRegion {
@@ -50,12 +51,13 @@ export default function SubnationalChoroplethMap({
   ratePer100kByKey,
   ratePer100kByCountry,
   nutsCountries,
+  nutsIso2ToIso3,
 }: SubnationalChoroplethMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
 
   // The two layers merged into one draw list (European NE features dropped).
   const drawn = useMemo<DrawnRegion[] | null>(() => {
-    if (!admin1Features || !nuts2Features || !nutsCountries) return null;
+    if (!admin1Features || !nuts2Features || !nutsCountries || !nutsIso2ToIso3) return null;
     const ne = admin1Features
       .filter((f) => !nutsCountries.has(f.properties.adm0_a3))
       .map((f) => ({
@@ -64,13 +66,22 @@ export default function SubnationalChoroplethMap({
         name: f.properties.name,
         country: f.properties.adm0_a3,
       }));
-    const nuts = nuts2Features.map((f) => ({
-      feature: f,
-      key: f.properties.NUTS_ID,
-      name: f.properties.NAME_LATN,
-    }));
+    // Only NUTS geometries whose country actually appears in the rate data. This drops the
+    // UK — its polygons ship in the NUTS file, but Eurostat stopped publishing UK regional
+    // rates post-Brexit, so it has no rows and its ISO3 isn't learnable; the UK then falls
+    // through to its Natural-Earth features + national rate. Each kept region carries its
+    // ISO3 `country` so regions with no rate of their own (e.g. PT Centro/Lisboa/Alentejo,
+    // absent from the Eurostat extract) fall back to the national rate instead of going grey.
+    const nuts = nuts2Features
+      .map((f) => {
+        const country = f.properties.CNTR_CODE
+          ? nutsIso2ToIso3.get(f.properties.CNTR_CODE)
+          : undefined;
+        return { feature: f, key: f.properties.NUTS_ID, name: f.properties.NAME_LATN, country };
+      })
+      .filter((r) => r.country != null);
     return [...ne, ...nuts];
-  }, [admin1Features, nuts2Features, nutsCountries]);
+  }, [admin1Features, nuts2Features, nutsCountries, nutsIso2ToIso3]);
 
   // Sequential scale over both regional and national rates (both are drawn), clamped to
   // the 2nd–98th percentile.

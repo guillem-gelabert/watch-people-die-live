@@ -6,8 +6,14 @@ import * as topojson from "topojson-client";
 import type { Topology } from "topojson-specification";
 import type { Feature, Geometry } from "geojson";
 import { initPersona } from "./persona";
+import type { ConflictsPayload } from "@/lib/acled";
 
 const FLAT_SEASON = new Array<number>(12).fill(1);
+
+// Emphasis multiplier for the ACLED conflict layer. 1.0 folds annualised conflict fatalities
+// in at face value (they already share the grid's deaths/year unit); raise it to make active
+// conflict zones stand out more than their raw share of global mortality.
+const CONFLICT_WEIGHT = 1.0;
 
 // The combined grid baked offline by notebooks/combine.ipynb: one row per populated
 // cell, `w` already folding in population x country death rate (see
@@ -71,13 +77,17 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
     geoReady.then((g) => !cancelled && setGeo(g));
 
     (async () => {
-      let topo: Topology, grid: RateGrid, seasonality: Seasonality | null | undefined;
+      let topo: Topology,
+        grid: RateGrid,
+        seasonality: Seasonality | null | undefined,
+        conflicts: ConflictsPayload | null | undefined;
       try {
-        [topo, grid, , seasonality] = await Promise.all([
+        [topo, grid, , seasonality, conflicts] = await Promise.all([
           d3.json<Topology>("/data/countries-110m.json") as Promise<Topology>,
           d3.json<RateGrid>("/data/rate-grid.json") as Promise<RateGrid>,
           initPersona(),
           d3.json<Seasonality>("/data/seasonality.json").catch(() => null),
+          d3.json<ConflictsPayload>("/api/conflicts").catch(() => null),
         ]);
       } catch (err) {
         console.error("Failed to load data:", err);
@@ -137,12 +147,43 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
       const latArr = new Float64Array(n);
       const m49Arr = new Int32Array(n);
       const baseW = new Float64Array(n);
+      const conflictW = new Float64Array(n);
+
+      // Annualised conflict fatalities (from /api/conflicts) keyed by the grid cell they fall
+      // in. Re-snap with THIS grid's cellsize so the join stays correct even if the route's
+      // aggregation resolution and the grid ever drift apart.
+      const conflictByCell = new Map<string, number>();
+      if (conflicts?.cells?.length) {
+        for (const [lon, lat, f] of conflicts.cells) {
+          const key = `${Math.floor(lon / cs) * cs},${Math.floor(lat / cs) * cs}`;
+          conflictByCell.set(key, (conflictByCell.get(key) ?? 0) + f);
+        }
+      }
+
+      let foldedConflict = 0;
       grid.cells.forEach(([lon, lat, m49, w], i) => {
         lonArr[i] = lon;
         latArr[i] = lat;
         m49Arr[i] = m49;
         baseW[i] = w;
+        const f = conflictByCell.get(`${lon},${lat}`);
+        if (f) {
+          conflictW[i] = f;
+          foldedConflict += f;
+        }
       });
+
+      // Conflict fatalities in cells with no population entry can't be placed (the sampler needs
+      // a real country per cell), so they're dropped — report how much, never silently.
+      if (conflicts?.cells?.length) {
+        const totalConflict = conflicts.cells.reduce((s, [, , f]) => s + f, 0);
+        const dropped = totalConflict - foldedConflict;
+        if (dropped > 1) {
+          console.info(
+            `Conflict layer: folded ${Math.round(foldedConflict)} of ${Math.round(totalConflict)} annualised fatalities/yr into the grid (${Math.round(dropped)} in unpopulated cells dropped).`,
+          );
+        }
+      }
 
       // Rebuilt on init and whenever the UTC month changes (~12x/year): the seasonal
       // multiplier shifts weight toward/away from each country, so both the per-cell
@@ -153,6 +194,10 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
         for (let i = 0; i < n; i++) {
           const w = baseW[i] as number;
           if (w > 0) sum += w * (seasonalCurve(m49Arr[i] as number)[month] as number);
+          // Conflict weight is added flat (unseasoned) — conflicts don't follow the winter
+          // mortality curve — on top of the cell's seasonal baseline.
+          const cw = conflictW[i] as number;
+          if (cw > 0) sum += cw * CONFLICT_WEIGHT;
           cum[i] = sum;
         }
         const total = sum;

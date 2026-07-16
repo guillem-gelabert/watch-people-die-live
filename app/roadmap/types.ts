@@ -10,6 +10,10 @@ export interface CountryProperties {
 }
 export type CountryFeature = Feature<Geometry, CountryProperties>;
 
+// Shared-border adjacency (topojson-client neighbors()), keyed by M49 numeric id. Used
+// by the step-5 "amplitude vs. neighbouring countries" scatter.
+export type NeighborsByM49 = Map<number, number[]>;
+
 // --- data/seasonality.json & data/seasonality-unified.json -------------------------
 // Both files share the same top-level shape; only the `fallback` sub-shape differs
 // (seasonality.json uses a latitude-plateau model, seasonality-unified.json uses a
@@ -29,6 +33,69 @@ export interface SeasonalityData {
   months: number;
   countries: Record<string, number[]>;
   fallback: SeasonalityFallback;
+}
+
+// --- data/seasonality-proxies.json (baked by notebooks/seasonality.ipynb) -----------
+// Per-country descriptive signals for the amplitude scatter plots, keyed by the same
+// M49 numeric string as SeasonalityData.countries. `pop65` is World Bank % population
+// aged 65+ (SP.POP.65UP.TO.ZS); `kgFamily` is the dominant Köppen–Geiger family (A–E);
+// `gdpPerCapita` is World Bank GDP per capita in current USD (NY.GDP.PCAP.CD).
+export interface SeasonalityProxyRow {
+  pop65?: number;
+  kgFamily?: string;
+  kgFamilyName?: string;
+  kgClass?: string;
+  gdpPerCapita?: number;
+}
+export interface SeasonalityProxies {
+  meta: { source: string; year?: number; pop65Indicator?: string; gdpPerCapitaIndicator?: string };
+  byM49: Record<string, SeasonalityProxyRow>;
+}
+
+// --- data/temperature-curves.json (baked by notebooks/seasonality.ipynb) ------------
+// Population-weighted mean 2 m temperature (°C) per calendar month, from the ERA5-Land
+// 1996–2025 climatology weighted over data/density-grid.json. Keyed by the same M49
+// numeric string as SeasonalityData.countries, so the step-5 chart can overlay a
+// country's temperature curve on its seasonal mortality curve (temperature-as-proxy).
+export interface TemperatureCurves {
+  meta: { source: string; units: string };
+  months: number;
+  byM49: Record<string, number[]>;
+}
+
+// --- data/seasonality-loo-validation.json (baked by notebooks/seasonality.ipynb) ----
+// Leave-one-country-out validation of the three seasonality proxies. Each perCountry
+// row carries the country's day-weighted mean-1 measured curve plus the curve each
+// proxy reconstructs for it when it's held out, so the roadmap can plot predictions
+// against the actual for any country. climateZones aggregates the same curves within
+// latitude bands (climate has no per-zone curve — only latitude and temperature).
+export interface LooPerCountry {
+  m49: number;
+  name: string;
+  actual: number[];
+  latitude_prediction: number[];
+  temperature_prediction: number[];
+  climate_prediction: number[];
+  latitude_rmse: number;
+  temperature_rmse: number;
+  temperature_rmse_rotated: number;
+  climate_rmse: number;
+}
+export interface LooClimateZone {
+  zone: string;
+  n: number;
+  actual: number[];
+  latitude_prediction: number[];
+  temperature_prediction: number[];
+  latitude_median_rmse: number;
+  temperature_median_rmse: number;
+  temperature_win_rate: number;
+}
+export interface LooValidation {
+  meta: { source: string; nCountries: number; droppedNoTemperature: number[] };
+  comparisonTable: Array<Record<string, number | string>>;
+  perCountry: LooPerCountry[];
+  climateZones: LooClimateZone[];
 }
 
 // --- data/density-grid.json ---------------------------------------------------------
@@ -117,6 +184,12 @@ export interface SubnationalCdr {
   regions: SubnationalRegion[];
   countryRates: Record<string, number>; // ISO3 -> rate per 100k, national fallback for regionless countries
 }
+// --- /api/conflicts (ACLED conflict fatalities, runtime) ----------------------------
+// Re-exported from the server producer so the route and the roadmap/globe consumers share
+// one shape. `cells` are annualised fatalities snapped to the same 0.5° grid the globe
+// samples; `byCountry` is the per-country roll-up the Step 6 chart reads. See lib/acled.ts.
+export type { ConflictsPayload, ConflictCell, ConflictCountry } from "@/lib/acled";
+
 // region key (adm1_code or NUTS_ID) -> rate per 100k, for the choropleth join.
 export type RatePer100kByKey = Map<string, number>;
 // ISO3 country code -> national rate per 100k, drawn where a region has no subnational rate.

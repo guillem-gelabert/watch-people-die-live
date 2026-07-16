@@ -6,15 +6,20 @@ import * as topojson from "topojson-client";
 import type { Topology, GeometryCollection, GeometryObject } from "topojson-specification";
 import type {
   Admin1Feature,
+  ConflictsPayload,
   CountryFeature,
   DensityGrid,
   DeathsPerYearById,
+  LooValidation,
+  NeighborsByM49,
   Nuts2Feature,
   RateGrid,
   RatePer100kByCountry,
   RatePer100kByKey,
   SeasonalityData,
+  SeasonalityProxies,
   SubnationalCdr,
+  TemperatureCurves,
 } from "./types";
 
 type Status = "loading" | "ready" | "seasonality-error";
@@ -23,6 +28,7 @@ type GridStatus = "loading" | "ready" | "error";
 interface RoadmapState {
   status: Status;
   features: CountryFeature[] | null;
+  neighborsByM49: NeighborsByM49 | null; // shared-border adjacency, for the step-5 neighbour scatter
   seasonality: SeasonalityData | null;
   unified: SeasonalityData | null;
   grid: DensityGrid | null;
@@ -34,6 +40,11 @@ interface RoadmapState {
   ratePer100kByKey: RatePer100kByKey | null; // region key (adm1_code | NUTS_ID) -> rate per 100k
   ratePer100kByCountry: RatePer100kByCountry | null; // ISO3 -> national rate (fallback fill)
   nutsCountries: Set<string> | null; // ISO3 countries drawn as NUTS (suppress their NE features)
+  nutsIso2ToIso3: Map<string, string> | null; // NUTS CNTR_CODE (e.g. "EL","PT") -> ISO3, from data rows
+  proxies: SeasonalityProxies | null; // per-country pop65 + Köppen–Geiger family for step-5 scatters
+  temperatureCurves: TemperatureCurves | null; // per-country monthly temperature for step-5 overlay
+  looValidation: LooValidation | null; // leave-one-out predictions vs actual, for step-5 validation charts
+  conflicts: ConflictsPayload | null; // ACLED conflict fatalities (step-6 map), optional
 }
 
 interface CountriesTopology extends Topology {
@@ -61,6 +72,7 @@ export function useRoadmapData(): RoadmapState {
   const [state, setState] = useState<RoadmapState>({
     status: "loading", // "loading" | "ready" | "seasonality-error"
     features: null,
+    neighborsByM49: null,
     seasonality: null,
     unified: null,
     grid: null,
@@ -72,6 +84,11 @@ export function useRoadmapData(): RoadmapState {
     ratePer100kByKey: null,
     ratePer100kByCountry: null,
     nutsCountries: null,
+    nutsIso2ToIso3: null,
+    proxies: null,
+    temperatureCurves: null,
+    looValidation: null,
+    conflicts: null,
   });
 
   useEffect(() => {
@@ -97,6 +114,13 @@ export function useRoadmapData(): RoadmapState {
           Object.entries(subnational.countryRates),
         );
         const nutsCountries = new Set(subnational.meta.nutsCountriesIso3);
+        // CNTR_CODE (NUTS 2-letter, e.g. "EL","PT","UK") -> ISO3, learned from the data rows
+        // themselves so the alpha-2/alpha-3 irregulars (EL→GRC) come for free. Countries with
+        // no NUTS rows (e.g. UK post-Brexit) are absent — which is what lets us drop them.
+        const nutsIso2ToIso3 = new Map<string, string>();
+        for (const r of subnational.regions) {
+          if (r.geo === "nuts2") nutsIso2ToIso3.set(r.key.slice(0, 2), r.country);
+        }
         setState((s) => ({
           ...s,
           admin1Features,
@@ -105,6 +129,7 @@ export function useRoadmapData(): RoadmapState {
           ratePer100kByKey,
           ratePer100kByCountry,
           nutsCountries,
+          nutsIso2ToIso3,
         }));
       })
       .catch((err) => console.error("Could not load subnational data", err));
@@ -125,22 +150,51 @@ export function useRoadmapData(): RoadmapState {
       })
       .catch((err) => console.error("Could not load rate grid", err));
 
+    // ACLED conflict fatalities (step 6). Served by the /api/conflicts route (not a static
+    // file), refreshed ~daily. Optional — the step degrades to no map if it's empty/unavailable.
+    d3.json<ConflictsPayload>("/api/conflicts")
+      .then((conflicts) => {
+        if (cancelled || !conflicts) return;
+        setState((s) => ({ ...s, conflicts }));
+      })
+      .catch((err) => console.error("Could not load conflict data", err));
+
     Promise.all([
       d3.json<SeasonalityData>("/data/seasonality.json"),
       d3.json<CountriesTopology>("/data/countries-110m.json"),
       d3.json<SeasonalityData>("/data/seasonality-unified.json").catch(() => null),
+      d3.json<SeasonalityProxies>("/data/seasonality-proxies.json").catch(() => null),
+      d3.json<TemperatureCurves>("/data/temperature-curves.json").catch(() => null),
+      d3.json<LooValidation>("/data/seasonality-loo-validation.json").catch(() => null),
     ])
-      .then(([seasonality, topo, unified]) => {
+      .then(([seasonality, topo, unified, proxies, temperatureCurves, looValidation]) => {
         if (cancelled) return null;
         if (!seasonality || !topo) return null;
         const features = topojson.feature(topo, topo.objects.countries)
           .features as CountryFeature[];
+        // Shared-border adjacency, straight from the topology's arcs (not a geometric
+        // touches-test on the converted GeoJSON) — exact and free of float-precision gaps.
+        const geoms = topo.objects.countries.geometries;
+        const neighborIndexes = topojson.neighbors(geoms);
+        const neighborsByM49: NeighborsByM49 = new Map(
+          geoms.map((g, i) => [
+            Number(g.id),
+            (neighborIndexes[i] ?? [])
+              .map((j) => geoms[j]?.id)
+              .filter((id): id is string | number => id != null)
+              .map(Number),
+          ]),
+        );
         setState((s) => ({
           ...s,
           status: "ready",
           features,
+          neighborsByM49,
           seasonality,
           unified: unified ?? null,
+          proxies: proxies ?? null,
+          temperatureCurves: temperatureCurves ?? null,
+          looValidation: looValidation ?? null,
         }));
         return features;
       })

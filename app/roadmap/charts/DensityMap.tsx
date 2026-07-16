@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
-import { expGap, REAL_MEAN_GAP_MS, FAST_MEAN_GAP_MS, formatMeanGap } from "../chartHelpers";
+import { expGap, REAL_MEAN_GAP_MS, formatMeanGap } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, DensityGrid, DeathsPerYearById } from "../types";
 
@@ -30,7 +30,7 @@ interface DensityMapProps {
 export default function DensityMap({ grid, features, deathsPerYearById }: DensityMapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [status, setStatus] = useState("Loading density grid…");
-  const [fast, setFast] = useState(false);
+  const [logScale, setLogScale] = useState(true);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -65,11 +65,20 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
     bgCtx.fill();
     bgCtx.stroke();
 
-    const maxLog = Math.log1p(d3.max(grid.cells, (c) => c[2]) ?? 0);
+    // Map a raw population to the value the color scale reads: log-compressed
+    // (long tail spread out) or linear (a handful of dense cells dominate).
+    const maxPop = d3.max(grid.cells, (c) => c[2]) ?? 0;
+    const scaleValue = (pop: number) => (logScale ? Math.log1p(pop) : pop);
+    const maxValue = scaleValue(maxPop);
+    // Black → red → white ramp: black → red eases across the first three quarters of
+    // the scale, then red → white burns out over the densest quarter. Empty cells sink
+    // into the dark sphere; only the biggest cities reach white.
     const color = d3
-      .scaleSequential()
-      .domain([0, maxLog])
-      .interpolator(d3.interpolateRgb("#1c2331", "#ff5252"));
+      .scaleLinear<string>()
+      .domain([0, maxValue * 0.75, maxValue])
+      .range(["#000000", "#ff2b2b", "#ffffff"])
+      .interpolate(d3.interpolateRgb)
+      .clamp(true);
 
     for (const [lon, lat, pop] of grid.cells) {
       const size = grid.cellsize;
@@ -80,16 +89,8 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
       const y = Math.min(p0[1], p1[1]);
       const w = Math.max(1, Math.abs(p1[0] - p0[0]));
       const h = Math.max(1, Math.abs(p1[1] - p0[1]));
-      bgCtx.fillStyle = color(Math.log1p(pop));
+      bgCtx.fillStyle = color(scaleValue(pop));
       bgCtx.fillRect(x, y, w, h);
-    }
-
-    bgCtx.strokeStyle = "rgba(255,255,255,0.18)";
-    bgCtx.lineWidth = 0.45;
-    for (const feature of features) {
-      bgCtx.beginPath();
-      bgPath(feature);
-      bgCtx.stroke();
     }
 
     const legendX = width - 260;
@@ -97,7 +98,7 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
     const legendW = 210;
     const gradient = bgCtx.createLinearGradient(legendX, 0, legendX + legendW, 0);
     d3.range(0, 1.01, 0.1).forEach((t) => {
-      gradient.addColorStop(t, color(t * maxLog));
+      gradient.addColorStop(t, color(t * maxValue));
     });
     bgCtx.fillStyle = gradient;
     bgCtx.fillRect(legendX, legendY, legendW, 8);
@@ -106,7 +107,7 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
     bgCtx.font =
       "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
     bgCtx.textAlign = "left";
-    bgCtx.fillText("people per cell (log scale)", legendX, legendY - 10);
+    bgCtx.fillText(`people per cell (${logScale ? "log" : "linear"} scale)`, legendX, legendY - 10);
     bgCtx.fillText("low", legendX, legendY + 22);
     bgCtx.textAlign = "right";
     bgCtx.fillText("high", legendX + legendW, legendY + 22);
@@ -174,7 +175,7 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
 
     const canAnimate = countries.length > 0 && totalDeathsPerYear > 0;
     const dots: Dot[] = [];
-    const meanGapMs = fast ? FAST_MEAN_GAP_MS : REAL_MEAN_GAP_MS;
+    const meanGapMs = REAL_MEAN_GAP_MS;
     const dotLifetimeMs = 5200;
     let nextAt = performance.now() + expGap(meanGapMs);
     let rafId: number;
@@ -270,7 +271,7 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", hideTooltip);
     };
-  }, [grid, features, deathsPerYearById, fast]);
+  }, [grid, features, deathsPerYearById, logScale]);
 
   return (
     <section className="chart-panel wide">
@@ -280,22 +281,22 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
         people. Dots now land on a grid cell chosen in proportion to that cell&apos;s population,
         instead of a country&apos;s single geographic center.
       </p>
-      <div className="speed-toggle" role="group" aria-label="Simulation speed">
+      <div className="chart-toggle" role="group" aria-label="Color scale">
         <button
           type="button"
-          className={!fast ? "active" : ""}
-          aria-pressed={!fast}
-          onClick={() => setFast(false)}
+          className={logScale ? "active" : ""}
+          aria-pressed={logScale}
+          onClick={() => setLogScale(true)}
         >
-          Real speed ({formatMeanGap(REAL_MEAN_GAP_MS)} avg)
+          Log scale
         </button>
         <button
           type="button"
-          className={fast ? "active" : ""}
-          aria-pressed={fast}
-          onClick={() => setFast(true)}
+          className={!logScale ? "active" : ""}
+          aria-pressed={!logScale}
+          onClick={() => setLogScale(false)}
         >
-          Fast preview ({formatMeanGap(FAST_MEAN_GAP_MS)} avg)
+          Linear scale
         </button>
       </div>
       <canvas

@@ -1,14 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as d3 from "d3";
-import {
-  expGap,
-  randomPointOnSphere,
-  REAL_MEAN_GAP_MS,
-  FAST_MEAN_GAP_MS,
-  formatMeanGap,
-} from "../chartHelpers";
+import { expGap, randomPointOnSphere, REAL_MEAN_GAP_MS, formatMeanGap } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature } from "../types";
 
@@ -30,14 +24,12 @@ const DOT_LIFETIME_MS = 5200;
 // Chart 1: animated Poisson-dot world map, rendered as SVG.
 export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
-  const [fast, setFast] = useState(false);
 
   // Derived (not effect state) so the status can't trigger a cascading render.
   const status = useMemo(() => {
     if (!features) return "Loading random simulation…";
-    const meanGapMs = fast ? FAST_MEAN_GAP_MS : REAL_MEAN_GAP_MS;
-    return `Running at ${fast ? "a sped-up preview rate" : "the global average"}: one randomly placed dot every ${formatMeanGap(meanGapMs)} on average.`;
-  }, [features, fast]);
+    return `Running at the global average: one randomly placed dot every ${formatMeanGap(REAL_MEAN_GAP_MS)} on average.`;
+  }, [features]);
 
   useEffect(() => {
     if (!ref.current || !features) return;
@@ -67,7 +59,7 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
       .attr("class", "map-outline")
       .attr("d", path);
 
-    const meanGapMs = fast ? FAST_MEAN_GAP_MS : REAL_MEAN_GAP_MS;
+    const meanGapMs = REAL_MEAN_GAP_MS;
 
     const dotsG = svg.append("g").attr("class", "map-dots");
     const dots: Dot[] = [];
@@ -129,7 +121,7 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
       cancelled = true;
       cancelAnimationFrame(rafId);
     };
-  }, [features, fast]);
+  }, [features]);
 
   return (
     <section className="chart-panel wide">
@@ -139,24 +131,6 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
         second (~0.5s between deaths), and at uniformly random points on the Earth&apos;s surface.
         This first layer has no country, density, or seasonality weighting.
       </p>
-      <div className="speed-toggle" role="group" aria-label="Simulation speed">
-        <button
-          type="button"
-          className={!fast ? "active" : ""}
-          aria-pressed={!fast}
-          onClick={() => setFast(false)}
-        >
-          Real speed ({formatMeanGap(REAL_MEAN_GAP_MS)} avg)
-        </button>
-        <button
-          type="button"
-          className={fast ? "active" : ""}
-          aria-pressed={fast}
-          onClick={() => setFast(true)}
-        >
-          Fast preview ({formatMeanGap(FAST_MEAN_GAP_MS)} avg)
-        </button>
-      </div>
       <svg
         ref={ref}
         id="global-random-map-chart"
