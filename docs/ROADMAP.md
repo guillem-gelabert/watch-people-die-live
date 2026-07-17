@@ -189,7 +189,7 @@ How many older people live in a country seem like a very poor proxy. I just see 
 
 :::chart-copy
 
-More or the same. There's no visible correlation with how rich a country is (as GDP per capita) and how strong their mortality is affected by the seasons. The cause is probably the same as above, richer countries offset their seasonality with stronger health systems and better adaptations.
+More of the same. There's no visible correlation with how rich a country is (as GDP per capita) and how strong their mortality is affected by the seasons. The cause is probably the same as above, richer countries offset their seasonality with stronger health systems and better adaptations.
 
 :::
 
@@ -202,12 +202,6 @@ How about neighbouring countries? That's better. There's a strong correlation he
 :::
 
 [amplitude by neighbouring countries scatter]
-
-Temperature ties the last two together: it is the physical thing latitude and climate were standing in for. See it directly: pick any country below and its seasonal mortality curve tracks its monthly temperature, inverted, almost line for line.
-
-[temperature vs mortality chart]
-
-But a proxy is only worth using if it can actually stand in for a missing curve, so the real test is this: hide a country that _does_ report one, rebuild its curve from each proxy as if it were missing, and see which reconstruction lands closest to the truth.
 
 :::chart-copy
 
@@ -248,12 +242,6 @@ I fold the fatalities in flat rather than through the seasonal curve — a war d
 > Source: TBD
 
 Epidemics raise mortality in specific regions and periods by a measurable amount.
-
-### ○ 8 · Death Rate By Time Of Day
-
-> Source: TBD
-
-Timing shifts by hour for causes with circadian patterns, such as cardiovascular events and injuries.
 
 ---
 

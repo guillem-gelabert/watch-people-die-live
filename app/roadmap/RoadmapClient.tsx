@@ -9,7 +9,6 @@ import Step4Region from "./steps/Step4Region";
 import Step5SeasonalMortality from "./steps/Step5SeasonalMortality";
 import Step6Conflicts from "./steps/Step6Conflicts";
 import Step7Epidemics from "./steps/Step7Epidemics";
-import Step8TimeOfDay from "./steps/Step8TimeOfDay";
 import { useRoadmapData } from "./useRoadmapData";
 
 interface RoadmapClientProps {
@@ -89,7 +88,6 @@ export default function RoadmapClient({ markdown }: RoadmapClientProps) {
               copy={roadmapSection(markdown, "Ongoing Conflicts")}
             />
             <Step7Epidemics copy={roadmapSection(markdown, "Ongoing Epidemics")} />
-            <Step8TimeOfDay copy={roadmapSection(markdown, "Death Rate By Time Of Day")} />
           </ol>
         </section>
       </div>
