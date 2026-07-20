@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import * as d3 from "d3";
 import * as topojson from "topojson-client";
 import type { Topology, GeometryCollection, GeometryObject } from "topojson-specification";
+import type { ClimateFallbackModel } from "@/lib/spatial-seasonality";
 import type {
   Admin1Feature,
   Admin1Properties,
@@ -189,10 +190,17 @@ export function useRoadmapData(): RoadmapState {
       d3.json<SeasonalityData>("/data/seasonality-unified.json").catch(() => null),
       d3.json<SeasonalityProxies>("/data/seasonality-proxies.json").catch(() => null),
       d3.json<LooValidation>("/data/seasonality-loo-validation.json").catch(() => null),
+      d3.json<ClimateFallbackModel>("/data/seasonality-climate-fallback.json").catch(() => null),
     ])
-      .then(([seasonality, topo, unified, proxies, looValidation]) => {
+      .then(([seasonality, topo, unified, proxies, looValidation, climate]) => {
         if (cancelled) return null;
         if (!seasonality || !topo) return null;
+        // Attach the climate model so the amplitude map's spatial estimator can use its
+        // class→family blend for countries with no measured bordering donor.
+        if (climate) {
+          seasonality.climate = climate;
+          if (unified) unified.climate = climate;
+        }
         const features = topojson.feature(topo, topo.objects.countries)
           .features as CountryFeature[];
         // Shared-border adjacency, straight from the topology's arcs (not a geometric

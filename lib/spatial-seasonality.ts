@@ -2,6 +2,15 @@ import * as d3 from "d3";
 import isoCountries from "i18n-iso-countries";
 import type { Feature, Geometry } from "geojson";
 
+// Population-weighted Köppen climate donor-blends, baked by pipeline/climate_fallback.py
+// (data/seasonality-climate-fallback.json). Curves are in a northern-canonical phase; the
+// estimator re-phases them for southern-hemisphere targets.
+export interface ClimateFallbackModel {
+  classCurves: Record<string, number[]>; // Köppen class (e.g. "Cfa") -> blended curve
+  familyCurves: Record<string, number[]>; // Köppen family (A–E) -> blended curve
+  classByM49: Record<string, { class: string; family: string }>; // target labels
+}
+
 export interface SpatialSeasonalityData {
   countries: Record<string, number[]>;
   fallback?: {
@@ -11,6 +20,7 @@ export interface SpatialSeasonalityData {
     amplitudeCoef?: [number, number, number];
     ampClamp?: [number, number];
   };
+  climate?: ClimateFallbackModel;
 }
 
 export interface SpatialSeasonalityRegion {
@@ -22,7 +32,7 @@ export interface SpatialSeasonalityRegion {
 }
 
 export type SpatialSeasonalitySource =
-  "observed" | "own-regions" | "bordering-countries" | "latitude";
+  "observed" | "own-regions" | "bordering-countries" | "climate" | "latitude";
 
 export interface SpatialSeasonalityEstimate {
   curve: number[];
@@ -88,10 +98,28 @@ function latitudeFallbackCurve(
   });
 }
 
+// Population-weighted climate fallback for a country with no measured bordering donor: the
+// blended curve of measured countries sharing its Köppen class, else its family. The blends
+// are northern-canonical, so re-phase by six months for a southern-hemisphere target.
+function climateFallbackCurve(
+  id: number,
+  latitude: number,
+  climate: ClimateFallbackModel | undefined,
+): { curve: number[]; label: string } | null {
+  const target = climate?.classByM49[String(id)];
+  if (!target) return null;
+  const byClass = climate.classCurves[target.class];
+  const canonical = byClass ?? climate.familyCurves[target.family];
+  if (!canonical?.length) return null;
+  const curve =
+    latitude < 0 ? canonical.map((_, m) => canonical[(m + 6) % 12] as number) : canonical;
+  return { curve, label: byClass ? `${target.class} climate` : `${target.family} climate` };
+}
+
 // Builds one curve per country. Direct observations win, followed by a death-weighted
 // aggregate of the country's measured Admin-1 curves and the plain mean of directly
-// bordering countries with either kind of measurement. Latitude is the final fallback
-// only for islands and countries without an observed bordering donor.
+// bordering countries with either kind of measurement. A population-weighted climate blend
+// then covers countries with no measured bordering donor, and latitude is the final fallback.
 export function buildSpatialSeasonality(
   features: Feature<Geometry>[],
   neighborsByM49: ReadonlyMap<number, readonly number[]>,
@@ -153,6 +181,13 @@ export function buildSpatialSeasonality(
     }
 
     const latitude = d3.geoCentroid(feature)[1];
+
+    const climate = climateFallbackCurve(id, latitude, seasonality.climate);
+    if (climate) {
+      estimates.set(id, { curve: climate.curve, source: "climate", donorNames: [climate.label] });
+      continue;
+    }
+
     const curve = latitudeFallbackCurve(latitude, seasonality.fallback);
     if (curve.length) {
       estimates.set(id, {

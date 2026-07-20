@@ -112,9 +112,19 @@ def build_seasonality(root: Path | None = None, sources: list[str] | None = None
         if family:
             row["kgFamily"] = family
 
-    assert not _duplicated([r["key"] for r in all_region_rows]), "duplicate adm1 key"
+    # Estimated per-region curves for India and China (no observed subnational data): a
+    # population-weighted Koppen climate fallback, so the amplitude map shows the within-country
+    # variation their single national curve hides. Full builds only (they aren't a source).
+    climate_rows: list[dict] = []
+    if sources is None:
+        from . import climate_fallback
+
+        model = climate_fallback.build_climate_model(root)
+        climate_rows = climate_fallback.india_china_regions(root, model, iso_geo)
+
+    assert not _duplicated([r["key"] for r in all_region_rows + climate_rows]), "duplicate adm1 key"
     assert not _duplicated([r["key"] for r in all_partido_rows]), "duplicate partido key"
-    all_rows = all_region_rows + all_partido_rows
+    all_rows = all_region_rows + all_partido_rows + climate_rows
     for r in all_rows:
         assert len(r["curve"]) == 12, r["key"]
         assert abs(sum(r["curve"]) / 12 - 1) < 1e-3, (r["key"], sum(r["curve"]) / 12)
@@ -142,6 +152,14 @@ def build_seasonality(root: Path | None = None, sources: list[str] | None = None
         "adm1Count": len(all_region_rows),
         "partidoCount": len(all_partido_rows),
         "perCountryAdm1": dict(sorted(Counter(r["country"] for r in all_region_rows).items())),
+        "climateModeledCount": len(climate_rows),
+        "perCountryClimateModeled": dict(sorted(Counter(r["country"] for r in climate_rows).items())),
+        "climateModeledNote": (
+            "India/China adm1 rows are estimates, not observations: a population-weighted "
+            "Koppen class->family->latitude blend of measured countries' curves "
+            "(measurement='climate-modeled'). Shown on the amplitude map only; excluded from the "
+            "region leave-one-out validation."
+        ),
         "regionCount": len(all_rows),
         "license": "; ".join(sorted({s.license for s in enabled})),
     }
@@ -153,4 +171,8 @@ def write_seasonality(root: Path | None = None, sources: list[str] | None = None
     result = build_seasonality(root, sources)
     out_path = root / "data" / "seasonality-subnational.json"
     out_path.write_text(json.dumps(result, ensure_ascii=False) + "\n")
+    if sources is None:
+        from . import climate_fallback
+
+        climate_fallback.write_climate_model(root)
     return out_path

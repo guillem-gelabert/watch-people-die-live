@@ -9,6 +9,7 @@ import { initPersona } from "./persona";
 import type { ConflictsPayload } from "@/lib/acled";
 import {
   buildSpatialSeasonality,
+  type ClimateFallbackModel,
   type SpatialSeasonalityData,
   type SpatialSeasonalityRegion,
 } from "@/lib/spatial-seasonality";
@@ -87,16 +88,22 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
         grid: RateGrid,
         seasonality: Seasonality | null | undefined,
         subnationalSeasonality: SubnationalSeasonality | null | undefined,
+        climate: ClimateFallbackModel | null | undefined,
         conflicts: ConflictsPayload | null | undefined;
       try {
-        [topo, grid, , seasonality, subnationalSeasonality, conflicts] = await Promise.all([
-          d3.json<Topology>("/data/countries-110m.json") as Promise<Topology>,
-          d3.json<RateGrid>("/data/rate-grid.json") as Promise<RateGrid>,
-          initPersona(),
-          d3.json<Seasonality>("/data/seasonality.json").catch(() => null),
-          d3.json<SubnationalSeasonality>("/data/seasonality-subnational.json").catch(() => null),
-          d3.json<ConflictsPayload>("/api/conflicts").catch(() => null),
-        ]);
+        [topo, grid, , seasonality, subnationalSeasonality, climate, conflicts] = await Promise.all(
+          [
+            d3.json<Topology>("/data/countries-110m.json") as Promise<Topology>,
+            d3.json<RateGrid>("/data/rate-grid.json") as Promise<RateGrid>,
+            initPersona(),
+            d3.json<Seasonality>("/data/seasonality.json").catch(() => null),
+            d3.json<SubnationalSeasonality>("/data/seasonality-subnational.json").catch(() => null),
+            d3
+              .json<ClimateFallbackModel>("/data/seasonality-climate-fallback.json")
+              .catch(() => null),
+            d3.json<ConflictsPayload>("/api/conflicts").catch(() => null),
+          ],
+        );
       } catch (err) {
         console.error("Failed to load data:", err);
         if (!cancelled) setData({ error: true });
@@ -126,6 +133,7 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
             .map(Number),
         ]),
       );
+      if (seasonality && climate) seasonality.climate = climate;
       const spatialSeasonality = seasonality
         ? buildSpatialSeasonality(
             countryFeatures.features,

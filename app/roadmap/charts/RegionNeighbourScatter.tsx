@@ -44,7 +44,10 @@ export default function RegionNeighbourScatter({
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const borderedRegions = regions.filter((r) => r.geo === "adm1");
+    // Only observed regions; India/China climate-modeled estimates are not measurements.
+    const borderedRegions = regions.filter(
+      (r) => r.geo === "adm1" && r.measurement !== "climate-modeled",
+    );
     const ampByKey = new Map(borderedRegions.map((r) => [r.key, strength(r.curve)]));
     const regionRows: Row[] = borderedRegions
       .map((r) => {

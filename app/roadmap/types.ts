@@ -3,6 +3,7 @@
 // not a redesign — kept intentionally loose (arrays of tuples, string-keyed records)
 // to match the real files byte for byte.
 import type { Feature, Geometry } from "geojson";
+import type { ClimateFallbackModel } from "@/lib/spatial-seasonality";
 
 // --- Country polygons (topojson-client feature() output) --------------------------
 export interface CountryProperties {
@@ -32,6 +33,7 @@ export interface SeasonalityData {
   months: number;
   countries: Record<string, number[]>;
   fallback: SeasonalityFallback;
+  climate?: ClimateFallbackModel; // attached at fetch, feeds the spatial estimator's climate tier
 }
 
 // --- data/seasonality-proxies.json (baked by notebooks/seasonality.ipynb) -----------
@@ -176,8 +178,10 @@ export interface SubnationalSeasonalityRegion {
   annualDeaths: number | null;
   // "crvs": observed civil-registration deaths; "surveillance-estimate": modelled from a
   // population register rather than raw registration (e.g. South Africa); "rate": the
-  // source series is already a population-standardised rate, not a death count (Russia).
-  measurement: "crvs" | "surveillance-estimate" | "rate";
+  // source series is already a population-standardised rate, not a death count (Russia);
+  // "climate-modeled": no observed data — a population-weighted Köppen climate blend
+  // (India/China regions), shown on the amplitude map but excluded from measured-region charts.
+  measurement: "crvs" | "surveillance-estimate" | "rate" | "climate-modeled";
   imputed?: string;
   imputedFrom?: string[];
   kgFamily?: string | null; // Köppen–Geiger dominant family (A-E), centroid-sampled where available

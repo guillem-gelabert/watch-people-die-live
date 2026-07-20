@@ -55,6 +55,56 @@ describe("buildSpatialSeasonality", () => {
     expect(estimate?.curve).toEqual([1.1, 0.9]);
   });
 
+  it("uses the population-weighted climate blend when no bordering donor exists", () => {
+    const features = [country(352, "Iceland", [-19, 65])];
+    const estimate = buildSpatialSeasonality(features, new Map(), {
+      countries: {},
+      climate: {
+        classByM49: { "352": { class: "ET", family: "E" } },
+        classCurves: {}, // no class donor -> falls back to family
+        familyCurves: { E: [1.2, 0.8] },
+      },
+    }).get(352);
+    expect(estimate?.source).toBe("climate");
+    expect(estimate?.donorNames).toEqual(["E climate"]);
+    expect(estimate?.curve).toEqual([1.2, 0.8]);
+  });
+
+  it("prefers class over family and re-phases the blend for a southern target", () => {
+    const canonical = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const features = [country(36, "Australia", [134, -25])];
+    const estimate = buildSpatialSeasonality(features, new Map(), {
+      countries: {},
+      climate: {
+        classByM49: { "36": { class: "BWh", family: "B" } },
+        classCurves: { BWh: canonical },
+        familyCurves: { B: [9, 9] },
+      },
+    }).get(36);
+    expect(estimate?.source).toBe("climate");
+    expect(estimate?.donorNames).toEqual(["BWh climate"]);
+    // southern hemisphere -> shifted six months: curve[m] = canonical[(m + 6) % 12]
+    expect(estimate?.curve).toEqual([7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6]);
+  });
+
+  it("falls through to latitude when neither class nor family has a donor", () => {
+    const features = [country(999, "X", [0, 50])];
+    const estimate = buildSpatialSeasonality(features, new Map(), {
+      countries: {},
+      fallback: {
+        north: [1.1, 1.08, 1.05, 1.01, 0.97, 0.94, 0.92, 0.9, 0.93, 0.97, 1.01, 1.09],
+        tropicMaxAbsLat: 10,
+        plateauAbsLat: 40,
+      },
+      climate: {
+        classByM49: { "999": { class: "Zz", family: "Q" } },
+        classCurves: {},
+        familyCurves: {},
+      },
+    }).get(999);
+    expect(estimate?.source).toBe("latitude");
+  });
+
   it("uses latitude when no measured border donor exists", () => {
     const features = [country(352, "Iceland", [-19, 65])];
     const estimates = buildSpatialSeasonality(features, new Map(), {

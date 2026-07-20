@@ -149,7 +149,9 @@ export default function AmplitudeMap({
               ? `calculated from ${d.estimate.donorNames.length} measured regions`
               : d.estimate.source === "bordering-countries"
                 ? `calculated from bordering countries: ${d.estimate.donorNames.join(", ")}`
-                : `calculated from latitude fallback: ${d.estimate.donorNames[0]}`;
+                : d.estimate.source === "climate"
+                  ? `estimated from climate: ${d.estimate.donorNames[0]}`
+                  : `calculated from latitude fallback: ${d.estimate.donorNames[0]}`;
         showTooltip(
           `${name}: ${fmtPlainPct(d.amplitude)} (${source})`,
           event.clientX,
@@ -180,24 +182,45 @@ export default function AmplitudeMap({
       .attr("fill", `url(#${crossStripeId})`)
       .attr("d", (d) => path(d.feature));
 
-    // Finer region fills for the measured sub-national countries, drawn on top of their country's fill.
+    // Finer region fills drawn on top of their country's fill. Measured regions read as data;
+    // India/China are climate-modeled estimates, so they carry the same striped estimate encoding.
     svg
       .append("g")
       .selectAll("path")
       .data(regionRows)
       .join("path")
-      .attr("class", "map-country-fill has-data")
+      .attr("class", (d) =>
+        d.region.measurement === "climate-modeled"
+          ? "map-country-fill is-calculated"
+          : "map-country-fill has-data",
+      )
       .attr("fill", (d) => color(d.amplitude))
       .attr("d", (d) => path(d.feature))
       .on("pointermove", (event, d) => {
-        const imp = d.region.imputed ? ` · imputed from ${d.region.imputedFrom?.join(", ")}` : "";
+        const note =
+          d.region.measurement === "climate-modeled"
+            ? ` · climate estimate (Köppen ${d.region.kgFamily ?? "?"})`
+            : d.region.imputed
+              ? ` · imputed from ${d.region.imputedFrom?.join(", ")}`
+              : "";
         showTooltip(
-          `${d.region.name} (${d.region.country}): ${fmtPlainPct(d.amplitude)} amplitude${imp}`,
+          `${d.region.name} (${d.region.country}): ${fmtPlainPct(d.amplitude)} amplitude${note}`,
           event.clientX,
           event.clientY,
         );
       })
       .on("pointerleave", hideTooltip);
+
+    // Striped overlay for the climate-modeled (India/China) region estimates, matching the
+    // country-level estimate encoding so they never read as observed data.
+    svg
+      .append("g")
+      .selectAll("path")
+      .data(regionRows.filter((d) => d.region.measurement === "climate-modeled"))
+      .join("path")
+      .attr("class", "map-country-stripes")
+      .attr("fill", `url(#${stripeId})`)
+      .attr("d", (d) => path(d.feature));
 
     const legendX = width - 260;
     const legendY = height - 32;

@@ -114,7 +114,11 @@ export default function Step5SeasonalMortality({
                 >
                   <RegionPredictionComparison
                     subnationalLoo={subnationalLoo}
-                    regionCount={subnationalRegions?.filter((r) => r.geo === "adm1").length ?? 0}
+                    regionCount={
+                      subnationalRegions?.filter(
+                        (r) => r.geo === "adm1" && r.measurement !== "climate-modeled",
+                      ).length ?? 0
+                    }
                   />
                 </div>
               ),

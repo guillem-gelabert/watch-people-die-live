@@ -67,6 +67,7 @@ export default function LatitudeScatter({
 
     const admin1ByCode = new Map((admin1Features ?? []).map((f) => [f.properties?.adm1_code, f]));
     const regionRows: RegionRow[] = (regions ?? [])
+      .filter((r) => r.measurement !== "climate-modeled") // observed regions only
       .map((r) => {
         const lat =
           r.geo === "partido"
