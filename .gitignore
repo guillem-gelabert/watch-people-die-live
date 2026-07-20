@@ -123,3 +123,6 @@ acled-api-access-request.txt
 
 # Local Claude Code instructions, not meant to be shared/committed.
 CLAUDE.md
+
+# Local-only ACLED snapshot cache (see ACLED_CACHE_FILE in .env)
+.acled-cache.json

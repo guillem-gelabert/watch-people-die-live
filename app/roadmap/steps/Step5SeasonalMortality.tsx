@@ -1,24 +1,27 @@
 "use client";
 
-import ClimateZoneCurves from "../charts/ClimateZoneCurves";
-import CountryAmplitudeMap from "../charts/CountryAmplitudeMap";
+import AmplitudeMap from "../charts/AmplitudeMap";
 import CountryCurves from "../charts/CountryCurves";
 import GdpScatter from "../charts/GdpScatter";
 import KoppenGeigerScatter from "../charts/KoppenGeigerScatter";
-import LatitudeCorrelation from "../charts/LatitudeCorrelation";
+import LatitudeScatter from "../charts/LatitudeScatter";
 import NeighbourScatter from "../charts/NeighbourScatter";
 import Pop65Scatter from "../charts/Pop65Scatter";
 import PredictionComparison from "../charts/PredictionComparison";
+import RegionNeighbourScatter from "../charts/RegionNeighbourScatter";
+import RegionPredictionComparison from "../charts/RegionPredictionComparison";
 import SeasonalityProxyTable from "../charts/SeasonalityProxyTable";
-import TemperatureVsMortality from "../charts/TemperatureVsMortality";
 import RoadmapMarkdown from "../roadmapMarkdown";
 import type {
+  Admin1Feature,
   CountryFeature,
   LooValidation,
   NeighborsByM49,
+  RegionNeighborsByCode,
   SeasonalityData,
   SeasonalityProxies,
-  TemperatureCurves,
+  SubnationalLoo,
+  SubnationalSeasonality,
 } from "../types";
 
 interface Step5SeasonalMortalityProps {
@@ -27,8 +30,11 @@ interface Step5SeasonalMortalityProps {
   activeSeasonality: SeasonalityData | null;
   unified: SeasonalityData | null;
   proxies: SeasonalityProxies | null;
-  temperatureCurves: TemperatureCurves | null;
   looValidation: LooValidation | null;
+  admin1Features: Admin1Feature[] | null;
+  subnationalSeasonality: SubnationalSeasonality | null;
+  subnationalLoo: SubnationalLoo | null;
+  regionNeighbors: RegionNeighborsByCode | null;
   copy: string;
 }
 
@@ -38,10 +44,14 @@ export default function Step5SeasonalMortality({
   activeSeasonality,
   unified,
   proxies,
-  temperatureCurves,
   looValidation,
+  admin1Features,
+  subnationalSeasonality,
+  subnationalLoo,
+  regionNeighbors,
   copy,
 }: Step5SeasonalMortalityProps) {
+  const subnationalRegions = subnationalSeasonality?.regions ?? null;
   return (
     <li className="step done">
       <span className="ring" aria-hidden="true" />
@@ -59,89 +69,76 @@ export default function Step5SeasonalMortality({
                 </div>
               ),
               "[seasonality proxy table]": <SeasonalityProxyTable />,
-              "[temperature vs mortality chart]": (
-                <div className="chart-grid" aria-label="Temperature versus seasonal mortality">
-                  <TemperatureVsMortality
-                    seasonality={activeSeasonality}
-                    temperatureCurves={temperatureCurves}
-                    features={features}
-                  />
-                </div>
-              ),
-              "[amplitude by latitude scatter]": (
-                <div className="chart-grid" aria-label="Amplitude versus latitude">
-                  <LatitudeCorrelation unified={unified} proxies={proxies} features={features} />
-                </div>
+              "[latitude scatter chart]": (
+                <LatitudeScatter
+                  unified={unified}
+                  features={features}
+                  regions={subnationalRegions}
+                  admin1Features={admin1Features}
+                />
               ),
               "[amplitude by climate zone scatter]": (
-                <div className="chart-grid" aria-label="Amplitude by climate zone">
-                  <KoppenGeigerScatter unified={unified} proxies={proxies} features={features} />
-                </div>
+                <KoppenGeigerScatter unified={unified} proxies={proxies} features={features} />
               ),
               "[amplitude by age over 65 scatter]": (
-                <div className="chart-grid" aria-label="Amplitude versus population aged 65+">
-                  <Pop65Scatter unified={unified} proxies={proxies} features={features} />
-                </div>
+                <Pop65Scatter unified={unified} proxies={proxies} features={features} />
               ),
               "[amplitude by gdp pc scatter]": (
-                <div className="chart-grid" aria-label="Amplitude versus GDP per capita">
-                  <GdpScatter unified={unified} proxies={proxies} features={features} />
-                </div>
+                <GdpScatter unified={unified} proxies={proxies} features={features} />
               ),
               "[amplitude by neighbouring countries scatter]": (
-                <div className="chart-grid" aria-label="Amplitude versus neighbouring countries">
-                  <NeighbourScatter
-                    unified={unified}
-                    features={features}
-                    neighborsByM49={neighborsByM49}
-                  />
-                </div>
+                <NeighbourScatter
+                  unified={unified}
+                  features={features}
+                  neighborsByM49={neighborsByM49}
+                />
               ),
               "[prediction comparison chart]": (
                 <div className="chart-grid" aria-label="Predictions versus measured seasonal curve">
                   <PredictionComparison looValidation={looValidation} />
                 </div>
               ),
-              "[climate zone curves]": (
+              "[region amplitude by neighbouring regions scatter]": (
+                <RegionNeighbourScatter
+                  regions={subnationalRegions}
+                  regionNeighbors={regionNeighbors}
+                  unified={unified}
+                  features={features}
+                  neighborsByM49={neighborsByM49}
+                />
+              ),
+              "[region prediction comparison chart]": (
                 <div
                   className="chart-grid"
-                  aria-label="Seasonal mortality reconstruction by climate zone"
+                  aria-label="Predictions versus measured seasonal curve, region level"
                 >
-                  <ClimateZoneCurves looValidation={looValidation} />
+                  <RegionPredictionComparison
+                    subnationalLoo={subnationalLoo}
+                    regionCount={subnationalRegions?.filter((r) => r.geo === "adm1").length ?? 0}
+                  />
                 </div>
               ),
             }}
           />
 
-          <div className="chart-grid" aria-label="Seasonal mortality amplitude maps">
-            {unified && (
-              <section className="chart-panel wide">
-                <h4 className="chart-title">Seasonal Mortality Amplitude (Unified)</h4>
-                <p className="chart-copy">
-                  Every country with a measured curve from the notebook&apos;s unified sources,
-                  colored by its own seasonal amplitude. Grey still means no direct data.
-                </p>
-                <CountryAmplitudeMap
-                  seasonality={unified}
-                  features={features}
-                  domId="unified-amplitude-map-chart"
-                  ariaLabel="World map with each country colored by its seasonal mortality amplitude, using the notebook's unified multi-source dataset"
-                />
-              </section>
-            )}
+          <div className="chart-grid" aria-label="Seasonal mortality amplitude map">
             <section className="chart-panel wide">
-              <h4 className="chart-title">Amplitude By Country</h4>
+              <h4 className="chart-title">Amplitude By Country And Region</h4>
               <p className="chart-copy">
                 Every rendered country is colored by seasonal amplitude: observed curves where
-                available, and the fitted latitude fallback everywhere else. Borders are removed so
-                the map reads as a continuous amplitude surface.
+                available, measured regions where a national curve is missing, and bordering
+                measured countries otherwise. Islands and countries without a measured bordering
+                donor use the latitude model. Measured Admin-1 regions are colored by their own
+                observed amplitude, showing the variation a national curve hides. Calculated country
+                fills are striped; those without an observed bordering donor are checkered.
+                Observations are solid.
               </p>
-              <CountryAmplitudeMap
+              <AmplitudeMap
                 seasonality={activeSeasonality}
                 features={features}
-                domId="country-amplitude-map-chart"
-                ariaLabel="World map with every country colored by observed or calculated seasonal mortality amplitude"
-                includeFallback
+                neighborsByM49={neighborsByM49}
+                regions={subnationalRegions}
+                admin1Features={admin1Features}
               />
             </section>
           </div>

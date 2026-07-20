@@ -3,10 +3,15 @@
 import { useEffect, useState } from "react";
 import * as d3 from "d3";
 import * as topojson from "topojson-client";
-import type { Topology } from "topojson-specification";
+import type { GeometryCollection, Topology } from "topojson-specification";
 import type { Feature, Geometry } from "geojson";
 import { initPersona } from "./persona";
 import type { ConflictsPayload } from "@/lib/acled";
+import {
+  buildSpatialSeasonality,
+  type SpatialSeasonalityData,
+  type SpatialSeasonalityRegion,
+} from "@/lib/spatial-seasonality";
 
 const FLAT_SEASON = new Array<number>(12).fill(1);
 
@@ -32,12 +37,14 @@ interface RateGrid {
   cells: [lon: number, lat: number, m49: number, w: number][];
 }
 
-interface Seasonality {
+interface Seasonality extends SpatialSeasonalityData {
   source: string;
   method: string;
   months: number;
-  countries: Record<string, number[]>;
-  fallback: { north: number[]; tropicMaxAbsLat: number; plateauAbsLat: number };
+}
+
+interface SubnationalSeasonality {
+  regions: SpatialSeasonalityRegion[];
 }
 
 export interface GeoPayload {
@@ -61,8 +68,7 @@ export interface GlobeData {
 type GlobeDataState = GlobeData | { error: true } | null;
 
 // Fetches and derives everything the render loop needs: the combined rate grid, country
-// centroids (for the seasonal latitude fallback only — no per-country simulation state
-// lives here anymore), and the persona tables. Replaces the old per-country
+// adjacency for spatial seasonality estimates, and the persona tables. Replaces the old per-country
 // blinkById/densityLonLat split with one global weighted sampler.
 export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null } {
   const [data, setData] = useState<GlobeDataState>(null); // null = loading
@@ -80,13 +86,15 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
       let topo: Topology,
         grid: RateGrid,
         seasonality: Seasonality | null | undefined,
+        subnationalSeasonality: SubnationalSeasonality | null | undefined,
         conflicts: ConflictsPayload | null | undefined;
       try {
-        [topo, grid, , seasonality, conflicts] = await Promise.all([
+        [topo, grid, , seasonality, subnationalSeasonality, conflicts] = await Promise.all([
           d3.json<Topology>("/data/countries-110m.json") as Promise<Topology>,
           d3.json<RateGrid>("/data/rate-grid.json") as Promise<RateGrid>,
           initPersona(),
           d3.json<Seasonality>("/data/seasonality.json").catch(() => null),
+          d3.json<SubnationalSeasonality>("/data/seasonality-subnational.json").catch(() => null),
           d3.json<ConflictsPayload>("/api/conflicts").catch(() => null),
         ]);
       } catch (err) {
@@ -107,36 +115,33 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
       const countryFeatures = topojson.feature(topo, countriesObject) as unknown as {
         features: Feature<Geometry>[];
       };
-      const featureById = new Map<number, Feature<Geometry>>();
-      for (const f of countryFeatures.features) featureById.set(Number(f.id), f);
+      const countryGeometries = (countriesObject as GeometryCollection).geometries;
+      const neighborIndexes = topojson.neighbors(countryGeometries);
+      const neighborsByM49 = new Map<number, number[]>(
+        countryGeometries.map((geometry, index) => [
+          Number(geometry.id),
+          (neighborIndexes[index] ?? [])
+            .map((neighborIndex) => countryGeometries[neighborIndex]?.id)
+            .filter((id): id is string | number => id != null)
+            .map(Number),
+        ]),
+      );
+      const spatialSeasonality = seasonality
+        ? buildSpatialSeasonality(
+            countryFeatures.features,
+            neighborsByM49,
+            seasonality,
+            subnationalSeasonality?.regions ?? [],
+          )
+        : new Map();
 
-      // A country's own 12-month curve if it reported one, otherwise a latitude-scaled
-      // version of the canonical northern-winter curve. Computed once per country (the
-      // curve itself doesn't change through a session, only which month indexes into it).
+      // A country's own 12-month curve if it reported one; otherwise its spatial estimate
+      // from measured regions or bordering countries, then latitude when neither exists.
       const seasonalCurveCache = new Map<number, number[]>();
       function seasonalCurve(m49: number): number[] {
         const cached = seasonalCurveCache.get(m49);
         if (cached) return cached;
-        let curve = FLAT_SEASON;
-        if (seasonality) {
-          const own = seasonality.countries[m49];
-          if (own) {
-            curve = own;
-          } else {
-            const feature = featureById.get(m49);
-            const lat = feature ? d3.geoCentroid(feature)[1] : 0;
-            const { north, tropicMaxAbsLat, plateauAbsLat } = seasonality.fallback;
-            const t = Math.min(
-              1,
-              Math.max(0, (Math.abs(lat) - tropicMaxAbsLat) / (plateauAbsLat - tropicMaxAbsLat)),
-            );
-            const shift = lat < 0 ? 6 : 0;
-            curve = north.map((_, m) => {
-              const shape = north[(m + shift) % 12] as number;
-              return 1 + t * (shape - 1);
-            });
-          }
-        }
+        const curve = spatialSeasonality.get(m49)?.curve ?? FLAT_SEASON;
         seasonalCurveCache.set(m49, curve);
         return curve;
       }

@@ -111,21 +111,13 @@ export default function GdpScatter({ unified, proxies, features }: GdpScatterPro
   }, [unified, proxies, features]);
 
   return (
-    <section className="chart-panel">
-      <h4 className="chart-title">Amplitude vs. GDP per Capita</h4>
-      <p className="chart-copy">
-        Each country&apos;s measured seasonal amplitude against its GDP per capita (World Bank,
-        current USD). The weakest link of the four proxies — wealth alone barely separates the
-        strongest and weakest seasonal swings.
-      </p>
-      <svg
-        ref={svgRef}
-        id="gdp-scatter-chart"
-        className="seasonality-chart"
-        viewBox="0 0 420 260"
-        role="img"
-        aria-label="Scatter plot of seasonal mortality amplitude against GDP per capita on a logarithmic scale"
-      />
-    </section>
+    <svg
+      ref={svgRef}
+      id="gdp-scatter-chart"
+      className="seasonality-chart"
+      viewBox="0 0 420 260"
+      role="img"
+      aria-label="Scatter plot of seasonal mortality amplitude against GDP per capita on a logarithmic scale"
+    />
   );
 }

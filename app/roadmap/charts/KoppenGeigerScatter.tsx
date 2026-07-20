@@ -139,21 +139,13 @@ export default function KoppenGeigerScatter({
   }, [unified, proxies, features]);
 
   return (
-    <section className="chart-panel">
-      <h4 className="chart-title">Amplitude by Climate Zone</h4>
-      <p className="chart-copy">
-        Each country grouped by its dominant Köppen–Geiger climate family, from tropical to polar.
-        Temperate and continental zones carry the strongest seasonal swing; the tropics barely move.
-        The bar marks each family&apos;s mean.
-      </p>
-      <svg
-        ref={svgRef}
-        id="koppen-geiger-scatter-chart"
-        className="seasonality-chart"
-        viewBox="0 0 420 260"
-        role="img"
-        aria-label="Strip scatter plot of seasonal mortality amplitude grouped by dominant Köppen–Geiger climate family"
-      />
-    </section>
+    <svg
+      ref={svgRef}
+      id="koppen-geiger-scatter-chart"
+      className="seasonality-chart"
+      viewBox="0 0 420 260"
+      role="img"
+      aria-label="Strip scatter plot of seasonal mortality amplitude grouped by dominant Köppen–Geiger climate family"
+    />
   );
 }

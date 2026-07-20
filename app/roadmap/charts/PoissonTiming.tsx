@@ -1,3 +1,7 @@
+"use client";
+
+import { showTooltip, hideTooltip } from "../tooltip";
+
 const LAMBDA = 2;
 const DAYS = 365;
 
@@ -55,7 +59,14 @@ export default function PoissonTiming() {
           <span
             className={`poisson-day poisson-day-${category(sample)}`}
             key={day}
-            title={`Day ${day + 1}: ${sample} deaths`}
+            onPointerMove={(event) =>
+              showTooltip(
+                `${sample} ${sample === 1 ? "death" : "deaths"} on this simulated day`,
+                event.clientX,
+                event.clientY,
+              )
+            }
+            onPointerLeave={hideTooltip}
           />
         ))}
       </div>

@@ -6,12 +6,6 @@ const rows = [
     limitations: "Many classification systems; hard to implement across zones; misses culture",
   },
   {
-    proxy: "Monthly temperature",
-    signal: "Population-weighted mean temperature per month (ERA5-Land)",
-    strengths: "Continuous, global, and directly captures the winter swing that drives deaths",
-    limitations: "Misses heat deaths and non-climatic timing (reporting artifacts, Ramadan)",
-  },
-  {
     proxy: "Neighbouring countries",
     signal: "Curves borrowed from geographically adjacent countries",
     strengths: "Simple adjacency; can capture shared culture and reporting practices",

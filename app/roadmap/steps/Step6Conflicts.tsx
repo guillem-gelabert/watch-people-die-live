@@ -1,14 +1,13 @@
-import ConflictMap from "../charts/ConflictMap";
+import ConflictEwmaWidget from "../charts/ConflictEwmaWidget";
 import RoadmapMarkdown from "../roadmapMarkdown";
-import type { ConflictsPayload, CountryFeature } from "../types";
+import type { ConflictsPayload } from "../types";
 
 interface Step6ConflictsProps {
-  features: CountryFeature[] | null;
   conflicts: ConflictsPayload | null;
   copy: string;
 }
 
-export default function Step6Conflicts({ features, conflicts, copy }: Step6ConflictsProps) {
+export default function Step6Conflicts({ conflicts, copy }: Step6ConflictsProps) {
   return (
     <li className="step done">
       <span className="ring" aria-hidden="true" />
@@ -19,12 +18,15 @@ export default function Step6Conflicts({ features, conflicts, copy }: Step6Confl
         <RoadmapMarkdown
           source={copy}
           slots={{
-            "[conflict fatalities map]": (
+            "[widget to update half life, curve smoothness, and see prediction]": (
               <div
                 className="chart-grid"
-                aria-label="Where recorded conflict fatalities concentrate"
+                aria-label="Robust exponentially-weighted moving average of conflict fatalities"
               >
-                <ConflictMap features={features} conflicts={conflicts} />
+                <section className="chart-panel wide">
+                  <h4 className="chart-title">Robust EWMA — today&apos;s conflict deaths</h4>
+                  <ConflictEwmaWidget dailyStack={conflicts?.dailyStack} />
+                </section>
               </div>
             ),
           }}

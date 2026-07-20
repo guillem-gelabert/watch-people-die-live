@@ -1,0 +1,69 @@
+"""CLI: python -m pipeline {status | fetch [source...] | build [source...] | argentina-latitudes}"""
+
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from .build import find_root, write_seasonality
+from .cache import cache_dir as resolve_cache_dir
+from .manifest import record
+from .registry import MODULES, REGISTRY
+from .sources import argentina_partido_latitudes
+
+
+def cmd_status(root: Path) -> None:
+    resolve_cache_dir(root)  # ensure it exists
+    print(f"{'source':20s} {'mode':16s} {'enabled':8s} {'expected':9s}")
+    for source in REGISTRY:
+        print(
+            f"{source.key:20s} {source.retrieval_mode:16s} {str(source.enabled):8s} "
+            f"{source.expected_regions:9d}"
+        )
+
+
+def cmd_fetch(root: Path, keys: list[str]) -> None:
+    c_dir = resolve_cache_dir(root)
+    targets = [s for s in REGISTRY if not keys or s.key in keys]
+    for source in targets:
+        module = MODULES[source.key]
+        print(f"fetching {source.key} ({source.retrieval_mode})...")
+        files = module.fetch(c_dir)
+        if files:
+            record(source.key, files)
+
+
+def cmd_build(root: Path, keys: list[str] | None) -> None:
+    out_path = write_seasonality(root, keys)
+    print(f"wrote {out_path}")
+
+
+def cmd_argentina_latitudes(root: Path) -> None:
+    out_path = argentina_partido_latitudes.build(root)
+    print(f"wrote {out_path}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(prog="python -m pipeline")
+    sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("status")
+    fetch_p = sub.add_parser("fetch")
+    fetch_p.add_argument("source", nargs="*")
+    build_p = sub.add_parser("build")
+    build_p.add_argument("source", nargs="*")
+    sub.add_parser("argentina-latitudes")
+    args = parser.parse_args()
+
+    root = find_root()
+    if args.command == "status":
+        cmd_status(root)
+    elif args.command == "fetch":
+        cmd_fetch(root, args.source)
+    elif args.command == "build":
+        cmd_build(root, args.source or None)
+    elif args.command == "argentina-latitudes":
+        cmd_argentina_latitudes(root)
+
+
+if __name__ == "__main__":
+    main()

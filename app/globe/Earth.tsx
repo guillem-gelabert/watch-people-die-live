@@ -18,6 +18,8 @@ import {
   ATMOSPHERE_DAY_COLOR,
   ATMOSPHERE_TWILIGHT_COLOR,
   CALIBRATION,
+  FIT_MARGIN,
+  START_ZOOM,
 } from "./constants";
 import type { GlobeData, GeoPayload, Sampler } from "./useGlobeData";
 
@@ -108,6 +110,7 @@ export default function Earth({
   // Mutable simulation state (avoids re-renders on every spawned death).
   const sim = useRef<Sim | null>(null);
   const didInitZoom = useRef(false);
+  const previousFitDistance = useRef<number | null>(null);
   const revealed = useRef(false);
   const startRef = useRef<number | null>(null);
   const centeredOnce = useRef(false);
@@ -185,11 +188,11 @@ export default function Earth({
     return () => clearInterval(id);
   }, [earth, sunDirection]);
 
-  // Resize / fit distance, matching the original resize() behaviour.
+  // Resize / fit distance. Keep the user's zoom as a ratio of the viewport fit so
+  // the globe grows and shrinks with the viewport instead of retaining a fixed
+  // on-screen size after the first render.
   useEffect(() => {
     const FOV = perspCamera.fov;
-    const FIT_MARGIN = 1.5;
-    const START_ZOOM = 0.58;
     function resize() {
       const w = gl.domElement.clientWidth || window.innerWidth;
       const h = gl.domElement.clientHeight || window.innerHeight || Math.round(w * 0.6);
@@ -205,11 +208,13 @@ export default function Earth({
         perspCamera.position.setLength(Math.max(fitDist * START_ZOOM, GLOBE_R * 1.15));
         didInitZoom.current = true;
       } else {
-        // Preserve the user's zoom across resizes, but keep it within the new bounds
-        // so an orientation change can't leave the globe clipped or floating past fit.
-        const d = Math.min(Math.max(perspCamera.position.length(), GLOBE_R * 1.1), maxDist);
+        const zoomRatio = previousFitDistance.current
+          ? perspCamera.position.length() / previousFitDistance.current
+          : START_ZOOM;
+        const d = Math.min(Math.max(fitDist * zoomRatio, GLOBE_R * 1.1), maxDist);
         perspCamera.position.setLength(d);
       }
+      previousFitDistance.current = fitDist;
       controlsRef.current?.update();
     }
     resize();
@@ -229,33 +234,59 @@ export default function Earth({
       ro.disconnect();
       window.removeEventListener("orientationchange", onResize);
     };
-  }, [perspCamera, gl]);
+  }, [perspCamera, gl, controlsRef]);
 
-  // Landscape split view: the death-feed list overlays the left edge of the
-  // (always full-width) canvas. Rather than shrinking the canvas — which would feed
-  // a narrower aspect ratio into the fit-distance math above — nudge the sphere right
-  // with an off-axis camera, keeping the full canvas for projection/fit purposes.
+  // Use an off-axis camera to make room for the landscape feed and keep the globe
+  // above the viewport midpoint. The projected silhouette is also exposed to CSS so
+  // persona text can disappear behind the globe instead of drawing across its face.
   useEffect(() => {
     const feedEl = document.getElementById("death-feed");
-    function updateViewOffset() {
+    const projectedCenter = new THREE.Vector3();
+    const projectedEdge = new THREE.Vector3();
+    const cameraRight = new THREE.Vector3();
+
+    function syncPersonaMask(w: number, h: number) {
+      if (!feedEl) return;
+      perspCamera.updateMatrixWorld();
+      projectedCenter.set(0, 0, 0).project(perspCamera);
+      cameraRight.setFromMatrixColumn(perspCamera.matrixWorld, 0).multiplyScalar(GLOBE_R);
+      projectedEdge.copy(cameraRight).project(perspCamera);
+
+      const centerX = ((projectedCenter.x + 1) / 2) * w;
+      const centerY = ((1 - projectedCenter.y) / 2) * h;
+      const flatRadius = Math.hypot(
+        ((projectedEdge.x - projectedCenter.x) / 2) * w,
+        ((projectedEdge.y - projectedCenter.y) / 2) * h,
+      );
+      const distance = perspCamera.position.length();
+      const silhouetteScale = distance / Math.sqrt(distance * distance - GLOBE_R * GLOBE_R);
+      const feedRect = feedEl.getBoundingClientRect();
+
+      feedEl.style.setProperty("--globe-x", `${centerX - feedRect.left}px`);
+      feedEl.style.setProperty("--globe-y", `${centerY - feedRect.top}px`);
+      feedEl.style.setProperty("--globe-screen-r", `${flatRadius * silhouetteScale}px`);
+    }
+
+    function updateProjection() {
       const w = gl.domElement.clientWidth || window.innerWidth;
       const h = gl.domElement.clientHeight || window.innerHeight;
       const isSplitView = window.matchMedia("(orientation: landscape)").matches;
       const listW = isSplitView ? (feedEl?.getBoundingClientRect().width ?? 0) : 0;
-      if (listW > 0) {
-        perspCamera.setViewOffset(w + listW, h, 0, 0, w, h);
-      } else {
-        perspCamera.clearViewOffset();
-      }
+      const topShift = Math.min(h * (isSplitView ? 0.06 : 0.09), 96);
+      perspCamera.setViewOffset(w + listW, h, 0, topShift, w, h);
+      syncPersonaMask(w, h);
     }
-    updateViewOffset();
-    window.addEventListener("resize", updateViewOffset);
-    window.addEventListener("orientationchange", updateViewOffset);
+    updateProjection();
+    const controls = controlsRef.current;
+    controls?.addEventListener("change", updateProjection);
+    window.addEventListener("resize", updateProjection);
+    window.addEventListener("orientationchange", updateProjection);
     return () => {
-      window.removeEventListener("resize", updateViewOffset);
-      window.removeEventListener("orientationchange", updateViewOffset);
+      controls?.removeEventListener("change", updateProjection);
+      window.removeEventListener("resize", updateProjection);
+      window.removeEventListener("orientationchange", updateProjection);
     };
-  }, [perspCamera, gl]);
+  }, [perspCamera, gl, controlsRef]);
 
   // Center on the viewer's IP location once geo resolves (best-effort, non-blocking).
   useEffect(() => {

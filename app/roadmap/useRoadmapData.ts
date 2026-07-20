@@ -6,6 +6,7 @@ import * as topojson from "topojson-client";
 import type { Topology, GeometryCollection, GeometryObject } from "topojson-specification";
 import type {
   Admin1Feature,
+  Admin1Properties,
   ConflictsPayload,
   CountryFeature,
   DensityGrid,
@@ -16,10 +17,12 @@ import type {
   RateGrid,
   RatePer100kByCountry,
   RatePer100kByKey,
+  RegionNeighborsByCode,
   SeasonalityData,
   SeasonalityProxies,
   SubnationalCdr,
-  TemperatureCurves,
+  SubnationalLoo,
+  SubnationalSeasonality,
 } from "./types";
 
 type Status = "loading" | "ready" | "seasonality-error";
@@ -37,12 +40,14 @@ interface RoadmapState {
   admin1Features: Admin1Feature[] | null; // Natural Earth Admin-1 regions (rest of world)
   nuts2Features: Nuts2Feature[] | null; // Eurostat NUTS-2 regions (Europe, finer layer)
   subnational: SubnationalCdr | null; // subnational rate table + meta (step-5 copy/callouts)
+  subnationalSeasonality: SubnationalSeasonality | null; // per-region monthly curves (step-5 region charts)
+  subnationalLoo: SubnationalLoo | null; // region-vs-country leave-one-out (step-5 region prediction chart)
+  regionNeighbors: RegionNeighborsByCode | null; // Admin-1 shared-border adjacency
   ratePer100kByKey: RatePer100kByKey | null; // region key (adm1_code | NUTS_ID) -> rate per 100k
   ratePer100kByCountry: RatePer100kByCountry | null; // ISO3 -> national rate (fallback fill)
   nutsCountries: Set<string> | null; // ISO3 countries drawn as NUTS (suppress their NE features)
   nutsIso2ToIso3: Map<string, string> | null; // NUTS CNTR_CODE (e.g. "EL","PT") -> ISO3, from data rows
   proxies: SeasonalityProxies | null; // per-country pop65 + Köppen–Geiger family for step-5 scatters
-  temperatureCurves: TemperatureCurves | null; // per-country monthly temperature for step-5 overlay
   looValidation: LooValidation | null; // leave-one-out predictions vs actual, for step-5 validation charts
   conflicts: ConflictsPayload | null; // ACLED conflict fatalities (step-6 map), optional
 }
@@ -81,12 +86,14 @@ export function useRoadmapData(): RoadmapState {
     admin1Features: null,
     nuts2Features: null,
     subnational: null,
+    subnationalSeasonality: null,
+    subnationalLoo: null,
+    regionNeighbors: null,
     ratePer100kByKey: null,
     ratePer100kByCountry: null,
     nutsCountries: null,
     nutsIso2ToIso3: null,
     proxies: null,
-    temperatureCurves: null,
     looValidation: null,
     conflicts: null,
   });
@@ -101,11 +108,25 @@ export function useRoadmapData(): RoadmapState {
       d3.json<Admin1Topology>("/data/admin1-10m.json"),
       d3.json<Nuts2Topology>("/data/nuts2-20m.json"),
       d3.json<SubnationalCdr>("/data/subnational-cdr.json"),
+      d3.json<SubnationalSeasonality>("/data/seasonality-subnational.json").catch(() => null),
+      d3.json<SubnationalLoo>("/data/seasonality-subnational-loo.json").catch(() => null),
     ])
-      .then(([adm1Topo, nutsTopo, subnational]) => {
+      .then(([adm1Topo, nutsTopo, subnational, subnationalSeasonality, subnationalLoo]) => {
         if (cancelled || !adm1Topo || !nutsTopo || !subnational) return;
         const admin1Features = topojson.feature(adm1Topo, adm1Topo.objects.ne_10m_admin_1)
           .features as Admin1Feature[];
+        // Admin-1 shared-border adjacency (adm1_code -> adm1_code[]) straight from the topology's
+        // arcs — same method as neighborsByM49, for the region-level neighbour scatter.
+        const a1geoms = adm1Topo.objects.ne_10m_admin_1.geometries;
+        const a1neighbors = topojson.neighbors(a1geoms);
+        const regionNeighbors: RegionNeighborsByCode = new Map(
+          a1geoms.map((g, i) => [
+            (g.properties as Admin1Properties | undefined)?.adm1_code ?? String(i),
+            (a1neighbors[i] ?? [])
+              .map((j) => (a1geoms[j]?.properties as Admin1Properties | undefined)?.adm1_code)
+              .filter((c): c is string => c != null),
+          ]),
+        );
         const nuts2Features = topojson.feature(nutsTopo, nutsTopo.objects.nuts2_20m)
           .features as Nuts2Feature[];
         const ratePer100kByKey: RatePer100kByKey = new Map();
@@ -126,6 +147,9 @@ export function useRoadmapData(): RoadmapState {
           admin1Features,
           nuts2Features,
           subnational,
+          subnationalSeasonality: subnationalSeasonality ?? null,
+          subnationalLoo: subnationalLoo ?? null,
+          regionNeighbors,
           ratePer100kByKey,
           ratePer100kByCountry,
           nutsCountries,
@@ -164,10 +188,9 @@ export function useRoadmapData(): RoadmapState {
       d3.json<CountriesTopology>("/data/countries-110m.json"),
       d3.json<SeasonalityData>("/data/seasonality-unified.json").catch(() => null),
       d3.json<SeasonalityProxies>("/data/seasonality-proxies.json").catch(() => null),
-      d3.json<TemperatureCurves>("/data/temperature-curves.json").catch(() => null),
       d3.json<LooValidation>("/data/seasonality-loo-validation.json").catch(() => null),
     ])
-      .then(([seasonality, topo, unified, proxies, temperatureCurves, looValidation]) => {
+      .then(([seasonality, topo, unified, proxies, looValidation]) => {
         if (cancelled) return null;
         if (!seasonality || !topo) return null;
         const features = topojson.feature(topo, topo.objects.countries)
@@ -193,7 +216,6 @@ export function useRoadmapData(): RoadmapState {
           seasonality,
           unified: unified ?? null,
           proxies: proxies ?? null,
-          temperatureCurves: temperatureCurves ?? null,
           looValidation: looValidation ?? null,
         }));
         return features;

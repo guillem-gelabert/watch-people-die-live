@@ -139,6 +139,65 @@ function renderLines(
       continue;
     }
 
+    // GFM table: a `| … |` header row immediately followed by a `| --- | :-: | … |`
+    // alignment row, then any number of `| … |` body rows. Rendered as a real <table>.
+    if (trimmed.startsWith("|")) {
+      const splitRow = (line: string) =>
+        line
+          .trim()
+          .replace(/^\||\|$/g, "")
+          .split("|")
+          .map((c) => c.trim());
+      const sepLine = (lines[index + 1] ?? "").trim();
+      const sepCells = sepLine.startsWith("|") ? splitRow(sepLine) : [];
+      const isSeparator = sepCells.length > 0 && sepCells.every((c) => /^:?-+:?$/.test(c));
+      if (isSeparator) {
+        flushParagraph();
+        flushList();
+        const headers = splitRow(trimmed);
+        const aligns = sepCells.map((c) => {
+          const left = c.startsWith(":");
+          const right = c.endsWith(":");
+          return right && left ? "center" : right ? "right" : left ? "left" : "";
+        });
+        const alignClass = (i: number) => (aligns[i] ? `ta-${aligns[i]}` : undefined);
+        const bodyRows: string[][] = [];
+        let cursor = index + 2;
+        while (cursor < lines.length && (lines[cursor] ?? "").trim().startsWith("|")) {
+          bodyRows.push(splitRow(lines[cursor] ?? ""));
+          cursor += 1;
+        }
+        index = cursor - 1; // the loop's `index += 1` steps past the last body row
+        output.push(
+          <div className="roadmap-table-wrap" key={"table-" + output.length}>
+            <table className="roadmap-table">
+              <thead>
+                <tr>
+                  {headers.map((h, i) => (
+                    <th key={i} className={alignClass(i)} scope="col">
+                      {inline(h)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {bodyRows.map((cells, ri) => (
+                  <tr key={ri}>
+                    {cells.map((c, ci) => (
+                      <td key={ci} className={alignClass(ci)}>
+                        {inline(c)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>,
+        );
+        continue;
+      }
+    }
+
     if (slots[trimmed]) {
       flushParagraph();
       flushList();

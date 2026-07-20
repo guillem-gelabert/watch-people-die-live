@@ -96,9 +96,17 @@ body {
   line-height: 1.35;
   text-shadow: 0 1px 4px rgb(0 0 0 / 85%);
 
-  /* Long fade: only the bottom ~4 lines are fully opaque; everything above fades
-     gradually toward the top. */
-  mask-image: linear-gradient(to bottom, transparent 0, #000 calc(100% - 5.5rem), #000 100%);
+  /* Feather personas around the projected edge of the Earth, while retaining the
+     gentle history fade toward the top of the feed. */
+  mask-image:
+    radial-gradient(
+      circle at var(--globe-x, -100vw) var(--globe-y, -100vh),
+      transparent 0 calc(var(--globe-screen-r, 0) - 2.5rem),
+      rgb(0 0 0 / 18%) calc(var(--globe-screen-r, 0) - 1.5rem),
+      #000 calc(var(--globe-screen-r, 0) + 2.5rem)
+    ),
+    linear-gradient(to bottom, transparent 0, #000 calc(100% - 5.5rem), #000 100%);
+  mask-composite: intersect;
   scrollbar-width: none; /* Firefox: hide scrollbar chrome */
 }
 

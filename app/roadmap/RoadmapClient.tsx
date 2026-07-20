@@ -30,8 +30,10 @@ export default function RoadmapClient({ markdown }: RoadmapClientProps) {
     nutsCountries,
     nutsIso2ToIso3,
     subnational,
+    subnationalSeasonality,
+    subnationalLoo,
+    regionNeighbors,
     proxies,
-    temperatureCurves,
     looValidation,
     conflicts,
   } = useRoadmapData();
@@ -78,12 +80,14 @@ export default function RoadmapClient({ markdown }: RoadmapClientProps) {
               activeSeasonality={activeSeasonality}
               unified={unified}
               proxies={proxies}
-              temperatureCurves={temperatureCurves}
               looValidation={looValidation}
+              admin1Features={admin1Features}
+              subnationalSeasonality={subnationalSeasonality}
+              subnationalLoo={subnationalLoo}
+              regionNeighbors={regionNeighbors}
               copy={roadmapSection(markdown, "Death Rate By Time Of Year")}
             />
             <Step6Conflicts
-              features={features}
               conflicts={conflicts}
               copy={roadmapSection(markdown, "Ongoing Conflicts")}
             />

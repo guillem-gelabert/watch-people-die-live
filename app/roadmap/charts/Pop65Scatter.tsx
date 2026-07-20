@@ -2,7 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import * as d3 from "d3";
-import { fmtPlainPct, pearson, strength, styleAxis } from "../chartHelpers";
+import {
+  buildLegendSteps,
+  fmtPlainPct,
+  pearson,
+  renderGradientLegend,
+  strength,
+  styleAxis,
+} from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, SeasonalityData, SeasonalityProxies } from "../types";
 
@@ -11,9 +18,11 @@ interface Row {
   pop65: number;
   amplitude: number;
   gdp: number | null;
+  step: number; // index into the GDP legend steps, or -1 when GDP is unknown
 }
 
-// Dots without a GDP figure fall back to this neutral grey.
+const N_STEPS = 5;
+// Dots without a GDP figure fall back to this neutral grey and step index -1.
 const NO_GDP_COLOR = "#5a6473";
 const fmtGdp = d3.format("$.3~s");
 
@@ -28,15 +37,26 @@ interface Pop65ScatterProps {
 export default function Pop65Scatter({ unified, proxies, features }: Pop65ScatterProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const legendRef = useRef<HTMLDivElement | null>(null);
+  const visualRef = useRef<HTMLDivElement | null>(null);
+  const sweepPlayedRef = useRef(false);
 
   useEffect(() => {
-    if (!unified || !proxies || !features || !svgRef.current) return;
+    if (
+      !unified ||
+      !proxies ||
+      !features ||
+      !svgRef.current ||
+      !legendRef.current ||
+      !visualRef.current
+    )
+      return;
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
     const nameById = new Map(features.map((f) => [Number(f.id), f.properties?.name ?? ""]));
-    const rows: Row[] = Object.entries(unified.countries)
-      .map(([id, curve]): Row | null => {
+    const raw = Object.entries(unified.countries)
+      .map((entry) => {
+        const [id, curve] = entry;
         const row = proxies.byM49[id];
         if (!row || row.pop65 == null) return null;
         return {
@@ -46,14 +66,28 @@ export default function Pop65Scatter({ unified, proxies, features }: Pop65Scatte
           gdp: row.gdpPerCapita ?? null,
         };
       })
-      .filter((r): r is Row => r !== null);
+      .filter((r): r is Omit<Row, "step"> => r !== null);
 
-    // GDP per capita is heavily right-skewed, so colour on a log scale.
-    const gdpExtent = d3.extent(rows, (d) => d.gdp ?? undefined) as
+    // GDP per capita is heavily right-skewed, so bin by quantile on a log scale — each
+    // step then covers roughly a fifth of the countries, not a fifth of the dollar range.
+    const gdpExtent = d3.extent(raw, (d) => d.gdp ?? undefined) as
       [number, number] | [undefined, undefined];
     const [gdpMin, gdpMax] = gdpExtent[0] != null ? gdpExtent : [1, 1];
-    const gdpColor = d3.scaleSequentialLog(d3.interpolateYlOrRd).domain([gdpMin, gdpMax]);
-    const colorFor = (gdp: number | null) => (gdp == null ? NO_GDP_COLOR : gdpColor(gdp));
+    const gdpLogValues = raw
+      .map((r) => r.gdp)
+      .filter((g): g is number => g != null)
+      .map((g) => Math.log10(g));
+    const { steps: gdpSteps, scale: gdpStepScale } = buildLegendSteps(
+      gdpLogValues,
+      N_STEPS,
+      d3.interpolateYlOrRd,
+      fmtGdp,
+      (v) => 10 ** v,
+    );
+    const stepOf = (gdp: number | null) => (gdp == null ? -1 : gdpStepScale(Math.log10(gdp)));
+    const colorOf = (step: number) =>
+      step < 0 ? NO_GDP_COLOR : (gdpSteps[step]?.color ?? NO_GDP_COLOR);
+    const rows: Row[] = raw.map((r) => ({ ...r, step: stepOf(r.gdp) }));
 
     const width = 420;
     const height = 260;
@@ -73,14 +107,15 @@ export default function Pop65Scatter({ unified, proxies, features }: Pop65Scatte
       .range([innerH, 0]);
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-    g.selectAll("circle")
+    const points = g
+      .selectAll<SVGCircleElement, Row>("circle")
       .data(rows)
       .join("circle")
       .attr("class", "chart-point")
       .attr("cx", (d) => x(d.pop65))
       .attr("cy", (d) => y(d.amplitude))
       .attr("r", 3.6)
-      .style("fill", (d) => colorFor(d.gdp))
+      .style("fill", (d) => colorOf(d.step))
       .style("cursor", "pointer")
       .on("pointermove", (event, d) =>
         showTooltip(
@@ -122,37 +157,39 @@ export default function Pop65Scatter({ unified, proxies, features }: Pop65Scatte
       .attr("text-anchor", "middle")
       .text("share of population aged 65+");
 
-    // Log-spaced colour stops for the gradient bar (matches the log colour scale).
-    const stops = d3
-      .range(0, 1.001, 0.1)
-      .map((t) => gdpColor(gdpMin * Math.pow(gdpMax / gdpMin, t)))
-      .join(", ");
-    const legend = d3.select(legendRef.current);
-    legend.html(
-      `<span>${fmtGdp(gdpMin)}</span>` +
-        `<span class="gradient-bar" style="background:linear-gradient(90deg, ${stops})"></span>` +
-        `<span>${fmtGdp(gdpMax)}</span>` +
-        `<span class="legend-caption">GDP per capita</span>`,
+    const cleanupLegend = renderGradientLegend(
+      legendRef.current,
+      gdpSteps,
+      "GDP per capita",
+      [fmtGdp(gdpMin), fmtGdp(gdpMax)],
+      points,
+      {
+        guidedSweep: {
+          visibilityTarget: visualRef.current,
+          hasPlayed: sweepPlayedRef,
+          durationMs: 2200,
+        },
+      },
     );
+    if (rows.some((r) => r.gdp == null)) {
+      d3.select(legendRef.current)
+        .append("span")
+        .html(`<span class="swatch-dot" style="background:${NO_GDP_COLOR}"></span>no data`);
+    }
+    return cleanupLegend;
   }, [unified, proxies, features]);
 
   return (
-    <section className="chart-panel">
-      <h4 className="chart-title">Amplitude vs. Population 65+</h4>
-      <p className="chart-copy">
-        Each country&apos;s measured seasonal amplitude against the share of its population aged
-        65+. Older populations skew toward the wealthier, more temperate countries where the winter
-        swing is strongest.
-      </p>
+    <div className="guided-legend-visual" ref={visualRef}>
       <svg
         ref={svgRef}
         id="pop65-scatter-chart"
         className="seasonality-chart"
         viewBox="0 0 420 260"
         role="img"
-        aria-label="Scatter plot of seasonal mortality amplitude against the share of population aged 65 and over, coloured by GDP per capita on a log scale"
+        aria-label="Scatter plot of seasonal mortality amplitude against the share of population aged 65 and over, coloured by GDP per capita in five log-spaced steps; hovering a legend step highlights its dots"
       />
       <div className="chart-legend" ref={legendRef} id="pop65-scatter-legend" aria-hidden="true" />
-    </section>
+    </div>
   );
 }

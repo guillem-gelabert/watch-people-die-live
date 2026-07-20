@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import type { SeasonalityData } from "./types";
+import { showTooltip, hideTooltip } from "./tooltip";
 
 export const MONTHS = [
   "Jan",
@@ -66,27 +66,195 @@ export function correlationRatio(groups: Map<string, number[]>): number | null {
   return Math.sqrt(between / total);
 }
 
-export function latitudeStrength(absLat: number, seasonality: SeasonalityData): number {
-  const fallback = seasonality.fallback;
-  const tropicMaxAbsLat = fallback.tropicMaxAbsLat ?? 0;
-  const plateauAbsLat = fallback.plateauAbsLat ?? 0;
-  const t = Math.max(
-    0,
-    Math.min(1, (absLat - tropicMaxAbsLat) / (plateauAbsLat - tropicMaxAbsLat)),
-  );
-  return t * strength(fallback.north);
+export interface LegendStep {
+  index: number;
+  color: string;
+  label: string;
 }
 
-export function fallbackAmplitudeForLat(lat: number, seasonality: SeasonalityData): number {
-  const fallback = seasonality.fallback || ({} as SeasonalityData["fallback"]);
-  const absLat = Math.abs(lat);
-  if (Array.isArray(fallback.amplitudeCoef) && Array.isArray(fallback.ampClamp)) {
-    const [a, b, c] = fallback.amplitudeCoef;
-    const [lo, hi] = fallback.ampClamp;
-    const pct = Math.max(lo, Math.min(hi, a * absLat * absLat + b * absLat + c));
-    return pct / 100;
+export interface GuidedLegendSweepOptions {
+  visibilityTarget: Element;
+  hasPlayed: { current: boolean };
+  durationMs?: number;
+}
+
+export interface GradientLegendOptions {
+  guidedSweep?: GuidedLegendSweepOptions;
+}
+
+// Builds an n-step legend from actual sample values, binned by quantile so each step
+// covers roughly the same number of countries (not the same slice of the value range —
+// a right-skewed sample like GDP would otherwise dump most countries in one bin). Each
+// step gets an evenly-sampled colour and a "lo–hi" label (the first/last bins read as
+// "< hi" / "> lo" since they're open-ended). `fromDomain` lets the caller quantile on a
+// transformed scale (e.g. log10) while labelling in the original units.
+export function buildLegendSteps(
+  values: number[],
+  n: number,
+  colorInterpolator: (t: number) => string,
+  formatBound: (value: number) => string,
+  fromDomain: (value: number) => number = (v) => v,
+): { steps: LegendStep[]; scale: d3.ScaleQuantile<number> } {
+  const scale = d3
+    .scaleQuantile<number>()
+    .domain(values.length ? values : [0])
+    .range(d3.range(n));
+  const colors = d3.quantize(colorInterpolator, n);
+  const steps: LegendStep[] = d3.range(n).map((i) => {
+    const [lo, hi] = scale.invertExtent(i);
+    const label =
+      i === 0
+        ? `< ${formatBound(fromDomain(hi))}`
+        : i === n - 1
+          ? `> ${formatBound(fromDomain(lo))}`
+          : `${formatBound(fromDomain(lo))}–${formatBound(fromDomain(hi))}`;
+    return { index: i, color: colors[i] ?? "#8888aa", label };
+  });
+  return { steps, scale };
+}
+
+// Maps a normalized animation position to one of the legend's equal-width steps.
+// Exported separately so the 2200 ms sweep's five-bin sequencing can be unit tested.
+export function legendStepForProgress(progress: number, stepCount: number): number {
+  if (stepCount <= 0) return -1;
+  const normalized = Math.min(1, Math.max(0, progress));
+  return Math.min(stepCount - 1, Math.floor(normalized * stepCount));
+}
+
+// Wires legend swatches so hovering one highlights the points sharing its step index
+// (via `.is-active`) and mutes the rest (via `.is-dimmed`); leaving clears both. Namespaced
+// so a caller (e.g. renderGradientLegend) can attach its own pointermove/pointerleave
+// handlers — for a tooltip, say — on the same elements without clobbering these.
+export function wireStepHover<
+  Datum extends { step: number },
+  GParent extends d3.BaseType,
+  LParent extends d3.BaseType,
+>(
+  points: d3.Selection<SVGCircleElement, Datum, GParent, unknown>,
+  legendItems: d3.Selection<HTMLSpanElement, LegendStep, LParent, unknown>,
+  onInteract?: () => void,
+): void {
+  legendItems
+    .on("pointerenter.step", (_event, d) => {
+      onInteract?.();
+      points.classed("is-dimmed", (p) => p.step !== d.index);
+      points.classed("is-active", (p) => p.step === d.index);
+    })
+    .on("pointerleave.step", () => {
+      points.classed("is-dimmed", false).classed("is-active", false);
+    });
+}
+
+// Renders a legend that *looks* like one continuous colour gradient — the bar's own
+// background is a smooth multi-stop CSS gradient across the step colours — but is
+// actually divided into `steps.length` invisible slices, each a discrete hover target:
+// hovering a slice shows its range as a tooltip and highlights/mutes points via
+// wireStepHover. `bounds` are the pre-formatted labels for the two ends of the bar.
+export function renderGradientLegend<Datum extends { step: number }, GParent extends d3.BaseType>(
+  container: HTMLElement,
+  steps: LegendStep[],
+  caption: string,
+  bounds: [string, string],
+  points: d3.Selection<SVGCircleElement, Datum, GParent, unknown>,
+  options: GradientLegendOptions = {},
+): () => void {
+  const legend = d3.select(container);
+  legend.selectAll("*").remove();
+  legend.append("span").text(bounds[0]);
+  const bar = legend
+    .append("div")
+    .attr("class", "legend-gradient")
+    .style("background", `linear-gradient(90deg, ${steps.map((s) => s.color).join(", ")})`);
+  const hits = bar
+    .selectAll<HTMLSpanElement, LegendStep>("span")
+    .data(steps)
+    .join("span")
+    .attr("class", "legend-step")
+    .classed("is-first", (_d, index) => index === 0)
+    .classed("is-last", (_d, index) => index === steps.length - 1)
+    .on("pointermove.tooltip", (event, d) => showTooltip(d.label, event.clientX, event.clientY))
+    .on("pointerleave.tooltip", hideTooltip);
+  legend.append("span").text(bounds[1]);
+  legend.append("span").attr("class", "legend-caption").text(caption);
+
+  let observer: IntersectionObserver | null = null;
+  let frameId: number | null = null;
+  let tourRunning = false;
+
+  const clearGuidedState = () => {
+    points.classed("is-dimmed", false).classed("is-active", false);
+    hits.classed("is-guided", false);
+    bar.select(".legend-tour-hand").classed("is-visible", false);
+    tourRunning = false;
+  };
+
+  const stopTour = (markPlayed: boolean) => {
+    if (markPlayed && options.guidedSweep) options.guidedSweep.hasPlayed.current = true;
+    observer?.disconnect();
+    observer = null;
+    if (frameId != null) cancelAnimationFrame(frameId);
+    frameId = null;
+    clearGuidedState();
+  };
+
+  wireStepHover(points, hits, () => stopTour(true));
+
+  const sweep = options.guidedSweep;
+  const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+  if (sweep && !sweep.hasPlayed.current && !reduceMotion && "IntersectionObserver" in window) {
+    const durationMs = sweep.durationMs ?? 2200;
+    const hand = bar
+      .append("span")
+      .attr("class", "legend-tour-hand")
+      .attr("aria-hidden", "true")
+      .html(
+        '<svg viewBox="0 0 32 32" focusable="false"><path d="M10 14V6.5a2.5 2.5 0 0 1 5 0V12 9.5a2.5 2.5 0 0 1 5 0V13v-1.5a2.5 2.5 0 0 1 5 0V18c0 6.1-3.9 10-9.5 10H15c-3.1 0-5.3-1.3-7-3.7l-3.6-5.1a2.5 2.5 0 0 1 4-3L10 18.1V14Z" /></svg>',
+      );
+
+    const showStep = (index: number) => {
+      points.classed("is-dimmed", (p) => p.step !== index);
+      points.classed("is-active", (p) => p.step === index);
+      hits.classed("is-guided", (d) => d.index === index);
+    };
+
+    const startTour = () => {
+      if (tourRunning || sweep.hasPlayed.current) return;
+      tourRunning = true;
+      sweep.hasPlayed.current = true;
+      observer?.disconnect();
+      observer = null;
+      hand.classed("is-visible", true).style("left", "0%");
+      showStep(0);
+      const startedAt = performance.now();
+
+      const tick = (now: number) => {
+        const progress = Math.min(1, Math.max(0, (now - startedAt) / durationMs));
+        const step = legendStepForProgress(progress, steps.length);
+        hand.style("left", `${progress * 100}%`);
+        showStep(step);
+        if (progress < 1) {
+          frameId = requestAnimationFrame(tick);
+        } else {
+          frameId = null;
+          clearGuidedState();
+        }
+      };
+
+      frameId = requestAnimationFrame(tick);
+    };
+
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.999)) {
+          startTour();
+        }
+      },
+      { threshold: 1 },
+    );
+    observer.observe(sweep.visibilityTarget);
   }
-  return latitudeStrength(absLat, seasonality);
+
+  return () => stopTour(false);
 }
 
 // The five Köppen–Geiger families, tropics → poles, with a display colour each. Shared by
@@ -141,23 +309,6 @@ export const COUNTRY_CURVE_PICKS = [
   { id: 826, name: "United Kingdom", color: "#c084fc" },
   { id: 756, name: "Switzerland", color: "#f472b6" },
   { id: 528, name: "Netherlands", color: "#facc15" },
-];
-
-// Seven countries spanning both hemispheres, the tropics, and the equator, each with a
-// directly-measured mortality curve, for the temperature-vs-mortality overlay (step 5).
-// Ordered north→south; `lat` is the population-weighted latitude label shown in the
-// dropdown. The set is chosen so the phase flip is visible (the northern picks peak in
-// mortality in January, the southern ones in July–August, both when temperature bottoms
-// out) and so the coupling visibly fades toward the equator, where Ecuador's temperature
-// and mortality are both nearly flat.
-export const TEMPERATURE_PICKS = [
-  { id: 752, name: "Sweden", lat: "59°N" },
-  { id: 840, name: "United States", lat: "37°N" },
-  { id: 484, name: "Mexico", lat: "21°N" },
-  { id: 764, name: "Thailand", lat: "14°N" },
-  { id: 218, name: "Ecuador", lat: "2°S" },
-  { id: 76, name: "Brazil", lat: "17°S" },
-  { id: 36, name: "Australia", lat: "33°S" },
 ];
 
 // Extra hues for countries added beyond the default 10, checked against the picks

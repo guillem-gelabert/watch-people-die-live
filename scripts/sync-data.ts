@@ -25,7 +25,8 @@ const FILES = [
   "seasonality.json",
   "seasonality-loo-validation.json",
   "seasonality-proxies.json",
-  "temperature-curves.json",
+  "seasonality-subnational.json",
+  "seasonality-subnational-loo.json",
   "subnational-cdr.json",
 ];
 

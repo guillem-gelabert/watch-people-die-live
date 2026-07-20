@@ -161,81 +161,147 @@ Seasonal curves are mostly unimodal, roughly sinusoidal curves. Which means that
 
 The following charts show all the countries for which we have seasonal data. The y-axis shows the amplitude: the higher a dot is, the more difference in mortality there's that country between summer and winter. The x-axis will place countries on each of the proposed proxies.
 
-:::chart-copy
+:::chart-panel
 
-Here the bottom axis shows the absolute latitude; in other words how far a country is from the equator. Countries at the left of the chart are tropical and countries close to the right edge of the chart are countries near the poles. I've coloured each country according to which climatic zone they belong, to see if the correlation is stronger or weaker in certain climates. I've also added a shaded band covering one SD to see where latitude the strongest correlation shows.
+## Latitude Correlation
+
+Here the bottom axis shows the absolute latitude; in other words how far a country or individual region is from the equator. Points at the left of the chart are tropical and points close to the right edge are near the poles. Each country is a solid dot; each measured region is a hollow one. Region curves come from Admin-1 regions in Argentina, Australia, Brazil, Canada, Mexico, Russia, South Africa and the US, plus Buenos Aires province as measured by its own partido registry.
 
 We see an expected pattern: amplitude is the lowest between the tropics, as countries there don't experience astronomical seasons. And an —at least for me— unexpected one: above 35° seasonality decreases, instead of keeping raising because of colder and longer winters. A possible explanation is that above a certain threshold people understand that they should adapt to winter and implement social, behavioral, and housing adaptations. That Spain (with a more temperate climate) shows higher mortality in winter than Sweden would point in this direction. [note: Another factor that could cause this are that most countries closer to the pole happen to be relatively rich countries (Canada, Scandinavia, baltic countries, Russia)]
 
+[latitude scatter chart]
+
+Zooming into the region-level dots shows the country-level rule doesn't hold _inside_ a country: within Russia and the US, higher-latitude regions are less seasonal, not more — a hint of the same cold-climate adaptation, just visible a layer down. Argentina keeps the cross-country sign, and so does Brazil — though there it's less "higher latitude, more seasonal" and more "closer to its one temperate corner (the three southern states), less flat".
+
 :::
 
-[amplitude by latitude scatter]
+:::chart-panel
 
-:::chart-copy
+## Amplitude by Climate Zone
 
 Looking at it by climatic zone doesn't change much the picture. We confirm that there's a correlation, that seasonality is lower between the tropics and that climate (just as latitude) best predicts seasonality where seasonality is low.
 
-:::
-
 [amplitude by climate zone scatter]
 
-:::chart-copy
-
-How many older people live in a country seem like a very poor proxy. I just see a cloud of dots here. Possibly because richer countries tend to have older populations and one thing offsets the other. Colouring the countries by GDP per capita confirms this.
-
 :::
+
+:::chart-panel
+
+## Amplitude vs. Population 65+
+
+How many older people live in a country seem like a very poor proxy. I just see a cloud of dots here. Possibly because richer countries tend to have older populations and one thing offsets the other. Colouring the countries by GDP per capita confirms this: countries on the left are lighter (poorer) than countries on the right.
 
 [amplitude by age over 65 scatter]
 
-:::chart-copy
+:::
+
+:::chart-panel
+
+## Amplitude vs. GDP per Capita
 
 More of the same. There's no visible correlation with how rich a country is (as GDP per capita) and how strong their mortality is affected by the seasons. The cause is probably the same as above, richer countries offset their seasonality with stronger health systems and better adaptations.
 
-:::
-
 [amplitude by gdp pc scatter]
 
-:::chart-copy
+:::
+
+:::chart-panel
+
+## Amplitude vs. Neighbouring Countries
 
 How about neighbouring countries? That's better. There's a strong correlation here.
 
-:::
-
 [amplitude by neighbouring countries scatter]
-
-:::chart-copy
-
-For countries that _do_ report a curve, hold each one out and rebuild it from every proxy as if it were missing, then compare the reconstructions to the measured curve. These six pin down where each method works and where it fails. **Top row** — the country where each proxy reconstructs the curve _best_: its (highlighted) line lands on the red measured curve. **Bottom row** — where each proxy does _worst_: its line pulls away while the others stay closer.
 
 :::
 
 [prediction comparison chart]
 
-Run that leave-one-out test across every reporting country and average the error within latitude bands, and temperature's advantage turns out to be uneven: it pulls clearly ahead in the tropics and at the poles, while across the broad middle latitudes latitude alone is already about as good.
+Bordering-neighbour adjacency is the strongest proxy — the lowest median error, the highest correlation, and the only one with positive skill against both the mean-curve floor and latitude. Latitude and climate class land close together just behind, with climate edging latitude on the typical country, and all three clear the mean-curve floor comfortably. Countries with no bordering donor use the latitude model, both in this benchmark and in production.
 
-:::chart-copy
+**Amplitude By Country And Region** — Every rendered country is colored by seasonal amplitude:
+observed curves where available, measured regions where a national curve is missing, and bordering
+measured countries otherwise. Islands and countries without a measured bordering donor use the
+latitude model. Calculated country fills are striped; those without an observed bordering donor are
+checkered. Observations are solid. Russia, the US, Canada, Australia and Argentina all span a huge
+range of latitude, so one national curve hides real internal variation;
+Brazil and Mexico span a huge range of _area_ instead, sitting mostly nearer the equator with only
+a few non-flat corners. South Africa is included too, though its province-level series is a
+National Population Register surveillance estimate rather than raw civil registration — fetching
+weekly/monthly sub-national mortality for these eight countries and re-deriving a 12-point curve
+per Admin-1 region, the same method as the country model, makes that variation visible directly on
+the same map.
 
-The same held-out test, averaged within latitude bands. Temperature's edge over latitude concentrates in the tropics and at the poles; across the broad middle latitudes the two are close, because there latitude alone already captures the winter swing. Each panel shares a y-scale, so the tropics' flatter seasonality reads against the sharper mid-latitude curves.
+:::chart-panel
+
+## Bordering Regions, Not Just Bordering Countries
+
+Adjacent regions inside the same country track each other even more tightly than bordering
+countries do. That agreement is why the nearest-region reconstruction below beats every other
+region-level proxy.
+
+[region amplitude by neighbouring regions scatter]
 
 :::
 
-[climate zone curves]
+[region prediction comparison chart]
 
-**Seasonal Mortality Amplitude (Unified)** — Every country with a measured curve, colored by its own seasonal amplitude. Grey still means no direct data.
-
-**Amplitude By Country** — Every rendered country is colored by seasonal amplitude:
-observed curves where available, and the fitted latitude fallback everywhere else.
-Borders are removed so the map reads as a continuous amplitude surface.
+Two RusSTMF regions (Ingushetia, Chukotka) had unusable raw weekly data — zero-rate weeks or excessive spike noise — and are imputed from the average of their nearest good neighbours rather than shown as-is or dropped.
 
 ### ● 6 · Ongoing Conflicts
 
 > Source: [ACLED](https://acleddata.com) (Armed Conflict Location & Event Data), fatalities over the trailing 12 months, refreshed daily via the `/api/conflicts` route. Academic / non-commercial use.
 
-Conflicts increase mortality in specific regions by a measurable amount. ACLED records every reported political-violence event with a location and a fatality count. Summing those fatalities over the last twelve months and snapping them onto the same 0.5° grid the globe already samples turns "conflict" from an abstraction into extra weight in the exact cells where people are actually dying — so today's front lines fire faster than their peacetime death rate alone would.
+The previous layers capture long term mortality trends, which account for most of the deaths worldwide. But if we want to show current mortality we need to take into account finer grain factors, the biggest one being conflicts. ACLED records every reported political-violence event with a location and a fatality count and provides updates on a daily basis.
 
-[conflict fatalities map]
+For all other layers we multiplied the base Crude Death Rate by a seasonality or density factor. But here we get daily —yesterday's— observed or very short-term estimated numbers of real defunctions, so what's our factor?
 
-I fold the fatalities in flat rather than through the seasonal curve — a war doesn't wait for winter — and only into cells that already have a population, so every dot still belongs to a real country. The pull runs at request time and refreshes about once a day, so the layer tracks conflicts as they escalate and fade without me rebuilding anything.
+We do a recency weighted average to predict today's mortality. Specifically we use a robust exponentially weighted moving average (Robust EWMA). Which means something like _use recent days more than older days, but dampen suspiciously extreme values before averaging_.
+
+For example:
+
+In the last 7 days, we've got the following numbers:
+
+| Day        |   1 |   2 |   3 |   4 |   5 |   6 |   7 |
+| ---------- | --: | --: | --: | --: | --: | --: | --: |
+| Fatalities |  20 |  22 |  21 |  90 |  24 |  26 |  28 |
+
+We calculate the 10th and 90th percentiles.
+
+| Percentile |  Cap | Meaning                                         |
+| ---------- | ---: | ----------------------------------------------- |
+| P10        | 20.6 | About 10% of days have lower numbers than this. |
+| P90        | 52.8 | About 90% of days have lower numbers than this. |
+
+Then we update the numbers above and below these caps:
+
+| Day | Original value | Capped value | Change         |
+| --: | -------------: | -----------: | -------------- |
+|   1 |             20 |         20.6 | Raised to P10  |
+|   2 |             22 |           22 | Unchanged      |
+|   3 |             21 |           21 | Unchanged      |
+|   4 |             90 |         52.8 | Lowered to P90 |
+|   5 |             24 |           24 | Unchanged      |
+|   6 |             26 |           26 | Unchanged      |
+|   7 |             28 |           28 | Unchanged      |
+
+To calculate the weights we need to chose a half-life factor (how many days it takes to halve the impact a day has in the final prediction). The best way to calculate an appropriate half-life factor for a given series, is to try different values and see which values better predict past observed events based on previous events. We won't do this. We'll use 4 instead, which I've landed on with some trial and error.
+
+So the weights to halve the impact every 4 days look like this:
+
+| Day | Weight | Note                        |
+| --: | -----: | --------------------------- |
+|   1 |  0.354 |                             |
+|   2 |  0.420 |                             |
+|   3 |  0.500 |                             |
+|   4 |  0.595 |                             |
+|   5 |  0.707 |                             |
+|   6 |  0.841 |                             |
+|   7 |  1.000 | Yesterday / most recent day |
+
+Then we do a weighted average using these weights. Which gives us 28.4.
+
+[widget to update half life, curve smoothness, and see prediction]
 
 ### ○ 7 · Ongoing Epidemics
 

@@ -1,0 +1,152 @@
+{
+  "argentina_adm1": [
+    {
+      "file": "argentina-def-mensual-2015-2022.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "dc46ee7fbd221f19e85abbe40626a852a43758462486124f8dbaf82abc2b4140",
+      "url": "https://datos.gob.ar/dataset/salud-defunciones-generales-mensuales"
+    },
+    {
+      "file": "argentina-def-mensual-2023.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "8e0c8e626403cc4bbc1fcfc3e2d8a8c3804cd68f7ebd8f6a69b9012f1b7b3846",
+      "url": "https://datos.gob.ar/dataset/salud-defunciones-generales-mensuales"
+    },
+    {
+      "file": "argentina-def-mensual-2024.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "4650d42629d6a6172ca27bd59cd69f34c62381c2248934cb9a3254cfdaf27c9d",
+      "url": "https://datos.gob.ar/dataset/salud-defunciones-generales-mensuales"
+    }
+  ],
+  "argentina_partido": [
+    {
+      "file": "pba-registro-mensual-defunciones-2018-2019.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "7fac59825ba5909621d54d90b43f3ae233f935ca21c8b473b957c0f5f888b4a3",
+      "url": "https://catalogo.datos.gba.gob.ar/dataset/defunciones-mensuales"
+    },
+    {
+      "file": "pba-registro-mensual-defunciones-2020-2026.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "76cb2c4cba98cebf0916dba391aa50411366d6f81d3bafdb124d2ef29e56b102",
+      "url": "https://catalogo.datos.gba.gob.ar/dataset/defunciones-mensuales"
+    }
+  ],
+  "australia": [
+    {
+      "file": "australia-prov-mortality-wk.json",
+      "retrieved": "2026-07-19",
+      "sha256": "7058484415ca1994a6a1384a591e438766739bfa31a8f8e71312f62c9bf1b461",
+      "url": "https://data.api.abs.gov.au/rest/data/ABS,PROV_MORTALITY_WK,1.0.0/1.3.TT.1+2+3+4+5+6+7+8.."
+    }
+  ],
+  "brazil": [
+    {
+      "file": "brazil-sim-mortalidade-geral-2015.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "037f8f00beef55a1eb9af096fbfd90d91a7a82e28da81a49603ef144dabebbc0",
+      "url": "https://opendatasus.saude.gov.br/dataset/sim-1996-a-2019"
+    },
+    {
+      "file": "brazil-sim-mortalidade-geral-2016.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "79845f6d6076b7969bc178195e0d77a4bcc465b0211ea1dc74b3fe1f10afb014",
+      "url": "https://opendatasus.saude.gov.br/dataset/sim-1996-a-2019"
+    },
+    {
+      "file": "brazil-sim-mortalidade-geral-2017.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "9a7ced9334e9c511eb134b97329dd4b988874ce5f42e656baf1fd264b3ef4a2c",
+      "url": "https://opendatasus.saude.gov.br/dataset/sim-1996-a-2019"
+    },
+    {
+      "file": "brazil-sim-mortalidade-geral-2018.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "772e4fb9cf7c1f42d9c80301cf762736a0bc8c689659243174856804cc9a4607",
+      "url": "https://opendatasus.saude.gov.br/dataset/sim-1996-a-2019"
+    },
+    {
+      "file": "brazil-sim-mortalidade-geral-2019.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "05acd2eea5029af661ba5b6873d0bbcfa7b7c947067da0bc27899cf7d27203f5",
+      "url": "https://opendatasus.saude.gov.br/dataset/sim-1996-a-2019"
+    }
+  ],
+  "canada": [
+    {
+      "file": "canada-13100768.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "cce3ec8b373c43895cd500b122a51ccca443b7f370be9ec90fd4bcbcb74d4392",
+      "url": "https://www150.statcan.gc.ca/n1/tbl/csv/13100768-eng.zip"
+    }
+  ],
+  "mexico": [
+    {
+      "file": "mexico-defunciones-2015.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "448939038ba035c70fc8d48f8bb9ceaa3ff6b15a4698204e30d1b6aebce6bc77",
+      "url": "https://repodatos.atdt.gob.mx/all_data/secretaria_salud/6fecbbb3-afd9-44a1-8665-679a80ce4a15/defunciones_registradas_2015.csv"
+    },
+    {
+      "file": "mexico-defunciones-2016.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "b515737a4ab16d42911ed4bdd72586fc5feca4388c9511e3bc14d098f29303c5",
+      "url": "https://repodatos.atdt.gob.mx/all_data/secretaria_salud/6fecbbb3-afd9-44a1-8665-679a80ce4a15/defunciones_registradas_2016.csv"
+    },
+    {
+      "file": "mexico-defunciones-2017.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "3717e09b79d465f1ff3ef7816a174a13a391fac1f08887afb870737b1f148700",
+      "url": "https://repodatos.atdt.gob.mx/all_data/secretaria_salud/6fecbbb3-afd9-44a1-8665-679a80ce4a15/defunciones_registradas_2017.csv"
+    },
+    {
+      "file": "mexico-defunciones-2018.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "a92f7fcaecd7723da0ae7d4d31acb97cd9fb5ed9deae211bc0ef46721821ea56",
+      "url": "https://repodatos.atdt.gob.mx/all_data/secretaria_salud/6fecbbb3-afd9-44a1-8665-679a80ce4a15/defunciones_registradas_2018.csv"
+    },
+    {
+      "file": "mexico-defunciones-2019.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "963f1b691a410fd4a4665c0dc48cbe7dce0b2284119527504b674d42ccf7fae6",
+      "url": "https://repodatos.atdt.gob.mx/all_data/secretaria_salud/6fecbbb3-afd9-44a1-8665-679a80ce4a15/defunciones_registradas_2019.csv"
+    }
+  ],
+  "russia": [
+    {
+      "file": "russia-russtmf-territory-codes.xlsx",
+      "retrieved": "2026-07-19",
+      "sha256": "d71dd7f12bb4842b7b93e4611ff7038e3d95511506d58dbd74dcf3bc8aa3a9af",
+      "url": "https://www.mortality.org/Data/STMF"
+    },
+    {
+      "file": "russia-russtmf-weekly.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "4ace618e4b51c45e6ee0cdd768ac460bd214418c76799ecd9cd2156641a56205",
+      "url": "https://www.mortality.org/Data/STMF"
+    }
+  ],
+  "south_africa": [
+    {
+      "file": "south-africa-samrc-weekly.xlsx",
+      "retrieved": "2026-07-19",
+      "sha256": "7356002aa36787d48a227ad04a863faa61c22b85454c6487bfbc4a997e2a06bc",
+      "url": "https://www.samrc.ac.za/sites/default/files/attachments/2026-07/Estimated%20deaths%20for%20SA%20--%202020w01-2026w21__v2.xlsx"
+    }
+  ],
+  "usa": [
+    {
+      "file": "us-cdc-weekly-jurisdiction-cause-2014-2019.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "7564f409d4cd903176d5a1c173cd7900912da16c71a826d2d56f1970a8402c7f",
+      "url": "https://data.cdc.gov/NCHS/Weekly-Counts-of-Deaths-by-Jurisdiction-and-Cause-/u6jv-9ijr"
+    },
+    {
+      "file": "us-cdc-weekly-jurisdiction-cause-2020on.csv",
+      "retrieved": "2026-07-19",
+      "sha256": "f1b486495a7618a6fc75fe4cf37d6a8700368dc715fb1b5800ecb57612c54640",
+      "url": "https://data.cdc.gov/NCHS/Weekly-Counts-of-Deaths-by-Jurisdiction-and-Cause-/u6jv-9ijr"
+    }
+  ]
+}

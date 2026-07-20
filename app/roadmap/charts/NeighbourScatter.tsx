@@ -2,7 +2,14 @@
 
 import { useEffect, useRef } from "react";
 import * as d3 from "d3";
-import { fmtPlainPct, pearson, strength, styleAxis } from "../chartHelpers";
+import {
+  buildLegendSteps,
+  fmtPlainPct,
+  pearson,
+  renderGradientLegend,
+  strength,
+  styleAxis,
+} from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, NeighborsByM49, SeasonalityData } from "../types";
 
@@ -13,6 +20,7 @@ interface Row {
   donors: number; // bordering neighbours that report a curve
   totalNeighbors: number; // all bordering neighbours
   coverage: number; // donors / totalNeighbors, in [0, 1]
+  step: number; // index into the coverage legend steps
 }
 
 interface NeighbourScatterProps {
@@ -21,13 +29,11 @@ interface NeighbourScatterProps {
   neighborsByM49: NeighborsByM49 | null;
 }
 
+const N_STEPS = 5;
 // Colour ramp for the share of a country's neighbours that report a curve: warm amber at
 // low coverage (the point rests on one or two donors, so distrust it) to bright cyan when
 // every neighbour has data. Interpolated through HSL for maximum contrast across the range.
-const coverageColor = d3
-  .scaleSequential<string>()
-  .domain([0, 1])
-  .interpolator(d3.interpolateHsl("#f59e0b", "#22d3ee"));
+const coverageInterpolator = d3.interpolateHsl("#f59e0b", "#22d3ee");
 
 // Amplitude vs. the plain mean amplitude of a country's bordering neighbours that also
 // report a curve (shared-border adjacency from the topojson topology, not a distance
@@ -41,9 +47,19 @@ export default function NeighbourScatter({
 }: NeighbourScatterProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const legendRef = useRef<HTMLDivElement | null>(null);
+  const visualRef = useRef<HTMLDivElement | null>(null);
+  const sweepPlayedRef = useRef(false);
 
   useEffect(() => {
-    if (!unified || !features || !neighborsByM49 || !svgRef.current) return;
+    if (
+      !unified ||
+      !features ||
+      !neighborsByM49 ||
+      !svgRef.current ||
+      !legendRef.current ||
+      !visualRef.current
+    )
+      return;
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
@@ -53,8 +69,9 @@ export default function NeighbourScatter({
     );
 
     let excluded = 0;
-    const rows: Row[] = [...amplitudeById.entries()]
-      .map(([id, amplitude]): Row | null => {
+    const raw = [...amplitudeById.entries()]
+      .map((entry) => {
+        const [id, amplitude] = entry;
         const neighborIds = neighborsByM49.get(id) ?? [];
         const neighborAmplitudes = neighborIds
           .map((n) => amplitudeById.get(n))
@@ -63,16 +80,27 @@ export default function NeighbourScatter({
           excluded += 1;
           return null;
         }
+        const coverage = neighborIds.length ? neighborAmplitudes.length / neighborIds.length : 0;
         return {
           name: nameById.get(id) || String(id),
           neighborMean: d3.mean(neighborAmplitudes) ?? 0,
           amplitude,
           donors: neighborAmplitudes.length,
           totalNeighbors: neighborIds.length,
-          coverage: neighborIds.length ? neighborAmplitudes.length / neighborIds.length : 0,
+          coverage,
         };
       })
-      .filter((r): r is Row => r !== null);
+      .filter((r): r is Omit<Row, "step"> => r !== null);
+
+    // Bin by quantile so each legend step covers roughly the same number of countries,
+    // not the same slice of the 0–100% coverage range.
+    const { steps: coverageSteps, scale: coverageStepScale } = buildLegendSteps(
+      raw.map((r) => r.coverage),
+      N_STEPS,
+      coverageInterpolator,
+      fmtPlainPct,
+    );
+    const rows: Row[] = raw.map((r) => ({ ...r, step: coverageStepScale(r.coverage) }));
 
     const width = 420;
     const height = 260;
@@ -101,14 +129,15 @@ export default function NeighbourScatter({
         .text(`r = ${r.toFixed(2)}`);
     }
 
-    g.selectAll("circle")
+    const points = g
+      .selectAll<SVGCircleElement, Row>("circle")
       .data(rows)
       .join("circle")
       .attr("class", "chart-point")
       .attr("cx", (d) => x(d.neighborMean))
       .attr("cy", (d) => y(d.amplitude))
       .attr("r", 3.6)
-      .style("fill", (d) => coverageColor(d.coverage))
+      .style("fill", (d) => coverageSteps[d.step]?.color ?? "#8888aa")
       .style("cursor", "pointer")
       .on("pointermove", (event, d) =>
         showTooltip(
@@ -142,37 +171,32 @@ export default function NeighbourScatter({
         .text(`${excluded} excluded — no bordering donor`);
     }
 
-    const stops = d3
-      .range(0, 1.001, 0.1)
-      .map((t) => coverageColor(t))
-      .join(", ");
-    d3.select(legendRef.current).html(
-      `<span>0%</span>` +
-        `<span class="gradient-bar" style="background:linear-gradient(90deg, ${stops})"></span>` +
-        `<span>100%</span>` +
-        `<span class="legend-caption">share of bordering neighbours with a curve</span>`,
+    const cleanupLegend = renderGradientLegend(
+      legendRef.current,
+      coverageSteps,
+      "share of bordering neighbours with a curve",
+      [fmtPlainPct(0), fmtPlainPct(1)],
+      points,
+      {
+        guidedSweep: {
+          visibilityTarget: visualRef.current,
+          hasPlayed: sweepPlayedRef,
+          durationMs: 2200,
+        },
+      },
     );
+    return cleanupLegend;
   }, [unified, features, neighborsByM49]);
 
   return (
-    <section className="chart-panel">
-      <h4 className="chart-title">Amplitude vs. Neighbouring Countries</h4>
-      <p className="chart-copy">
-        Each country&apos;s own amplitude against the plain mean amplitude of its bordering
-        neighbours that also report a curve (shared-border adjacency, not distance). Where a
-        country&apos;s amplitude tracks its neighbours&apos;, geography alone predicts the swing;
-        scatter is where a shared border doesn&apos;t imply a shared climate. Dots are coloured by
-        the share of bordering neighbours that report a curve — amber points rest on just one or two
-        donors and should be read with caution, cyan points on a fuller set. Countries with no
-        bordering donor are dropped rather than guessed at.
-      </p>
+    <div className="guided-legend-visual" ref={visualRef}>
       <svg
         ref={svgRef}
         id="neighbour-scatter-chart"
         className="seasonality-chart"
         viewBox="0 0 420 260"
         role="img"
-        aria-label="Scatter plot of each country's seasonal mortality amplitude against the mean amplitude of its bordering neighbours, coloured by the share of neighbours that report a curve"
+        aria-label="Scatter plot of each country's seasonal mortality amplitude against the mean amplitude of its bordering neighbours, coloured by the share of neighbours that report a curve in five steps; hovering a legend step highlights its dots"
       />
       <div
         className="chart-legend"
@@ -180,6 +204,6 @@ export default function NeighbourScatter({
         id="neighbour-scatter-legend"
         aria-hidden="true"
       />
-    </section>
+    </div>
   );
 }
