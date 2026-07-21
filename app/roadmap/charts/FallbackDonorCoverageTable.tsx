@@ -1,12 +1,14 @@
 "use client";
 
 import type {
+  Admin1Feature,
   CountryFeature,
   NeighborsByM49,
   SeasonalityData,
   SeasonalityProxies,
   SubnationalSeasonalityRegion,
 } from "../types";
+import { fmtPlainPct } from "../chartHelpers";
 import {
   buildFallbackDonorCoverage,
   LATITUDE_DONOR_TOLERANCE_DEGREES,
@@ -18,6 +20,17 @@ interface FallbackDonorCoverageTableProps {
   proxies: SeasonalityProxies | null;
   neighborsByM49: NeighborsByM49 | null;
   regions: SubnationalSeasonalityRegion[] | null;
+  admin1Features: Admin1Feature[] | null;
+}
+
+function formatFallback(summary: {
+  countryDonors: number;
+  regionDonors: number;
+  amplitude: number | null;
+}) {
+  return `c${summary.countryDonors} · r${summary.regionDonors} · ${
+    summary.amplitude == null ? "—" : fmtPlainPct(summary.amplitude)
+  }`;
 }
 
 export default function FallbackDonorCoverageTable({
@@ -26,6 +39,7 @@ export default function FallbackDonorCoverageTable({
   proxies,
   neighborsByM49,
   regions,
+  admin1Features,
 }: FallbackDonorCoverageTableProps) {
   if (!features || !seasonality || !neighborsByM49) return null;
   const rows = buildFallbackDonorCoverage(
@@ -34,6 +48,7 @@ export default function FallbackDonorCoverageTable({
     proxies,
     neighborsByM49,
     regions ?? [],
+    admin1Features ?? [],
   );
 
   return (
@@ -42,9 +57,9 @@ export default function FallbackDonorCoverageTable({
         Fallback Donor Coverage
       </h4>
       <p className="chart-copy">
-        Direct measured-country donors available independently to the {rows.length} countries
-        without an observed national seasonal curve. Higher counts mean a proxy has more observed
-        curves to draw on; they do not measure prediction accuracy.
+        Three independently generated fallback curves for each of the {rows.length} countries
+        without an observed national seasonal curve. Every cell shows donor countries (c), donor
+        regions (r), then the curve amplitude.
       </p>
       <div className="loo-summary">
         <table className="loo-summary-table">
@@ -52,13 +67,16 @@ export default function FallbackDonorCoverageTable({
             <tr>
               <th scope="col">Country</th>
               <th scope="col" className="num">
-                Latitude donors (±{LATITUDE_DONOR_TOLERANCE_DEGREES}°)
+                Latitude (c / r / amp)
               </th>
               <th scope="col" className="num">
-                Climate-zone donors
+                Climate zone (c / r / amp)
               </th>
               <th scope="col" className="num">
-                Regional / neighbour donors
+                Regional / neighbour (c / r / amp)
+              </th>
+              <th scope="col" className="num">
+                Amplitude spread
               </th>
             </tr>
           </thead>
@@ -66,12 +84,18 @@ export default function FallbackDonorCoverageTable({
             {rows.map((row) => (
               <tr key={row.m49}>
                 <th scope="row">{row.country}</th>
-                <td className="num">{row.latitudeDonors}</td>
-                <td className="num" title={`Runtime climate source: ${row.climateLabel}.`}>
-                  {row.climateDonors} · {row.climateLabel}
+                <td
+                  className="num"
+                  title={`Latitude candidates are within ±${LATITUDE_DONOR_TOLERANCE_DEGREES}° in the same hemisphere.`}
+                >
+                  {formatFallback(row.latitude)}
                 </td>
+                <td className="num" title={`Runtime climate source: ${row.climate.label}.`}>
+                  {formatFallback(row.climate)}
+                </td>
+                <td className="num">{formatFallback(row.neighbor)}</td>
                 <td className="num">
-                  {row.localDonors} {row.localDonorUnit === "regions" ? "regions" : "countries"}
+                  {row.amplitudeSpread == null ? "—" : fmtPlainPct(row.amplitudeSpread)}
                 </td>
               </tr>
             ))}
@@ -79,12 +103,12 @@ export default function FallbackDonorCoverageTable({
         </table>
       </div>
       <p className="loo-cohort-note">
-        Latitude donors have a country-centroid absolute latitude within ±
-        {LATITUDE_DONOR_TOLERANCE_DEGREES}° and are in the same hemisphere. The running map still
-        evaluates a globally fitted, latitude-scaled curve rather than directly averaging this band.
-        Climate uses the live class blend when available, otherwise its climate-family blend. The
-        final column follows the runtime order: observed Admin-1 regions in the target country
-        first; otherwise observed national curves in directly bordering countries.
+        Amplitude is the maximum monthly distance from a mean-1 curve. Latitude candidates have a
+        country or Admin-1 centroid within ±{LATITUDE_DONOR_TOLERANCE_DEGREES}° in the same
+        hemisphere. Climate uses the live class blend when available, otherwise its climate-family
+        blend. The regional/neighbour curve uses observed Admin-1 regions in the target country
+        first; otherwise evidence from directly bordering countries. Amplitude spread is the maximum
+        minus minimum available fallback amplitude: lower means closer agreement.
       </p>
     </section>
   );

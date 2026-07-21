@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { CountryFeature, SeasonalityData, SubnationalSeasonalityRegion } from "../types";
+import type {
+  Admin1Feature,
+  CountryFeature,
+  SeasonalityData,
+  SubnationalSeasonalityRegion,
+} from "../types";
 import { buildFallbackDonorCoverage } from "./fallbackDonorCoverage";
 
 const feature = (id: number, name: string, latitude: number): CountryFeature => ({
@@ -9,17 +14,24 @@ const feature = (id: number, name: string, latitude: number): CountryFeature => 
   geometry: { type: "Point", coordinates: [0, latitude] },
 });
 
+const curve = (high: number, low: number) =>
+  Array.from({ length: 12 }, (_, index) => (index % 2 ? low : high));
+
 describe("buildFallbackDonorCoverage", () => {
-  it("counts direct observed-country donors for each independent fallback", () => {
+  it("generates all three fallback amplitudes and reports their spread", () => {
     const seasonality: SeasonalityData = {
       source: "test",
       method: "test",
       months: 12,
-      fallback: { north: [] },
-      countries: { 32: [1], 840: [1] },
+      fallback: {
+        north: curve(1.1, 0.9),
+        amplitudeCoef: [0, 0, 10],
+        ampClamp: [1, 20],
+      },
+      countries: { 32: curve(1.2, 0.8), 840: curve(1.2, 0.8) },
       climate: {
-        classCurves: { Cfa: [1] },
-        familyCurves: { C: [1] },
+        classCurves: { Cfa: curve(1.05, 0.95) },
+        familyCurves: { C: curve(1.04, 0.96) },
         classByM49: {
           36: { class: "Cfa", family: "C" },
           4: { class: "Cwb", family: "C" },
@@ -32,12 +44,21 @@ describe("buildFallbackDonorCoverage", () => {
         geo: "adm1",
         key: "AUS-1",
         name: "Region 1",
-        isoRegion: "XX-1",
+        isoRegion: "AU-1",
         interval: "month",
-        curve: [1],
+        curve: curve(1.3, 0.7),
         nYears: 1,
         annualDeaths: 1,
         measurement: "crvs",
+        kgFamily: "C",
+      },
+    ];
+    const admin1Features: Admin1Feature[] = [
+      {
+        type: "Feature",
+        id: "AUS-1",
+        properties: { adm1_code: "AUS-1", name: "Region 1", adm0_a3: "AUS" },
+        geometry: { type: "Point", coordinates: [0, 35] },
       },
     ];
     const coverage = buildFallbackDonorCoverage(
@@ -60,27 +81,29 @@ describe("buildFallbackDonorCoverage", () => {
         [4, [32]],
       ]),
       regions,
+      admin1Features,
     );
 
-    expect(coverage).toEqual([
-      {
-        m49: 36,
-        country: "Class target",
-        latitudeDonors: 1,
-        climateDonors: 2,
-        climateLabel: "Cfa class",
-        localDonors: 1,
-        localDonorUnit: "regions",
-      },
-      {
-        m49: 4,
-        country: "Family target",
-        latitudeDonors: 1,
-        climateDonors: 2,
-        climateLabel: "C family",
-        localDonors: 1,
-        localDonorUnit: "countries",
-      },
-    ]);
+    const classTarget = coverage.find((row) => row.m49 === 36);
+    expect(classTarget).toMatchObject({
+      country: "Class target",
+      latitude: { countryDonors: 1, regionDonors: 1 },
+      climate: { countryDonors: 2, regionDonors: 1, label: "Cfa class" },
+      neighbor: { countryDonors: 0, regionDonors: 1 },
+    });
+    expect(classTarget?.latitude.amplitude).toBeCloseTo(0.1);
+    expect(classTarget?.climate.amplitude).toBeCloseTo(0.05);
+    expect(classTarget?.neighbor.amplitude).toBeCloseTo(0.3);
+    expect(classTarget?.amplitudeSpread).toBeCloseTo(0.25);
+
+    const familyTarget = coverage.find((row) => row.m49 === 4);
+    expect(familyTarget).toMatchObject({
+      country: "Family target",
+      latitude: { countryDonors: 1, regionDonors: 0 },
+      climate: { countryDonors: 2, regionDonors: 1, label: "C family" },
+      neighbor: { countryDonors: 1, regionDonors: 0 },
+    });
+    expect(familyTarget?.climate.amplitude).toBeCloseTo(0.04);
+    expect(familyTarget?.amplitudeSpread).toBeCloseTo(0.16);
   });
 });
