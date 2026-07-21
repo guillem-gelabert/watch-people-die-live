@@ -23,6 +23,7 @@ const FILES = [
   "sample-personas.json",
   "seasonality-unified.json",
   "seasonality.json",
+  "seasonality-applied-fallbacks.json",
   "seasonality-loo-validation.json",
   "seasonality-proxies.json",
   "seasonality-subnational.json",
