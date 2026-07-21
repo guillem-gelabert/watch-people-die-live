@@ -124,6 +124,39 @@ const LATITUDE_BANDS = [
   { label: "60°+", minimum: 60, maximum: Number.POSITIVE_INFINITY },
 ];
 
+const KOPPEN_GEIGER_NAMES: Record<string, { family: string; subclass: string }> = {
+  Af: { family: "Tropical", subclass: "rainforest" },
+  Am: { family: "Tropical", subclass: "monsoon" },
+  Aw: { family: "Tropical", subclass: "savanna" },
+  BWh: { family: "Arid", subclass: "hot desert" },
+  BWk: { family: "Arid", subclass: "cold desert" },
+  BSh: { family: "Arid", subclass: "hot semi-arid" },
+  BSk: { family: "Arid", subclass: "cold semi-arid" },
+  Csa: { family: "Temperate", subclass: "hot-summer Mediterranean" },
+  Csb: { family: "Temperate", subclass: "warm-summer Mediterranean" },
+  Csc: { family: "Temperate", subclass: "cold-summer Mediterranean" },
+  Cwa: { family: "Temperate", subclass: "dry-winter hot-summer" },
+  Cwb: { family: "Temperate", subclass: "dry-winter warm-summer" },
+  Cwc: { family: "Temperate", subclass: "dry-winter cold-summer" },
+  Cfa: { family: "Temperate", subclass: "humid subtropical" },
+  Cfb: { family: "Temperate", subclass: "oceanic" },
+  Cfc: { family: "Temperate", subclass: "subpolar oceanic" },
+  Dsa: { family: "Cold", subclass: "dry-summer hot-summer" },
+  Dsb: { family: "Cold", subclass: "dry-summer warm-summer" },
+  Dsc: { family: "Cold", subclass: "dry-summer subarctic" },
+  Dsd: { family: "Cold", subclass: "dry-summer extremely cold" },
+  Dwa: { family: "Cold", subclass: "dry-winter hot-summer" },
+  Dwb: { family: "Cold", subclass: "dry-winter warm-summer" },
+  Dwc: { family: "Cold", subclass: "dry-winter subarctic" },
+  Dwd: { family: "Cold", subclass: "dry-winter extremely cold" },
+  Dfa: { family: "Cold", subclass: "hot-summer humid continental" },
+  Dfb: { family: "Cold", subclass: "warm-summer humid continental" },
+  Dfc: { family: "Cold", subclass: "subarctic" },
+  Dfd: { family: "Cold", subclass: "extremely cold subarctic" },
+  ET: { family: "Polar", subclass: "tundra" },
+  EF: { family: "Polar", subclass: "ice cap" },
+};
+
 export function buildLatitudePerformance(
   looValidation: LooValidation,
   latitudeByM49: ReadonlyMap<number, number>,
@@ -156,13 +189,14 @@ export function buildClimateSubclassPerformance(
 
   return [...entriesBySubclass.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
-    .map(([subclass, members]) =>
-      summarize(
-        subclass,
-        subclass === "Unclassified"
-          ? "No population-weighted Köppen–Geiger sub-class is available in the proxy data."
-          : `Population-weighted Köppen–Geiger climate sub-class ${subclass}.`,
+    .map(([subclass, members]) => {
+      const names = KOPPEN_GEIGER_NAMES[subclass];
+      return summarize(
+        names ? `${names.family} — ${names.subclass}` : "Unclassified",
+        names
+          ? `Population-weighted Köppen–Geiger climate sub-class ${subclass}.`
+          : "No population-weighted Köppen–Geiger sub-class is available in the proxy data.",
         members,
-      ),
-    );
+      );
+    });
 }

@@ -46,11 +46,13 @@ function PerformanceTable({
   description,
   cohorts,
   note,
+  groupLabel = "Group",
 }: {
   title: string;
   description: string;
   cohorts: CohortPerformance[];
   note?: ReactNode;
+  groupLabel?: string;
 }) {
   const titleId = `${title.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-")}-title`;
   return (
@@ -61,7 +63,7 @@ function PerformanceTable({
         <table className="loo-summary-table loo-cohort-table">
           <thead>
             <tr>
-              <th scope="col">Group</th>
+              <th scope="col">{groupLabel}</th>
               <th scope="col" className="num">
                 n
               </th>
@@ -186,6 +188,7 @@ export default function PredictionComparison({
         title="Performance by Köppen–Geiger sub-class"
         description="Median day-weighted curve RMSE by each country’s population-weighted dominant Köppen–Geiger sub-class. Lower is better; small groups are descriptive."
         cohorts={subclassPerformance}
+        groupLabel="Class — sub-class"
       />
     </section>
   );

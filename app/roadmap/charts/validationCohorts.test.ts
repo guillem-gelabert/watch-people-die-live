@@ -116,12 +116,12 @@ describe("validation performance breakdowns", () => {
     });
 
     expect(subclasses.map((subclass) => [subclass.label, subclass.count])).toEqual([
-      ["Af", 1],
-      ["Cfb", 1],
-      ["Dfb", 1],
+      ["Tropical — rainforest", 1],
+      ["Temperate — oceanic", 1],
+      ["Cold — warm-summer humid continental", 1],
     ]);
-    expect(subclasses.find((subclass) => subclass.label === "Dfb")).toMatchObject({
-      bestMethod: "neighbor",
-    });
+    expect(
+      subclasses.find((subclass) => subclass.label === "Cold — warm-summer humid continental"),
+    ).toMatchObject({ bestMethod: "neighbor" });
   });
 });
