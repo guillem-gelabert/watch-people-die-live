@@ -34,15 +34,9 @@ function formatFallback(summary: {
 }
 
 function formatHighestQuality(row: ReturnType<typeof buildFallbackDonorCoverage>[number]) {
-  const winner = row.highestQualityDonorGroup;
-  if (!winner) return "—";
-  const cadence = winner.quality.cadence ? `${winner.quality.cadence}ly` : "cadence unknown";
-  const years =
-    winner.quality.medianYears == null
-      ? "years unknown"
-      : `${winner.quality.medianYears % 1 ? winner.quality.medianYears.toFixed(1) : winner.quality.medianYears} median years`;
-  const geography = winner.quality.geography === "region" ? "regions" : "countries";
-  return `${winner.groups.join(" / ")} — ${cadence}; ${years}; ${geography}`;
+  const group = row.highestQualityDonorGroup?.groups[0];
+  if (group === "Regional / neighbour") return "Neighbours";
+  return group ?? "—";
 }
 
 export default function FallbackDonorCoverageTable({
