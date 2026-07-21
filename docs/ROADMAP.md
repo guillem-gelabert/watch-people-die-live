@@ -13,11 +13,11 @@ Q: How many people die every second?
 A: Roughly 2 people diec every second globally
 ```
 
-The problem is that that's not true. Or not completely true. The truth behind this statement is that for the last couple years we've observed between 60 million to 63 million people died every year, worldwide. A year has 1'314'000 second (60 seconds x 60 minutes x 365 days). If we divide the number of seconds in a year by the number of defuncitions in a year it certainly gives ~2 deaths/second. But that's just on average, on a yearly average.
+The problem is that that's not true. Or not completely true. The truth behind this statement is that for the last couple years we've observed between 60 million to 63 million people died every year, worldwide. A year has 31'536'000 seconds (60 seconds x 60 minutes x 24 hours x 365 days). If we divide the number of deaths in a year by the number of seconds in a year it gives ~2 deaths/second. But that's just on average, on a yearly average.
 
 [blinking dot every 500ms]
 
-In reality there's a big chance that during any given second nobody dies, because deaths don't happen on a steady rhythm. In fact, if deaths where randomly distributed accross the year there would only be a one in three chance that two people died any given second, the same chances of only one person dying on a given second.
+In reality there's a big chance that during any given second nobody dies, because deaths don't happen on a steady rhythm. In fact, if deaths where randomly distributed accross the year with an average of two per second, there would be about a 27% chance that exactly two people died in any given second — the same chance as exactly one person dying in that second.
 
 [chart showing how many days in a year what number of people would die]
 
