@@ -170,7 +170,7 @@ Seasonal curves are mostly unimodal, roughly sinusoidal curves. Which means that
 
 The following charts show all the countries for which we have seasonal data. The y-axis shows the amplitude: the higher a dot is, the more difference in mortality there's that country between summer and winter. The x-axis will place countries on each of the proposed proxies.
 
-:::chart-panel
+:::chart-panel.wide
 
 ## Latitude Correlation
 
@@ -182,7 +182,7 @@ We see an expected pattern: amplitude is the lowest between the tropics, as coun
 
 :::
 
-:::chart-panel
+:::chart-panel.wide
 
 ## Amplitude by Climate Zone
 
@@ -192,7 +192,7 @@ Looking at it by climatic zone doesn't change much the picture. We confirm that 
 
 :::
 
-:::chart-panel
+:::chart-panel.wide
 
 ## Amplitude vs. Population 65+
 
@@ -202,7 +202,7 @@ How many older people live in a country seem like a very poor proxy. I just see 
 
 :::
 
-:::chart-panel
+:::chart-panel.wide
 
 ## Amplitude vs. GDP per Capita
 
@@ -212,7 +212,7 @@ More of the same. There's no visible correlation with how rich a country is (as 
 
 :::
 
-:::chart-panel
+:::chart-panel.wide
 
 ## Amplitude vs. Neighbouring Countries
 
@@ -225,18 +225,6 @@ How about neighbouring countries? That's better. There's a strong correlation he
 [prediction comparison chart]
 
 Bordering-neighbour adjacency is the strongest proxy — the lowest median error, the highest correlation, and the only one with positive skill against both the mean-curve floor and latitude. Latitude and climate class land close together just behind, with climate edging latitude on the typical country, and all three clear the mean-curve floor comfortably. For every country or region without its own curve, production applies the highest-quality available donor group after adjusting for history, cadence, climate specificity, coverage and distance.
-
-**Amplitude By Country And Region** — Every rendered country and region is colored by seasonal
-amplitude. Observations use their measured curves; targets without observations use their assigned
-climate, neighbouring-area or latitude proxy. Patterned fills identify the applied proxy, while
-observations are solid. Russia, the US, Canada, Australia and Argentina all span a huge
-range of latitude, so one national curve hides real internal variation;
-Brazil and Mexico span a huge range of _area_ instead, sitting mostly nearer the equator with only
-a few non-flat corners. South Africa is included too, though its province-level series is a
-National Population Register surveillance estimate rather than raw civil registration — fetching
-weekly/monthly sub-national mortality for these eight countries and re-deriving a 12-point curve
-per Admin-1 region, the same method as the country model, makes that variation visible directly on
-the same map.
 
 :::chart-panel
 

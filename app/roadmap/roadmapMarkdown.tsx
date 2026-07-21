@@ -99,7 +99,10 @@ function renderLines(
     if (divStart) {
       flushParagraph();
       flushList();
-      const className = divStart[1];
+      // `.`-joined tokens (e.g. `chart-panel.wide`) become multiple space-separated
+      // classes, mirroring CSS shorthand — lets a fence opt into a modifier class
+      // (like the grid-spanning `.wide`) without a new fence-syntax feature.
+      const className = divStart[1]!.split(".").join(" ");
       const inner: string[] = [];
       // Tracks nested `:::x` opens so an outer fence (e.g. a grid) can contain inner
       // fences (e.g. its cards) without the outer one closing on the first inner `:::`.

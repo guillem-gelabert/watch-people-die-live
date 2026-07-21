@@ -37,16 +37,14 @@ export default function PoissonPulse() {
 
   return (
     <section
-      className="chart-panel wide pulse-line"
+      className="chart-panel wide no-card"
       aria-label="Four dots lighting in sequence with Poisson-distributed timing"
     >
-      {pulseVersions.map((version, index) => (
-        <span
-          className={version ? "pulse-dot once" : "pulse-dot"}
-          key={`${index}-${version}`}
-          aria-hidden="true"
-        />
-      ))}
+      <div className="pulse-line" aria-hidden="true">
+        {pulseVersions.map((version, index) => (
+          <span className={version ? "pulse-dot once" : "pulse-dot"} key={`${index}-${version}`} />
+        ))}
+      </div>
     </section>
   );
 }

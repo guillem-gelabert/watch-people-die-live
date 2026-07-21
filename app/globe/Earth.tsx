@@ -125,7 +125,7 @@ export default function Earth({
     let cancelled = false;
     const loader = new THREE.TextureLoader();
     Promise.all([
-      loadTexture(loader, "/earth/earth_day_4096.jpg", true),
+      loadTexture(loader, "/maps/gray-earth.jpg", true),
       loadTexture(loader, "/earth/earth_night_4096.jpg", true),
       loadTexture(loader, "/earth/earth_bump_roughness_clouds_4096.jpg", false),
     ])

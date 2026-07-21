@@ -3,6 +3,7 @@
 import { useMemo, type PointerEvent as ReactPointerEvent } from "react";
 import * as d3 from "d3";
 import { showTooltip, hideTooltip } from "../tooltip";
+import { GRAY_EARTH_URL, grayEarthRasterRects, type RasterRect } from "./basemap";
 import type { CountryFeature, DensityGrid } from "../types";
 
 // Fixed viewBox: same aspect for every panel so a responsive grid gives every box the
@@ -33,6 +34,7 @@ interface BorderModel {
 interface Model {
   width: number;
   height: number;
+  rasterRects: RasterRect[];
   cells: CellModel[];
   borders: BorderModel[];
   nameById: Map<number, string>;
@@ -112,6 +114,7 @@ export default function BorderRasterCloseup({
       roi,
     );
     const path = d3.geoPath(projection);
+    const rasterRects = grayEarthRasterRects(projection);
     // Overscan window: the lon/lat span that actually covers the whole viewBox at this
     // projection (invert its four corners), padded a cell so cells reach the edges. We
     // draw everything in this window, not just the ROI, so off-aspect margins are filled.
@@ -189,7 +192,7 @@ export default function BorderRasterCloseup({
       })
       .filter((b): b is BorderModel => b !== null);
 
-    return { width, height, cells, borders, nameById };
+    return { width, height, rasterRects, cells, borders, nameById };
   }, [features, grid, bbox, zoom, colorBy]);
 
   if (!model) {
@@ -201,7 +204,7 @@ export default function BorderRasterCloseup({
     );
   }
 
-  const { width, height, cells, borders, nameById } = model;
+  const { width, height, rasterRects, cells, borders, nameById } = model;
   const clipId = `${id}-clip`;
 
   // Cell hover: raster country is the cell's own m49; also resolve the vector country
@@ -241,7 +244,20 @@ export default function BorderRasterCloseup({
           </clipPath>
         </defs>
         <g clipPath={`url(#${clipId})`}>
-          <g fillOpacity={colorBy === "density" ? 0.9 : 0.55}>
+          <g opacity={0.55} style={{ pointerEvents: "none" }}>
+            {rasterRects.map((r) => (
+              <image
+                key={r.key}
+                href={GRAY_EARTH_URL}
+                x={r.x}
+                y={r.y}
+                width={r.width}
+                height={r.height}
+                preserveAspectRatio="none"
+              />
+            ))}
+          </g>
+          <g fillOpacity={colorBy === "density" ? 0.9 : 0.55} style={{ mixBlendMode: "overlay" }}>
             {cells.map((c) => (
               <path
                 key={c.key}

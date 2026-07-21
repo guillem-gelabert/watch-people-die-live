@@ -148,13 +148,12 @@ export default function Step5SeasonalMortality({
           />
 
           <div className="chart-grid" aria-label="Seasonal mortality amplitude map">
-            <section className="chart-panel wide map-panel">
+            <section className="chart-panel wide no-card">
               <h4 className="chart-title">Amplitude By Country And Region</h4>
               <p className="chart-copy">
                 Every rendered country and region is colored by seasonal amplitude. Observations use
                 their measured curves; targets without observations use the assigned climate,
-                neighbour, or latitude proxy. Patterned fills identify the applied proxy, while
-                observations are solid.
+                neighbour, or latitude proxy.
               </p>
               <AmplitudeMap
                 seasonality={activeSeasonality}

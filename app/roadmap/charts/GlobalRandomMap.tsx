@@ -2,8 +2,15 @@
 
 import { useEffect, useRef } from "react";
 import * as d3 from "d3";
-import { expGap, randomPointOnSphere, REAL_MEAN_GAP_MS, MAP_GRATICULE } from "../chartHelpers";
+import { expGap, randomPointOnSphere, REAL_MEAN_GAP_MS } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
+import {
+  appendGrayEarthBasemap,
+  fitRegionProjection,
+  insideViewport,
+  useIsMobileMap,
+  type Bbox,
+} from "./basemap";
 import type { CountryFeature } from "../types";
 
 interface Dot {
@@ -18,45 +25,42 @@ interface GlobalRandomMapProps {
 }
 
 const WIDTH = 860;
-const HEIGHT = 360;
+const HEIGHT = 430;
+const MOBILE_SIZE = 430;
 const DOT_LIFETIME_MS = 5200;
+
+// Pacific + South America — open ocean on the left (no country weighting yet, so an
+// empty expanse is exactly the point) with a continent on the right for scale.
+const BBOX: Bbox = [
+  [-150, -60],
+  [-30, 20],
+];
+
+// Same center as BBOX, cropped to a square and zoomed in for the 1:1 mobile panel.
+const MOBILE_BBOX: Bbox = [
+  [-120, -50],
+  [-60, 10],
+];
 
 // Chart 1: animated Poisson-dot world map, rendered as SVG.
 export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
+  const isMobile = useIsMobileMap();
+  const width = isMobile ? MOBILE_SIZE : WIDTH;
+  const height = isMobile ? MOBILE_SIZE : HEIGHT;
+  const bbox = isMobile ? MOBILE_BBOX : BBOX;
 
   useEffect(() => {
     if (!ref.current || !features) return;
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
 
-    const projection = d3.geoEquirectangular().fitExtent(
-      [
-        [18, 18],
-        [WIDTH - 18, HEIGHT - 18],
-      ],
-      { type: "Sphere" },
-    );
-    const path = d3.geoPath(projection);
-
-    svg
-      .append("path")
-      .datum<d3.GeoSphere>({ type: "Sphere" })
-      .attr("d", path)
-      .attr("fill", "rgba(15,15,30,0.02)")
-      .attr("stroke", "rgba(15,15,30,0.14)");
-    svg
-      .append("g")
-      .selectAll("path")
-      .data(features)
-      .join("path")
-      .attr("class", "map-outline")
-      .attr("d", path);
-    svg.append("path").datum(MAP_GRATICULE).attr("class", "map-graticule").attr("d", path);
+    const projection = fitRegionProjection(bbox, width, height);
+    const content = appendGrayEarthBasemap(svg, projection, width, height, "global-random-map");
 
     const meanGapMs = REAL_MEAN_GAP_MS;
 
-    const dotsG = svg.append("g").attr("class", "map-dots");
+    const dotsG = content.append("g").attr("class", "map-dots");
     const dots: Dot[] = [];
     let nextId = 0;
     let nextAt = performance.now() + expGap(meanGapMs);
@@ -66,8 +70,13 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
     function frame(now: number) {
       if (cancelled) return;
       while (now >= nextAt) {
+        // Points still spawn at the real global rate, uniformly over the whole sphere —
+        // only those landing inside the cropped region are kept, so the visible slice
+        // shows the same rate it always would, just for a smaller part of Earth.
         const xy = projection(randomPointOnSphere());
-        if (xy) dots.push({ id: nextId++, x: xy[0], y: xy[1], born: nextAt });
+        if (insideViewport(xy, width, height)) {
+          dots.push({ id: nextId++, x: xy[0], y: xy[1], born: nextAt });
+        }
         nextAt += expGap(meanGapMs);
       }
       for (let i = dots.length - 1; i >= 0; i--) {
@@ -93,8 +102,8 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
     // Hover: country under the pointer, or plain coordinates over open ocean.
     svg
       .append("rect")
-      .attr("width", WIDTH)
-      .attr("height", HEIGHT)
+      .attr("width", width)
+      .attr("height", height)
       .attr("fill", "transparent")
       .on("pointermove", (event) => {
         const [x, y] = d3.pointer(event, ref.current);
@@ -116,10 +125,10 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
       cancelled = true;
       cancelAnimationFrame(rafId);
     };
-  }, [features]);
+  }, [features, bbox, width, height]);
 
   return (
-    <section className="chart-panel wide map-panel">
+    <section className="chart-panel wide no-card">
       <p className="chart-copy">
         Blue dots appear at exponentially random intervals, averaging nearly two events every second
         (~0.5s between deaths), and at uniformly random points on the Earth&apos;s surface. This
@@ -128,10 +137,10 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
       <svg
         ref={ref}
         id="global-random-map-chart"
-        className="seasonality-chart"
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        className="seasonality-chart map-bleed"
+        viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="World map where blue dots appear randomly at the global mortality rate"
+        aria-label="Map of the Pacific and South America where blue dots appear randomly at the global mortality rate"
       />
     </section>
   );

@@ -2,8 +2,15 @@
 
 import { useEffect, useRef } from "react";
 import * as d3 from "d3";
-import { expGap, REAL_MEAN_GAP_MS, MAP_GRATICULE } from "../chartHelpers";
+import { expGap, REAL_MEAN_GAP_MS } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
+import {
+  appendGrayEarthBasemap,
+  fitRegionProjection,
+  insideViewport,
+  useIsMobileMap,
+  type Bbox,
+} from "./basemap";
 import type { CountryFeature, DeathsPerYearById } from "../types";
 
 interface Dot {
@@ -25,8 +32,21 @@ interface CountryCentroidMapProps {
 }
 
 const WIDTH = 860;
-const HEIGHT = 360;
+const HEIGHT = 430;
+const MOBILE_SIZE = 430;
 const DOT_LIFETIME_MS = 5200;
+
+// Europe — Iceland to the Urals, Mediterranean to Scandinavia.
+const BBOX: Bbox = [
+  [-25, 34],
+  [45, 72],
+];
+
+// Same center as BBOX, cropped to a square and zoomed in for the 1:1 mobile panel.
+const MOBILE_BBOX: Bbox = [
+  [-4, 39],
+  [24, 67],
+];
 
 // Step 2: same animated-dot idea as GlobalRandomMap, but every death lands on its country's
 // geographic centroid instead of a uniformly random point — "right count per country, wrong
@@ -36,38 +56,23 @@ export default function CountryCentroidMap({
   deathsPerYearById,
 }: CountryCentroidMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
+  const isMobile = useIsMobileMap();
+  const width = isMobile ? MOBILE_SIZE : WIDTH;
+  const height = isMobile ? MOBILE_SIZE : HEIGHT;
+  const bbox = isMobile ? MOBILE_BBOX : BBOX;
 
   useEffect(() => {
     if (!ref.current || !features || !deathsPerYearById || !deathsPerYearById.size) return;
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
 
-    const projection = d3.geoEquirectangular().fitExtent(
-      [
-        [18, 18],
-        [WIDTH - 18, HEIGHT - 18],
-      ],
-      { type: "Sphere" },
-    );
-    const path = d3.geoPath(projection);
+    const projection = fitRegionProjection(bbox, width, height);
+    const content = appendGrayEarthBasemap(svg, projection, width, height, "country-centroid-map");
 
-    // Static base: sphere + country outlines.
-    svg
-      .append("path")
-      .datum<d3.GeoSphere>({ type: "Sphere" })
-      .attr("d", path)
-      .attr("fill", "rgba(15,15,30,0.02)")
-      .attr("stroke", "rgba(15,15,30,0.14)");
-    svg
-      .append("g")
-      .selectAll("path")
-      .data(features)
-      .join("path")
-      .attr("class", "map-outline")
-      .attr("d", path);
-    svg.append("path").datum(MAP_GRATICULE).attr("class", "map-graticule").attr("d", path);
-
-    // One weighted entry per country with a known death rate.
+    // One weighted entry per country with a known death rate. The pick stays weighted
+    // over every country in the world (not just the ones visible here) so Europe still
+    // pulses at its own real share of global mortality — dots for the rest of the world
+    // are simply dropped after picking (below), same as GlobalRandomMap's approach.
     const countries: CountryEntry[] = features
       .map((feature): CountryEntry | null => {
         const deathsPerYear = deathsPerYearById.get(Number(feature.id));
@@ -91,7 +96,7 @@ export default function CountryCentroidMap({
 
     const meanGapMs = REAL_MEAN_GAP_MS;
 
-    const dotsG = svg.append("g").attr("class", "map-dots");
+    const dotsG = content.append("g").attr("class", "map-dots");
     const dots: Dot[] = [];
     let nextId = 0;
     let nextAt = performance.now() + expGap(meanGapMs);
@@ -102,7 +107,9 @@ export default function CountryCentroidMap({
       if (cancelled) return;
       while (now >= nextAt) {
         const c = pickCountry();
-        dots.push({ id: nextId++, x: c.xy[0], y: c.xy[1], born: nextAt });
+        if (insideViewport(c.xy, width, height)) {
+          dots.push({ id: nextId++, x: c.xy[0], y: c.xy[1], born: nextAt });
+        }
         nextAt += expGap(meanGapMs);
       }
       for (let i = dots.length - 1; i >= 0; i--) {
@@ -128,8 +135,8 @@ export default function CountryCentroidMap({
     // Hover: country under the pointer and its real deaths/year (exact geoContains hit-test).
     svg
       .append("rect")
-      .attr("width", WIDTH)
-      .attr("height", HEIGHT)
+      .attr("width", width)
+      .attr("height", height)
       .attr("fill", "transparent")
       .on("pointermove", (event) => {
         const [x, y] = d3.pointer(event, ref.current);
@@ -152,10 +159,10 @@ export default function CountryCentroidMap({
       cancelled = true;
       cancelAnimationFrame(rafId);
     };
-  }, [features, deathsPerYearById]);
+  }, [features, deathsPerYearById, bbox, width, height]);
 
   return (
-    <section className="chart-panel wide map-panel">
+    <section className="chart-panel wide no-card">
       <p className="chart-copy">
         Each country now fires deaths at its own real rate — populous countries pulse faster — but
         every death still lands on the same single point: that country&apos;s geographic center.
@@ -164,10 +171,10 @@ export default function CountryCentroidMap({
       <svg
         ref={ref}
         id="country-centroid-map-chart"
-        className="seasonality-chart"
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        className="seasonality-chart map-bleed"
+        viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="World map where dots appear at each country's real death rate, all landing on that country's geographic center"
+        aria-label="Map of Europe where dots appear at each country's real death rate, all landing on that country's geographic center"
       />
     </section>
   );

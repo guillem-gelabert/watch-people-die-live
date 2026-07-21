@@ -2,8 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
-import { expGap, REAL_MEAN_GAP_MS, MAP_GRATICULE } from "../chartHelpers";
+import { expGap, REAL_MEAN_GAP_MS } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
+import {
+  drawGrayEarthBasemap,
+  fitRegionProjection,
+  insideViewport,
+  loadGrayEarth,
+  useIsMobileMap,
+  type Bbox,
+} from "./basemap";
 import type { CountryFeature, DensityGrid, DeathsPerYearById } from "../types";
 
 interface Dot {
@@ -23,6 +31,19 @@ interface DensityMapProps {
   deathsPerYearById: DeathsPerYearById | null;
 }
 
+// East Asia — China and India, plus enough margin to keep both whole.
+const BBOX: Bbox = [
+  [65, 5],
+  [140, 55],
+];
+const MOBILE_SIZE = 430;
+
+// Same center as BBOX, cropped to a square and zoomed in for the 1:1 mobile panel.
+const MOBILE_BBOX: Bbox = [
+  [83.5, 11],
+  [121.5, 49],
+];
+
 // Chart 3: population-density choropleth (canvas), GPWv4 grid cells, with the same
 // animated Poisson-dot layer as steps 1-2 — except a death now lands on a country's
 // grid cell chosen in proportion to that cell's population, instead of the country's
@@ -30,39 +51,32 @@ interface DensityMapProps {
 export default function DensityMap({ grid, features, deathsPerYearById }: DensityMapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [logScale, setLogScale] = useState(true);
+  const isMobile = useIsMobileMap();
+  const width = isMobile ? MOBILE_SIZE : 860;
+  const height = isMobile ? MOBILE_SIZE : 430;
+  const bbox = isMobile ? MOBILE_BBOX : BBOX;
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !grid || !features) return;
 
-    const width = canvas.width;
-    const height = canvas.height;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const projection = d3.geoEquirectangular().fitExtent(
-      [
-        [18, 18],
-        [width - 18, height - 18],
-      ],
-      { type: "Sphere" },
-    );
+    const projection = fitRegionProjection(bbox, width, height);
 
-    // Static layer (sphere, ~60k density cells, borders, legend) is expensive to redraw
-    // at 60fps, so it's rendered once to an offscreen canvas and blitted every frame;
-    // only the dots are redrawn live.
+    // Static layer (background, ~60k density cells, legend) is expensive to redraw at
+    // 60fps, so it's rendered once to an offscreen canvas and blitted every frame; only
+    // the dots are redrawn live.
     const bg = document.createElement("canvas");
     bg.width = width;
     bg.height = height;
     const bgCtx = bg.getContext("2d");
     if (!bgCtx) return;
-    const bgPath = d3.geoPath(projection, bgCtx);
 
-    bgCtx.fillStyle = "rgba(255,255,255,0.025)";
-    bgCtx.strokeStyle = "rgba(255,255,255,0.16)";
-    bgCtx.beginPath();
-    bgPath({ type: "Sphere" });
-    bgCtx.fill();
-    bgCtx.stroke();
+    // Solid black immediately — "space" backdrop while the relief image loads, and the
+    // base the relief (below) and the overlay-blended density cells (below that) composite onto.
+    bgCtx.fillStyle = "#000000";
+    bgCtx.fillRect(0, 0, width, height);
 
     // Map a raw population to the value the color scale reads: log-compressed
     // (long tail spread out) or linear (a handful of dense cells dominate).
@@ -71,7 +85,7 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
     const maxValue = scaleValue(maxPop);
     // Black → red → white ramp: black → red eases across the first three quarters of
     // the scale, then red → white burns out over the densest quarter. Empty cells sink
-    // into the dark sphere; only the biggest cities reach white.
+    // into black; only the biggest cities reach white.
     const color = d3
       .scaleLinear<string>()
       .domain([0, maxValue * 0.75, maxValue])
@@ -79,46 +93,57 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
       .interpolate(d3.interpolateRgb)
       .clamp(true);
 
-    for (const [lon, lat, pop] of grid.cells) {
-      const size = grid.cellsize;
-      const p0 = projection([lon, lat + size]);
-      const p1 = projection([lon + size, lat]);
-      if (!p0 || !p1) continue;
-      const x = Math.min(p0[0], p1[0]);
-      const y = Math.min(p0[1], p1[1]);
-      const w = Math.max(1, Math.abs(p1[0] - p0[0]));
-      const h = Math.max(1, Math.abs(p1[1] - p0[1]));
-      bgCtx.fillStyle = color(scaleValue(pop));
-      bgCtx.fillRect(x, y, w, h);
-    }
+    // Cells outside the panel can't be visible, so they're skipped before ever touching
+    // the projection — cuts the loop from ~60k global cells down to the ones the crop
+    // can actually show. The visible window is wider than BBOX itself whenever the
+    // panel's aspect ratio doesn't match the bbox's (fitExtent pads the short axis to
+    // fill the panel), so it's measured directly by inverting the canvas corners —
+    // filtering by the raw bbox instead would clip cells inside a still-visible margin,
+    // leaving a hard rectangular seam where valid data cuts off early.
+    const cellsize = grid.cellsize;
+    const corners = [
+      projection.invert?.([0, 0]),
+      projection.invert?.([width, 0]),
+      projection.invert?.([0, height]),
+      projection.invert?.([width, height]),
+    ].filter((c): c is [number, number] => Boolean(c));
+    const visLon0 = Math.min(...corners.map((c) => c[0])) - cellsize;
+    const visLon1 = Math.max(...corners.map((c) => c[0])) + cellsize;
+    const visLat0 = Math.min(...corners.map((c) => c[1])) - cellsize;
+    const visLat1 = Math.max(...corners.map((c) => c[1])) + cellsize;
+    const visibleCells = grid.cells.filter(
+      ([lon, lat]) => lon >= visLon0 && lon <= visLon1 && lat >= visLat0 && lat <= visLat1,
+    );
 
-    bgCtx.beginPath();
-    bgPath(MAP_GRATICULE);
-    bgCtx.strokeStyle = "rgba(255,255,255,0.12)";
-    bgCtx.lineWidth = 0.35;
-    bgCtx.stroke();
+    // Relief drawn once the image resolves, then the density cells overlay-blended on
+    // top: black/white in the relief (ocean, ice) stay black/white regardless of the
+    // density color, while mid-gray relief (most land) is fully tinted by it — unlike
+    // hard-light, which branches on the density color's own brightness instead of the
+    // basemap's, so it doesn't reliably preserve the basemap's black/white extremes.
+    void loadGrayEarth().then((image) => {
+      drawGrayEarthBasemap(bgCtx, projection, image);
 
-    const legendX = width - 260;
-    const legendY = height - 32;
-    const legendW = 210;
-    const gradient = bgCtx.createLinearGradient(legendX, 0, legendX + legendW, 0);
-    d3.range(0, 1.01, 0.1).forEach((t) => {
-      gradient.addColorStop(t, color(t * maxValue));
+      bgCtx.save();
+      bgCtx.globalCompositeOperation = "overlay";
+      for (const [lon, lat, pop] of visibleCells) {
+        const p0 = projection([lon, lat + cellsize]);
+        const p1 = projection([lon + cellsize, lat]);
+        if (!p0 || !p1) continue;
+        const x = Math.min(p0[0], p1[0]);
+        const y = Math.min(p0[1], p1[1]);
+        const w = Math.max(1, Math.abs(p1[0] - p0[0]));
+        const h = Math.max(1, Math.abs(p1[1] - p0[1]));
+        bgCtx.fillStyle = color(scaleValue(pop));
+        bgCtx.fillRect(x, y, w, h);
+      }
+      bgCtx.restore();
     });
-    bgCtx.fillStyle = gradient;
-    bgCtx.fillRect(legendX, legendY, legendW, 8);
-
-    bgCtx.fillStyle = "#9aa3af";
-    bgCtx.font =
-      "11px -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
-    bgCtx.textAlign = "left";
-    bgCtx.fillText(`people per cell (${logScale ? "log" : "linear"} scale)`, legendX, legendY - 10);
-    bgCtx.fillText("low", legendX, legendY + 22);
-    bgCtx.textAlign = "right";
-    bgCtx.fillText("high", legendX + legendW, legendY + 22);
 
     // Group cells by their owning country (m49) so a death can be routed: country
     // (weighted by real death rate) → cell within that country (weighted by population).
+    // Uses every cell worldwide, not just the visible ones, so a death still lands on
+    // the right cell even for a country outside this crop (it's just then filtered out
+    // below, same as the other maps) rather than skewing toward China/India's own cells.
     interface CellEntry {
       cells: { lon: number; lat: number; pop: number }[];
       totalPop: number;
@@ -190,8 +215,10 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
       if (cancelled) return;
       if (canAnimate) {
         while (now >= nextAt) {
+          // Deaths are still placed at each country's real global rate and cell
+          // population — only those landing inside the cropped region are kept.
           const xy = placeDeath();
-          if (xy) dots.push({ xy, born: nextAt });
+          if (insideViewport(xy, width, height)) dots.push({ xy, born: nextAt });
           nextAt += expGap(meanGapMs);
         }
       }
@@ -270,10 +297,10 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", hideTooltip);
     };
-  }, [grid, features, deathsPerYearById, logScale]);
+  }, [grid, features, deathsPerYearById, logScale, bbox, width, height]);
 
   return (
-    <section className="chart-panel wide map-panel">
+    <section className="chart-panel wide no-card">
       <p className="chart-copy">
         GPWv4 population counts on the 0.5° grid, equirectangular projection. Brighter cells hold
         more people. Dots now land on a grid cell chosen in proportion to that cell&apos;s
@@ -300,12 +327,20 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
       <canvas
         ref={canvasRef}
         id="density-map-chart"
-        className="seasonality-chart"
-        width="860"
-        height="360"
+        className="seasonality-chart map-bleed"
+        width={width}
+        height={height}
         role="img"
-        aria-label="World map colored by population density per grid cell, with dots landing on cells in proportion to their population"
+        aria-label="Map of China and India colored by population density per grid cell, with dots landing on cells in proportion to their population"
       />
+      <div className="density-legend" aria-hidden="true">
+        <span>low</span>
+        <span className="density-legend-bar" />
+        <span>high</span>
+        <span className="density-legend-caption">
+          people per cell ({logScale ? "log" : "linear"} scale)
+        </span>
+      </div>
     </section>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import {
   buildSpatialSeasonality,
@@ -8,8 +8,9 @@ import {
   type AppliedSeasonalityFallbacks,
   type SpatialSeasonalityEstimate,
 } from "@/lib/spatial-seasonality";
-import { fmtPlainPct, strength, MAP_GRATICULE } from "../chartHelpers";
+import { fmtPlainPct, strength } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
+import { appendGrayEarthBasemap, fitRegionProjection, useIsMobileMap, type Bbox } from "./basemap";
 import type {
   Admin1Feature,
   CountryFeature,
@@ -40,6 +41,24 @@ interface AmplitudeMapProps {
   appliedFallbacks: AppliedSeasonalityFallbacks | null;
 }
 
+interface AmpLegend {
+  maxLabel: string;
+  gradient: string;
+}
+
+// Africa.
+const BBOX: Bbox = [
+  [-20, -35],
+  [52, 38],
+];
+const MOBILE_SIZE = 430;
+
+// Same center as BBOX, cropped to a square and zoomed in for the 1:1 mobile panel.
+const MOBILE_BBOX: Bbox = [
+  [-11, -25.5],
+  [43, 28.5],
+];
+
 // Every country colored by seasonal amplitude — observed curve where available, then own
 // measured regions, bordering measured countries, or the latitude fallback — with
 // measured Admin-1 regions drawn on top at their own finer amplitude.
@@ -52,22 +71,20 @@ export default function AmplitudeMap({
   appliedFallbacks,
 }: AmplitudeMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
+  const [legend, setLegend] = useState<AmpLegend | null>(null);
+  const isMobile = useIsMobileMap();
+  const width = isMobile ? MOBILE_SIZE : 860;
+  const height = isMobile ? MOBILE_SIZE : 430;
+  const bbox = isMobile ? MOBILE_BBOX : BBOX;
 
   useEffect(() => {
     if (!seasonality || !features || !neighborsByM49 || !ref.current) return;
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
 
-    const width = 860;
-    const height = 360;
-    const projection = d3.geoEquirectangular().fitExtent(
-      [
-        [18, 18],
-        [width - 18, height - 18],
-      ],
-      { type: "Sphere" },
-    );
+    const projection = fitRegionProjection(bbox, width, height);
     const path = d3.geoPath(projection);
+    const content = appendGrayEarthBasemap(svg, projection, width, height, "amplitude-map");
 
     const estimates = buildSpatialSeasonality(
       features,
@@ -116,55 +133,8 @@ export default function AmplitudeMap({
       .scaleSequential()
       .domain([0, maxAmp])
       .interpolator(d3.interpolateRgb("#233142", "#ff3b30"));
-    const defs = svg.append("defs");
-    const stripeId = "amplitude-map-calculated-stripes";
-    const stripes = defs
-      .append("pattern")
-      .attr("id", stripeId)
-      .attr("patternUnits", "userSpaceOnUse")
-      .attr("width", 7)
-      .attr("height", 7)
-      .attr("patternTransform", "rotate(45)");
-    stripes
-      .append("rect")
-      .attr("width", 2.2)
-      .attr("height", 7)
-      .attr("fill", "rgba(10, 16, 28, 0.62)");
-    const crossStripeId = "amplitude-map-no-neighbour-cross-stripes";
-    const crossStripes = defs
-      .append("pattern")
-      .attr("id", crossStripeId)
-      .attr("patternUnits", "userSpaceOnUse")
-      .attr("width", 7)
-      .attr("height", 7)
-      .attr("patternTransform", "rotate(-45)");
-    crossStripes
-      .append("rect")
-      .attr("width", 2.2)
-      .attr("height", 7)
-      .attr("fill", "rgba(10, 16, 28, 0.62)");
-    const climatePatternId = "amplitude-map-climate-dots";
-    const climateDots = defs
-      .append("pattern")
-      .attr("id", climatePatternId)
-      .attr("patternUnits", "userSpaceOnUse")
-      .attr("width", 6)
-      .attr("height", 6);
-    climateDots
-      .append("circle")
-      .attr("cx", 3)
-      .attr("cy", 3)
-      .attr("r", 1.3)
-      .attr("fill", "rgba(10, 16, 28, 0.72)");
 
-    svg
-      .append("path")
-      .datum<d3.GeoSphere>({ type: "Sphere" })
-      .attr("d", path)
-      .attr("fill", "rgba(15,15,30,0.02)")
-      .attr("stroke", "rgba(15,15,30,0.14)");
-
-    svg
+    content
       .append("g")
       .selectAll("path")
       .data(countryRows)
@@ -196,50 +166,9 @@ export default function AmplitudeMap({
       })
       .on("pointerleave", hideTooltip);
 
-    // Proxy-specific overlays preserve the amplitude color while distinguishing the selected
-    // donor method: diagonal for neighbours, dots for climate, cross-hatch for latitude.
-    svg
-      .append("g")
-      .selectAll("path")
-      .data(
-        countryRows.filter(
-          (d) => d.estimate.source === "bordering-countries" || d.estimate.source === "own-regions",
-        ),
-      )
-      .join("path")
-      .attr("class", "map-country-stripes")
-      .attr("fill", `url(#${stripeId})`)
-      .attr("d", (d) => path(d.feature));
-
-    svg
-      .append("g")
-      .selectAll("path")
-      .data(countryRows.filter((d) => d.estimate.source === "climate"))
-      .join("path")
-      .attr("class", "map-country-stripes")
-      .attr("fill", `url(#${climatePatternId})`)
-      .attr("d", (d) => path(d.feature));
-
-    svg
-      .append("g")
-      .selectAll("path")
-      .data(countryRows.filter((d) => d.estimate.source === "latitude"))
-      .join("path")
-      .attr("class", "map-country-stripes")
-      .attr("fill", `url(#${stripeId})`)
-      .attr("d", (d) => path(d.feature));
-    svg
-      .append("g")
-      .selectAll("path")
-      .data(countryRows.filter((d) => d.estimate.source === "latitude"))
-      .join("path")
-      .attr("class", "map-country-stripes")
-      .attr("fill", `url(#${crossStripeId})`)
-      .attr("d", (d) => path(d.feature));
-
     // Finer region fills drawn on top of their country's fill. Measured regions read as data;
-    // India/China are climate-modeled estimates, so they carry the same striped estimate encoding.
-    svg
+    // India/China are climate-modeled estimates, so they carry the same "is-calculated" class.
+    content
       .append("g")
       .selectAll("path")
       .data(regionRows)
@@ -266,116 +195,45 @@ export default function AmplitudeMap({
       })
       .on("pointerleave", hideTooltip);
 
-    for (const [source, patternIds] of [
-      ["bordering-countries", [stripeId]],
-      ["climate", [climatePatternId]],
-      ["latitude", [stripeId, crossStripeId]],
-    ] as const) {
-      for (const patternId of patternIds) {
-        svg
-          .append("g")
-          .selectAll("path")
-          .data(regionRows.filter((d) => d.appliedFallback?.source === source))
-          .join("path")
-          .attr("class", "map-country-stripes")
-          .attr("fill", `url(#${patternId})`)
-          .attr("d", (d) => path(d.feature));
-      }
-    }
-
-    svg.append("path").datum(MAP_GRATICULE).attr("class", "map-graticule").attr("d", path);
-
-    const legendX = width - 260;
-    const legendY = height - 32;
-    const legendW = 210;
-    const gradientId = "amplitude-map-gradient";
-    const gradient = defs
-      .append("linearGradient")
-      .attr("id", gradientId)
-      .attr("x1", "0%")
-      .attr("x2", "100%");
-    d3.range(0, 1.01, 0.1).forEach((t) => {
-      gradient
-        .append("stop")
-        .attr("offset", `${t * 100}%`)
-        .attr("stop-color", color(t * maxAmp));
+    setLegend({
+      maxLabel: fmtPlainPct(maxAmp),
+      gradient: `linear-gradient(to right, ${d3
+        .range(0, 1.01, 0.1)
+        .map((t) => color(t * maxAmp))
+        .join(", ")})`,
     });
-    svg
-      .append("rect")
-      .attr("x", legendX)
-      .attr("y", legendY)
-      .attr("width", legendW)
-      .attr("height", 8)
-      .attr("rx", 4)
-      .attr("fill", `url(#${gradientId})`);
-    svg
-      .append("text")
-      .attr("class", "chart-label")
-      .attr("x", legendX)
-      .attr("y", legendY - 7)
-      .text("monthly deviation strength");
-    svg
-      .append("text")
-      .attr("class", "chart-label")
-      .attr("x", legendX)
-      .attr("y", legendY + 24)
-      .text("0%");
-    svg
-      .append("text")
-      .attr("class", "chart-label")
-      .attr("x", legendX + legendW)
-      .attr("y", legendY + 24)
-      .attr("text-anchor", "end")
-      .text(fmtPlainPct(maxAmp));
-
-    const estimateLegendX = 28;
-    const estimateLegendY = height - 29;
-    const proxyLegend = [
-      { x: estimateLegendX, label: "observed", patterns: [] },
-      { x: estimateLegendX + 112, label: "neighbours", patterns: [stripeId] },
-      { x: estimateLegendX + 238, label: "climate", patterns: [climatePatternId] },
-      {
-        x: estimateLegendX + 338,
-        label: "latitude",
-        patterns: [stripeId, crossStripeId],
-      },
-    ];
-    for (const item of proxyLegend) {
-      svg
-        .append("rect")
-        .attr("x", item.x)
-        .attr("y", estimateLegendY)
-        .attr("width", 22)
-        .attr("height", 10)
-        .attr("rx", 2)
-        .attr("fill", color(maxAmp * 0.55));
-      for (const patternId of item.patterns) {
-        svg
-          .append("rect")
-          .attr("x", item.x)
-          .attr("y", estimateLegendY)
-          .attr("width", 22)
-          .attr("height", 10)
-          .attr("rx", 2)
-          .attr("fill", `url(#${patternId})`);
-      }
-      svg
-        .append("text")
-        .attr("class", "chart-label")
-        .attr("x", item.x + 30)
-        .attr("y", estimateLegendY + 9)
-        .text(item.label);
-    }
-  }, [seasonality, features, neighborsByM49, regions, admin1Features, appliedFallbacks]);
+  }, [
+    seasonality,
+    features,
+    neighborsByM49,
+    regions,
+    admin1Features,
+    appliedFallbacks,
+    bbox,
+    width,
+    height,
+  ]);
 
   return (
-    <svg
-      ref={ref}
-      id="amplitude-map-chart"
-      className="seasonality-chart"
-      viewBox="0 0 860 360"
-      role="img"
-      aria-label="World map with every country colored by observed or spatially estimated seasonal mortality amplitude, with measured Admin-1 regions colored by their own finer amplitude"
-    />
+    <>
+      <svg
+        ref={ref}
+        id="amplitude-map-chart"
+        className="seasonality-chart map-bleed"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label="Map of Africa with every country colored by observed or spatially estimated seasonal mortality amplitude, with measured Admin-1 regions colored by their own finer amplitude"
+      />
+      {legend && (
+        <div className="amplitude-legend" aria-hidden="true">
+          <div className="amplitude-legend-scale">
+            <span>0%</span>
+            <span className="amplitude-legend-bar" style={{ background: legend.gradient }} />
+            <span>{legend.maxLabel}</span>
+            <span className="amplitude-legend-caption">monthly deviation strength</span>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

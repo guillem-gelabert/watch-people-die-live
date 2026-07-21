@@ -3,8 +3,14 @@
 import { useEffect, useMemo, useRef } from "react";
 import * as d3 from "d3";
 import type { Feature, Geometry } from "geojson";
-import { MAP_GRATICULE } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
+import {
+  appendGrayEarthBasemap,
+  fitRegionProjection,
+  insideViewport,
+  useIsMobileMap,
+  type Bbox,
+} from "./basemap";
 import type { Admin1Feature, Nuts2Feature, RatePer100kByCountry, RatePer100kByKey } from "../types";
 
 interface SubnationalChoroplethMapProps {
@@ -24,22 +30,35 @@ interface DrawnRegion {
 }
 
 // High-contrast callouts surfaced by notebooks/data/build-subnational.ipynb — matched by
-// (globally-unique) region name across both layers. `label` overrides crowded names.
-const CALLOUTS: { name: string; kind: "high" | "low"; label?: string }[] = [
+// (globally-unique) region name across both layers.
+const CALLOUTS: { name: string; kind: "high" | "low" }[] = [
   { name: "Akita", kind: "high" },
   { name: "Tokyo", kind: "low" },
   { name: "West Virginia", kind: "high" },
   { name: "Utah", kind: "low" },
   { name: "Telangana", kind: "high" },
   { name: "Rio de Janeiro", kind: "high" },
-  { name: "Severozapaden", kind: "high", label: "NW Bulgaria" },
-  { name: "Sachsen-Anhalt", kind: "high", label: "Sachsen-Anhalt (DE)" },
+  { name: "Severozapaden", kind: "high" },
+  { name: "Sachsen-Anhalt", kind: "high" },
   { name: "Pskov", kind: "high" },
 ];
 
 const WIDTH = 860;
 const HEIGHT = 430;
+const MOBILE_SIZE = 430;
 const NO_DATA = "#e7e8ec";
+
+// Continental United States.
+const BBOX: Bbox = [
+  [-125, 24],
+  [-66, 50],
+];
+
+// Same center as BBOX, cropped to a square and zoomed in for the 1:1 mobile panel.
+const MOBILE_BBOX: Bbox = [
+  [-105.5, 27],
+  [-85.5, 47],
+];
 
 // Step 5: a static, fully-vector (SVG) world choropleth of first-level regions colored by their
 // real crude death rate. Two geometry layers — Eurostat NUTS-2 across Europe, Natural Earth
@@ -55,6 +74,10 @@ export default function SubnationalChoroplethMap({
   nutsIso2ToIso3,
 }: SubnationalChoroplethMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
+  const isMobile = useIsMobileMap();
+  const width = isMobile ? MOBILE_SIZE : WIDTH;
+  const height = isMobile ? MOBILE_SIZE : HEIGHT;
+  const bbox = isMobile ? MOBILE_BBOX : BBOX;
 
   // The two layers merged into one draw list (European NE features dropped).
   const drawn = useMemo<DrawnRegion[] | null>(() => {
@@ -101,14 +124,15 @@ export default function SubnationalChoroplethMap({
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
 
-    const projection = d3.geoEquirectangular().fitExtent(
-      [
-        [6, 6],
-        [WIDTH - 6, HEIGHT - 6],
-      ],
-      { type: "Sphere" },
-    );
+    const projection = fitRegionProjection(bbox, width, height);
     const path = d3.geoPath(projection);
+    const content = appendGrayEarthBasemap(
+      svg,
+      projection,
+      width,
+      height,
+      "subnational-choropleth-map",
+    );
     const color = d3.scaleSequential(d3.interpolateYlOrRd).domain(domain);
 
     // A region's rate is its own subnational value, falling back to the country's national
@@ -120,19 +144,18 @@ export default function SubnationalChoroplethMap({
       return nat != null ? { rate: nat, national: true } : { rate: null, national: false };
     };
 
-    svg
-      .append("path")
-      .datum<d3.GeoSphere>({ type: "Sphere" })
-      .attr("d", path)
-      .attr("fill", "rgba(15,15,30,0.02)")
-      .attr("stroke", "rgba(15,15,30,0.12)");
+    // Only US regions are ever visible in this crop — thousands of Admin-1/NUTS polygons
+    // for the rest of the world would otherwise get projected and clipped away for nothing.
+    const usRegions = drawn.filter((d) => d.country === "USA");
 
     // One <path> per region — exact SVG hit-testing (no pick-canvas antialiasing that could
-    // report the wrong region on hover).
-    svg
+    // report the wrong region on hover). Hard-light blended so the relief basemap's
+    // texture shows through the rate color instead of sitting under a flat, opaque fill.
+    content
       .append("g")
+      .attr("class", "map-region-fills")
       .selectAll("path")
-      .data(drawn)
+      .data(usRegions)
       .join("path")
       .attr("class", "map-region")
       .attr("d", (d) => path(d.feature))
@@ -152,19 +175,22 @@ export default function SubnationalChoroplethMap({
       })
       .on("pointerleave", hideTooltip);
 
-    svg.append("path").datum(MAP_GRATICULE).attr("class", "map-graticule").attr("d", path);
-
-    // Callout leader dots + labels.
+    // Callout leader dots (no labels — the region name/rate shows via hover instead),
+    // kept only where they land inside this crop (West Virginia, Utah).
     const byName = new Map(drawn.map((r) => [r.name, r]));
     const callouts = CALLOUTS.map((c) => {
       const region = byName.get(c.name);
       const xy = region ? projection(d3.geoCentroid(region.feature)) : null;
       const rate = region ? ratePer100kByKey.get(region.key) : null;
-      return xy && rate != null ? { ...c, x: xy[0], y: xy[1], rate } : null;
+      return xy && insideViewport(xy, width, height) && rate != null
+        ? { ...c, x: xy[0], y: xy[1] }
+        : null;
     }).filter((c): c is NonNullable<typeof c> => c !== null);
 
-    const g = svg.append("g").attr("class", "map-callouts");
-    g.selectAll("circle")
+    content
+      .append("g")
+      .attr("class", "map-callouts")
+      .selectAll("circle")
       .data(callouts)
       .join("circle")
       .attr("cx", (d) => d.x)
@@ -173,20 +199,12 @@ export default function SubnationalChoroplethMap({
       .attr("fill", (d) => (d.kind === "high" ? "#ff3b30" : "#2f4bff"))
       .attr("stroke", "rgba(0,0,0,0.5)")
       .attr("stroke-width", 0.75);
-    g.selectAll("text")
-      .data(callouts)
-      .join("text")
-      .attr("class", "map-callout-label")
-      .attr("x", (d) => (d.x < WIDTH - 130 ? d.x + 6 : d.x - 6))
-      .attr("y", (d) => d.y)
-      .attr("text-anchor", (d) => (d.x < WIDTH - 130 ? "start" : "end"))
-      .text((d) => `${d.label ?? d.name} ${Math.round(d.rate)}`);
-  }, [drawn, ratePer100kByKey, ratePer100kByCountry, domain]);
+  }, [drawn, ratePer100kByKey, ratePer100kByCountry, domain, bbox, width, height]);
 
   const loading = !drawn || !ratePer100kByKey;
 
   return (
-    <section className="chart-panel wide map-panel">
+    <section className="chart-panel wide no-card">
       <p className="chart-copy">
         Every first-level region colored by its own crude death rate. Inside a single country the
         spread is dramatic — Russia&apos;s is the widest of all, Pskov running over 5× Ingushetia;
@@ -197,10 +215,10 @@ export default function SubnationalChoroplethMap({
       <svg
         ref={ref}
         id="subnational-choropleth-chart"
-        className="seasonality-chart"
-        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+        className="seasonality-chart map-bleed"
+        viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="World map of first-level regions shaded by crude death rate, showing large differences within countries"
+        aria-label="Map of United States first-level regions shaded by crude death rate, showing large differences within the country"
       />
       {!loading && (
         <div className="choropleth-legend" aria-hidden="true">
