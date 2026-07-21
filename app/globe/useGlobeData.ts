@@ -9,6 +9,7 @@ import { initPersona } from "./persona";
 import type { ConflictsPayload } from "@/lib/acled";
 import {
   buildSpatialSeasonality,
+  type AppliedSeasonalityFallbacks,
   type ClimateFallbackModel,
   type SpatialSeasonalityData,
   type SpatialSeasonalityRegion,
@@ -89,10 +90,11 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
         seasonality: Seasonality | null | undefined,
         subnationalSeasonality: SubnationalSeasonality | null | undefined,
         climate: ClimateFallbackModel | null | undefined,
+        appliedFallbacks: AppliedSeasonalityFallbacks | null | undefined,
         conflicts: ConflictsPayload | null | undefined;
       try {
-        [topo, grid, , seasonality, subnationalSeasonality, climate, conflicts] = await Promise.all(
-          [
+        [topo, grid, , seasonality, subnationalSeasonality, climate, appliedFallbacks, conflicts] =
+          await Promise.all([
             d3.json<Topology>("/data/countries-110m.json") as Promise<Topology>,
             d3.json<RateGrid>("/data/rate-grid.json") as Promise<RateGrid>,
             initPersona(),
@@ -101,9 +103,11 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
             d3
               .json<ClimateFallbackModel>("/data/seasonality-climate-fallback.json")
               .catch(() => null),
+            d3
+              .json<AppliedSeasonalityFallbacks>("/data/seasonality-applied-fallbacks.json")
+              .catch(() => null),
             d3.json<ConflictsPayload>("/api/conflicts").catch(() => null),
-          ],
-        );
+          ]);
       } catch (err) {
         console.error("Failed to load data:", err);
         if (!cancelled) setData({ error: true });
@@ -140,6 +144,7 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
             neighborsByM49,
             seasonality,
             subnationalSeasonality?.regions ?? [],
+            appliedFallbacks,
           )
         : new Map();
 

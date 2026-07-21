@@ -138,4 +138,59 @@ describe("buildSpatialSeasonality", () => {
     expect(estimates.get(999)?.curve[0]).toBeCloseTo(1.05);
     expect(estimates.get(999)?.curve[3]).toBeCloseTo(0.95);
   });
+
+  it("applies the persisted proxy assignment ahead of the default fallback order", () => {
+    const features = [country(434, "Libya", [18, 27]), country(788, "Tunisia", [10, 34])];
+    const estimates = buildSpatialSeasonality(
+      features,
+      new Map([[434, [788]]]),
+      { countries: { 788: [1.2, 0.8] } },
+      [],
+      {
+        meta: {},
+        countries: {
+          434: {
+            curve: [1.05, 0.95],
+            source: "climate",
+            proxy: "Climate",
+          },
+        },
+        regions: {},
+      },
+    );
+
+    expect(estimates.get(434)).toMatchObject({ source: "climate", curve: [1.05, 0.95] });
+  });
+
+  it("uses persisted regional assignments when aggregating an unobserved country", () => {
+    const regions: SpatialSeasonalityRegion[] = [
+      {
+        country: "IND",
+        geo: "adm1",
+        key: "IND-1",
+        name: "Region A",
+        curve: [1.2, 0.8],
+        annualDeaths: 100,
+      },
+    ];
+    const estimates = buildSpatialSeasonality(
+      [country(356, "India", [79, 22])],
+      new Map(),
+      { countries: {} },
+      regions,
+      {
+        meta: {},
+        countries: {},
+        regions: {
+          "IND-1": {
+            curve: [0.9, 1.1],
+            source: "latitude",
+            proxy: "Latitude",
+          },
+        },
+      },
+    );
+
+    expect(estimates.get(356)).toMatchObject({ source: "own-regions", curve: [0.9, 1.1] });
+  });
 });

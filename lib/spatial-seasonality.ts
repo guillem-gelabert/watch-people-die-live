@@ -26,9 +26,11 @@ export interface SpatialSeasonalityData {
 export interface SpatialSeasonalityRegion {
   country: string;
   geo: string;
+  key?: string;
   name: string;
   curve: number[];
   annualDeaths: number | null;
+  measurement?: string;
 }
 
 export type SpatialSeasonalitySource =
@@ -38,6 +40,19 @@ export interface SpatialSeasonalityEstimate {
   curve: number[];
   source: SpatialSeasonalitySource;
   donorNames: string[];
+}
+
+export interface AppliedFallbackCurve {
+  curve: number[];
+  source: Extract<SpatialSeasonalitySource, "bordering-countries" | "climate" | "latitude">;
+  proxy: "Regional / neighbour" | "Climate" | "Latitude";
+  overridden?: boolean;
+}
+
+export interface AppliedSeasonalityFallbacks {
+  meta: Record<string, unknown>;
+  countries: Record<string, AppliedFallbackCurve>;
+  regions: Record<string, AppliedFallbackCurve>;
 }
 
 interface CurveDonor {
@@ -125,6 +140,7 @@ export function buildSpatialSeasonality(
   neighborsByM49: ReadonlyMap<number, readonly number[]>,
   seasonality: SpatialSeasonalityData,
   regions: SpatialSeasonalityRegion[] = [],
+  appliedFallbacks?: AppliedSeasonalityFallbacks | null,
 ): Map<number, SpatialSeasonalityEstimate> {
   const featureById = new Map<number, Feature<Geometry>>();
   for (const feature of features) featureById.set(Number(feature.id), feature);
@@ -135,7 +151,8 @@ export function buildSpatialSeasonality(
     const m49 = m49ForIso3(region.country);
     if (m49 == null) continue;
     const rows = regionsByCountry.get(m49) ?? [];
-    rows.push(region);
+    const applied = region.key ? appliedFallbacks?.regions[region.key] : undefined;
+    rows.push(applied ? { ...region, curve: applied.curve } : region);
     regionsByCountry.set(m49, rows);
   }
 
@@ -163,6 +180,16 @@ export function buildSpatialSeasonality(
   // through multiple borders, which would make results depend on traversal order.
   const measured = new Map(estimates);
   for (const [id, feature] of featureById) {
+    if (seasonality.countries[String(id)]?.length) continue;
+    const applied = appliedFallbacks?.countries[String(id)];
+    if (applied?.curve.length) {
+      estimates.set(id, {
+        curve: applied.curve,
+        source: applied.source,
+        donorNames: [`applied ${applied.proxy.toLowerCase()} proxy`],
+      });
+      continue;
+    }
     if (estimates.has(id)) continue;
     const bordering = (neighborsByM49.get(id) ?? []).flatMap((neighborId) => {
       const estimate = measured.get(neighborId);
