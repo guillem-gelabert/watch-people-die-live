@@ -1,10 +1,13 @@
 "use client";
 
 import * as d3 from "d3";
-import type { LooValidation } from "../types";
+import type { LooValidation, NeighborsByM49, SeasonalityProxies } from "../types";
+import { buildCohortPerformance, cohortMethodLabel } from "./validationCohorts";
 
 interface PredictionComparisonProps {
   looValidation: LooValidation | null;
+  proxies: SeasonalityProxies | null;
+  neighborsByM49: NeighborsByM49 | null;
 }
 
 // Aggregate hold-one-out results, straight from the notebook's comparisonTable (one row per
@@ -30,9 +33,14 @@ function fmtSummary(value: number | string | null | undefined, kind: SummaryKind
   return d3.format(".0%")(n); // pct
 }
 
-export default function PredictionComparison({ looValidation }: PredictionComparisonProps) {
+export default function PredictionComparison({
+  looValidation,
+  proxies,
+  neighborsByM49,
+}: PredictionComparisonProps) {
   const summary = looValidation?.comparisonTable ?? [];
   if (!looValidation || summary.length === 0) return null;
+  const cohorts = buildCohortPerformance(looValidation, proxies, neighborsByM49);
 
   // Best method = lowest median RMSE (the notebook's own headline metric).
   const bestRow = summary.reduce((a, b) =>
@@ -83,6 +91,57 @@ export default function PredictionComparison({ looValidation }: PredictionCompar
           </tbody>
         </table>
       </div>
+
+      <section className="loo-cohorts" aria-labelledby="cohort-performance-title">
+        <h5 id="cohort-performance-title">Performance by cohort</h5>
+        <p className="loo-cohort-copy">
+          Median day-weighted curve RMSE within each overlapping cohort. Lower is better; an em dash
+          means the validation set has no eligible measured curve for that cohort.
+        </p>
+        <div className="loo-summary">
+          <table className="loo-summary-table loo-cohort-table">
+            <thead>
+              <tr>
+                <th scope="col">Cohort</th>
+                <th scope="col" className="num">
+                  n
+                </th>
+                <th scope="col" className="num">
+                  Latitude RMSE
+                </th>
+                <th scope="col" className="num">
+                  Climate RMSE
+                </th>
+                <th scope="col" className="num">
+                  Neighbour RMSE
+                </th>
+                <th scope="col">Best</th>
+              </tr>
+            </thead>
+            <tbody>
+              {cohorts.map((cohort) => (
+                <tr key={cohort.label}>
+                  <th scope="row" title={cohort.definition}>
+                    {cohort.label}
+                  </th>
+                  <td className="num">{cohort.count}</td>
+                  {(["latitude", "climate", "neighbor"] as const).map((method) => (
+                    <td key={method} className="num">
+                      {fmtSummary(cohort.rmseByMethod[method], "rmse")}
+                    </td>
+                  ))}
+                  <td>{cohortMethodLabel(cohort.bestMethod)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="loo-cohort-note">
+          Temperate includes Köppen–Geiger families C and D. Data-poor means sparse local donor
+          coverage, not incomplete mortality registration; countries with no measured curve cannot
+          be scored by hold-one-out validation.
+        </p>
+      </section>
     </section>
   );
 }

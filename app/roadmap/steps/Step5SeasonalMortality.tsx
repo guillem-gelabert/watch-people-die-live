@@ -95,7 +95,11 @@ export default function Step5SeasonalMortality({
               ),
               "[prediction comparison chart]": (
                 <div className="chart-grid" aria-label="Predictions versus measured seasonal curve">
-                  <PredictionComparison looValidation={looValidation} />
+                  <PredictionComparison
+                    looValidation={looValidation}
+                    proxies={proxies}
+                    neighborsByM49={neighborsByM49}
+                  />
                 </div>
               ),
               "[region amplitude by neighbouring regions scatter]": (

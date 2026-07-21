@@ -1054,6 +1054,31 @@ a:hover {
   font-weight: 600;
 }
 
+.loo-cohorts {
+  margin-top: 1.35rem;
+}
+
+.loo-cohorts h5 {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.loo-cohort-copy {
+  margin: 0.35rem 0 0.7rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.loo-cohorts .loo-summary {
+  margin-bottom: 0;
+}
+
+.loo-cohorts .loo-cohort-note {
+  margin-top: 0.6rem;
+  font-size: 0.72rem;
+}
+
 /* Step 6 — Robust EWMA prediction widget (ConflictEwmaWidget). */
 .ewma-widget {
   display: flex;
