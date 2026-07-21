@@ -478,20 +478,6 @@ body {
   line-height: 1.5;
 }
 
-.pulse-example {
-  min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 0.9rem;
-  background: var(--card);
-}
-
-.pulse-line {
-  position: relative;
-  height: 24px;
-  background: linear-gradient(to right, transparent 0 2%, var(--line) 2% 98%, transparent 98%);
-}
-
 .pulse-dot {
   position: absolute;
   top: 5px;
@@ -862,6 +848,12 @@ body {
 
 .chart-panel.wide {
   grid-column: 1 / -1;
+}
+
+.pulse-line {
+  position: relative;
+  height: 24px;
+  background: linear-gradient(to right, transparent 0 2%, var(--line) 2% 98%, transparent 98%);
 }
 
 .chart-title {
