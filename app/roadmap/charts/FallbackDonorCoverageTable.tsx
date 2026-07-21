@@ -44,7 +44,7 @@ export default function FallbackDonorCoverageTable({
                 Climate-zone donors
               </th>
               <th scope="col" className="num">
-                Neighbour donors
+                Neighbour-country donors
               </th>
             </tr>
           </thead>
@@ -56,7 +56,9 @@ export default function FallbackDonorCoverageTable({
                 <td className="num" title={`Runtime climate source: ${row.climateLabel}.`}>
                   {row.climateDonors} · {row.climateLabel}
                 </td>
-                <td className="num">{row.neighborDonors}</td>
+                <td className="num">
+                  {row.neighborDonors} {row.neighborDonors === 1 ? "country" : "countries"}
+                </td>
               </tr>
             ))}
           </tbody>
