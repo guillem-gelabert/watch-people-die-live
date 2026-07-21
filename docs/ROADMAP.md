@@ -17,24 +17,31 @@ The problem is that that's not true. Or not completely true. The truth behind th
 
 [blinking dot every 500ms]
 
-In reality there's a big chance that during any given second nobody dies, because deaths don't happen on a steady rhythm. In fact, if deaths where randomly distributed accross the year with an average of two per second, there would be about a 27% chance that exactly two people died in any given second — the same chance as exactly one person dying in that second.
+In reality there's a big chance that during any given second nobody dies, because deaths don't happen on a steady rhythm. In fact, if deaths where randomly distributed accross the year at the observed annual average, there would be about a 27% chance that exactly two people died in any given second — and roughly the same chance that exactly one person died in that second.
 
-[chart showing how many days in a year what number of people would die]
+That 27% figure, and every column in the chart above, comes straight out of the Poisson probability mass function — the standard way to model a count of independent random events (here, deaths) over a fixed window (here, one second) when you only know the average rate. The observed annual average is first converted into a per-second average:
 
-```
-lambda = 2
+$$ Per-second rate
+\lambda_{\text{second}} = \dfrac{61{,}600{,}000}{365.25 \times 24 \times 60 \times 60} \approx 1.95
+$$
 
-for k = 0 to 7:
-    probability[k] = exp(-lambda) * lambda^k / factorial(k)
-    days[k] = 365 * probability[k]
+$$ Poisson probability mass function
+P(X = k) = \dfrac{e^{-\lambda_{\text{second}}}\lambda_{\text{second}}^k}{k!}
+$$
 
-probability[8+] = 1 - sum(probability[0..7])
-days[8+] = 365 * probability[8+]
-```
+_e_ and _k_! aren't arbitrary — each falls out of picturing what's actually happening underneath the second. Slice that second into an enormous number of tiny instants, each with its own tiny, independent chance of holding a death. _e_^-λ is what "none of those instants got a death" collapses to once you compound that tiny miss-chance across all of them — literally the same limiting process that defines Euler's number in the first place. The λ^_k_ half counts the _k_ instants that did land a death, one factor of the rate per hit; dividing by _k_! then erases the ordering, since we only care that _k_ deaths happened somewhere in the second, not which _k_ of the countless instants they fell on. Run that for each _k_ to get the probabilities represented by the sampled seconds in the chart above; counts of five or more are grouped into one last "5+" block.
 
 So, how many people die on a given second? Our new (better) answer is: if people die randomly around the year, probably somewhere _between 0 and 4_ (with a ~95% certainty). This dot behaves in this way.
 
 [blinking dot randomly blinking]
+
+That dot isn't rolling the day-count dice above once and spreading the result out evenly — it needs to know the exact wait until the next death, moment to moment. That's a different (but related) formula: the gap between two consecutive events in a Poisson process follows an exponential distribution, sampled here by inverting its CDF:
+
+$$ Exponential inter-arrival time
+T = -\mu \ln(1 - U), \qquad U \sim \text{Uniform}(0, 1)
+$$
+
+Here _U_ is a fresh random number between 0 and 1, and μ (mu) is the mean gap — the average time between deaths, currently ~512ms at the real global rate of ~1.95 deaths/second. Draw a gap, wait that long, blink, draw the next gap, repeat — that's the formula timing every randomly-blinking dot and every randomly-placed map on this page, from here through step 4, each with its own mean gap.
 
 Of course, people dying at a random frequency is a big assumptions, but now that we're at it let's also assume that they die at random places.
 

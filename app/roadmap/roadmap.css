@@ -247,6 +247,30 @@ a:hover {
   white-space: pre;
 }
 
+/* Block-math formulas (rendered by KaTeX via roadmapMarkdown's `$$` fences). */
+.roadmap-math {
+  display: block;
+  overflow-x: auto;
+  margin: 0 0 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #090b0f;
+}
+
+.roadmap-math-title {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.roadmap-math .katex {
+  font-size: 1.05rem;
+  color: #d8dde6;
+}
+
 /* GFM tables in roadmap copy (rendered by roadmapMarkdown). */
 .roadmap-table-wrap {
   overflow-x: auto;

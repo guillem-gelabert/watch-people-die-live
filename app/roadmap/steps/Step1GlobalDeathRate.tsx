@@ -23,7 +23,6 @@ export default function Step1GlobalDeathRate({ features, copy }: Step1GlobalDeat
         <div className="rate-explainer">
           <RoadmapMarkdown
             source={copy}
-            hiddenCodeBlockStarts={["lambda = 2"]}
             slots={{
               "[blinking dot every 500ms]": (
                 <div className="chart-grid" aria-label="Blinking dot every 500 milliseconds">

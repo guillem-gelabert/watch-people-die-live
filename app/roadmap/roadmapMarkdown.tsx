@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, type ReactNode } from "react";
+import Katex from "./Katex";
 
 interface RoadmapMarkdownProps {
   source: string;
@@ -115,6 +116,30 @@ function renderLines(
         <div className={className} key={"div-" + output.length}>
           {renderLines(inner, slots, hiddenCodeBlockStarts)}
         </div>,
+      );
+      continue;
+    }
+
+    // Block math: a `$$` line opens (optionally followed by a caption title on the same
+    // line), a lone `$$` line closes, KaTeX renders what's between.
+    const mathOpen = /^\$\$\s*(.*)$/.exec(trimmed);
+    if (mathOpen) {
+      flushParagraph();
+      flushList();
+      const title = mathOpen[1]?.trim();
+      const mathLines: string[] = [];
+      while (index + 1 < lines.length && (lines[index + 1] ?? "").trim() !== "$$") {
+        index += 1;
+        mathLines.push(lines[index] ?? "");
+      }
+      index += 1; // skip the closing $$
+      output.push(
+        <Katex
+          key={"math-" + output.length}
+          tex={mathLines.join("\n").trim()}
+          title={title || undefined}
+          display
+        />,
       );
       continue;
     }
