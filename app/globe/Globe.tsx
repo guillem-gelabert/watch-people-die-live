@@ -1,10 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Canvas, extend } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three/webgpu";
 import Earth from "./Earth";
+import RoadmapClient from "../roadmap/RoadmapClient";
 import { useGlobeData } from "./useGlobeData";
 import { makePersona } from "./persona";
 import { GLOBE_R, FOV } from "./constants";
@@ -28,13 +30,83 @@ const FEED_HARD_MAX = 200; // absolute cap, even when paused
 
 let feedIdCounter = 0;
 
-export default function Globe() {
+interface GlobeProps {
+  roadmapMarkdown: string;
+}
+
+export default function Globe({ roadmapMarkdown }: GlobeProps) {
   const { data: globeData, geo } = useGlobeData();
   const [loaded, setLoaded] = useState(false);
   // Direction the camera eases toward to center the viewer's location, or null when
   // idle / after the user takes over (cleared by OrbitControls' "start" event).
   const camTarget = useRef<THREE.Vector3 | null>(null);
   const controlsRef = useRef<OrbitControlsRef | null>(null);
+
+  // --- Roadmap overlay -------------------------------------------------------
+  // The roadmap is prerendered as a full-viewport overlay clipped behind the globe, then
+  // revealed with a growing circular clip-path. Mounting is deferred until after the globe's
+  // first frame (during idle) so its heavy data + chart work doesn't fight the globe's startup
+  // — and, crucially, so by the time the info button is pressed the content is already painted
+  // and the clip-path animation runs on a quiet main thread.
+  const [mountRoadmap, setMountRoadmap] = useState(false);
+  const [roadmapOpen, setRoadmapOpen] = useState(false);
+  const revealElRef = useRef<HTMLDivElement>(null);
+  const infoButtonRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    if (!loaded || mountRoadmap) return;
+    const id = requestIdleCallback(() => setMountRoadmap(true));
+    return () => cancelIdleCallback(id);
+  }, [loaded, mountRoadmap]);
+
+  const openRoadmap = useCallback(() => {
+    const el = revealElRef.current;
+    const btn = infoButtonRef.current;
+    if (el && btn) {
+      // Grow the circle from the button's center out to whichever viewport corner is farthest,
+      // so the reveal exactly clears the screen over the full duration (no off-screen tail) and
+      // self-corrects if the button sits elsewhere (e.g. landscape).
+      const rect = btn.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const r = Math.max(
+        Math.hypot(cx, cy),
+        Math.hypot(w - cx, cy),
+        Math.hypot(cx, h - cy),
+        Math.hypot(w - cx, h - cy),
+      );
+      el.style.setProperty("--reveal-origin", `${cx}px ${cy}px`);
+      el.style.setProperty("--reveal-r", `${r}px`);
+      el.scrollTop = 0; // always reveal from the top of the roadmap
+    }
+    setRoadmapOpen(true);
+    // Reflect the overlay in the URL so browser Back closes it and the address is shareable
+    // (a fresh load of /roadmap hits the standalone route instead).
+    window.history.pushState({ roadmap: true }, "", "/roadmap");
+  }, []);
+
+  const closeRoadmap = useCallback(() => {
+    // Unwind the pushed entry so the popstate handler closes us and the URL restores to "/".
+    if (window.history.state?.roadmap) window.history.back();
+    else setRoadmapOpen(false);
+  }, []);
+
+  // Browser Back (popstate) and Escape both close the overlay; the in-overlay "back" control
+  // routes through closeRoadmap → history.back → popstate, so all three share one path.
+  useEffect(() => {
+    const onPopState = () => setRoadmapOpen(false);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeRoadmap();
+    };
+    window.addEventListener("popstate", onPopState);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [closeRoadmap]);
 
   // --- Death feed state ------------------------------------------------------
   const [lines, setLines] = useState<FeedLine[]>([]);
@@ -151,6 +223,14 @@ export default function Globe() {
 
   const onFirstFrame = useCallback(() => setLoaded(true), []);
 
+  // Globe re-renders on every death-feed line (several/second). Memoize the roadmap subtree so
+  // those re-renders don't re-parse the markdown or reconcile all 16 charts — keeping the feed
+  // cheap and, critically, keeping the re-render off the reveal animation's frames.
+  const roadmapContent = useMemo(
+    () => <RoadmapClient markdown={roadmapMarkdown} onClose={closeRoadmap} />,
+    [roadmapMarkdown, closeRoadmap],
+  );
+
   return (
     <div>
       <div id="loader" aria-hidden="true" className={loaded ? "hidden" : ""}>
@@ -217,6 +297,32 @@ export default function Globe() {
       >
         ↓
       </button>
+      <Link
+        id="info-button"
+        href="/roadmap"
+        aria-label="View project roadmap"
+        ref={infoButtonRef}
+        onClick={(e) => {
+          // Once the overlay is warm, intercept and play the smooth in-page reveal. Before then
+          // (brief idle window after first frame), fall through to real navigation to /roadmap.
+          if (mountRoadmap) {
+            e.preventDefault();
+            openRoadmap();
+          }
+        }}
+      >
+        i
+      </Link>
+
+      {mountRoadmap && (
+        <div
+          className={roadmapOpen ? "reveal is-open" : "reveal"}
+          ref={revealElRef}
+          inert={!roadmapOpen}
+        >
+          {roadmapContent}
+        </div>
+      )}
     </div>
   );
 }

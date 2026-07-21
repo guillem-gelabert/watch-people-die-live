@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import "./roadmap.css";
 import { roadmapSection } from "./roadmapMarkdown";
 import Step1GlobalDeathRate from "./steps/Step1GlobalDeathRate";
 import Step2DeathRateByCountry from "./steps/Step2DeathRateByCountry";
@@ -13,9 +14,12 @@ import { useRoadmapData } from "./useRoadmapData";
 
 interface RoadmapClientProps {
   markdown: string;
+  // Present when rendered as the in-page overlay on the globe route: the "back" control closes
+  // the iris instead of navigating. Absent on the standalone /roadmap route (plain <Link href="/">).
+  onClose?: () => void;
 }
 
-export default function RoadmapClient({ markdown }: RoadmapClientProps) {
+export default function RoadmapClient({ markdown, onClose }: RoadmapClientProps) {
   const {
     features,
     neighborsByM49,
@@ -42,9 +46,15 @@ export default function RoadmapClient({ markdown }: RoadmapClientProps) {
 
   return (
     <main>
-      <Link className="back" href="/">
-        ← Back to the globe
-      </Link>
+      {onClose ? (
+        <button className="back" type="button" onClick={onClose} aria-label="Back to the globe">
+          <span className="back-earth" aria-hidden="true" />
+        </button>
+      ) : (
+        <Link className="back" href="/" aria-label="Back to the globe">
+          <span className="back-earth" aria-hidden="true" />
+        </Link>
+      )}
       <h1>Roadmap</h1>
 
       <div className="tracks">

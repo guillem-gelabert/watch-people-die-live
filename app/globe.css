@@ -225,3 +225,75 @@ body {
     bottom: 1rem;
   }
 }
+
+/* Round "info" button, top-right — links to the /roadmap walkthrough. Same recipe as
+   #feed-bottom. Its on-screen center (top: 1rem + half of 2.6rem) is the origin the
+   roadmap page's circular-reveal transition grows out of — see --reveal-origin in
+   roadmap.css. */
+#info-button {
+  position: fixed;
+  z-index: 2;
+  top: 1rem;
+  right: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  pointer-events: auto;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
+  background: rgb(20 24 34 / 90%);
+  color: var(--fg);
+  font-size: 1.2rem;
+  font-style: italic;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 50%);
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+#info-button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* The roadmap, prerendered as a full-viewport overlay behind the globe and revealed with a
+   growing circular clip-path when the info button is pressed. Pinned to the true viewport (not
+   sized by its own scrolled content, which spans 7 long sections) so the clip-path radius
+   resolves against the visible screen, not the full document height; it is its own scroll
+   container. --reveal-origin / --reveal-r are set per-open in Globe.tsx from the live button
+   rect (exact fit, self-correcting in landscape); the values here are only fallbacks. */
+.reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 3; /* above #death-feed (1) / #feed-bottom (2), below #loader (10) */
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  background: var(--bg);
+  clip-path: circle(0 at var(--reveal-origin, calc(100% - 2.3rem) 2.3rem));
+  transition: clip-path 1.15s cubic-bezier(0.22, 1, 0.36, 1); /* slow easeOutQuint settle */
+}
+
+.reveal.is-open {
+  clip-path: circle(var(--reveal-r, 150vmax) at var(--reveal-origin, calc(100% - 2.3rem) 2.3rem));
+}
+
+/* Closed-and-idle: fully clipped away and non-interactive so it can't trap focus or clicks
+   while it sits warm behind the globe. */
+.reveal:not(.is-open, .is-animating) {
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    transition: none;
+  }
+}

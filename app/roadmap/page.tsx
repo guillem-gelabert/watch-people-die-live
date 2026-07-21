@@ -1,6 +1,5 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import "./roadmap.css";
 import RoadmapClient from "./RoadmapClient";
 
 export default async function RoadmapPage() {
