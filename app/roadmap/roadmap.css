@@ -1061,6 +1061,14 @@ a:hover {
   stroke-width: 0.45;
 }
 
+/* Plain 1°×1° lat/lon reference grid drawn over every world map — no data, no hover. */
+.map-graticule {
+  fill: none;
+  stroke: rgb(255 255 255 / 12%);
+  stroke-width: 0.35;
+  pointer-events: none;
+}
+
 /* No fill here (unlike .map-country) — the choropleth sets fill per-path via
    attr(), and a CSS fill rule would win over that presentation attribute. */
 .map-country-fill {
