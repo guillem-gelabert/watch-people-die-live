@@ -107,6 +107,7 @@ export default function Step5SeasonalMortality({
                     seasonality={activeSeasonality}
                     proxies={proxies}
                     neighborsByM49={neighborsByM49}
+                    regions={subnationalRegions}
                   />
                 </div>
               ),

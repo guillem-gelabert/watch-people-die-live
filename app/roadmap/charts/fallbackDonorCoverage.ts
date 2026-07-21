@@ -1,5 +1,12 @@
 import * as d3 from "d3";
-import type { CountryFeature, NeighborsByM49, SeasonalityData, SeasonalityProxies } from "../types";
+import isoCountries from "i18n-iso-countries";
+import type {
+  CountryFeature,
+  NeighborsByM49,
+  SeasonalityData,
+  SeasonalityProxies,
+  SubnationalSeasonalityRegion,
+} from "../types";
 
 export const LATITUDE_DONOR_TOLERANCE_DEGREES = 10;
 
@@ -9,7 +16,15 @@ export interface FallbackDonorCoverage {
   latitudeDonors: number;
   climateDonors: number;
   climateLabel: string;
-  neighborDonors: number;
+  localDonors: number;
+  localDonorUnit: "regions" | "countries";
+}
+
+function m49ForIso3(iso3: string): number | null {
+  const numeric = isoCountries.alpha3ToNumeric(iso3);
+  if (!numeric) return null;
+  const m49 = Number(numeric);
+  return Number.isFinite(m49) ? m49 : null;
 }
 
 function countBy<T>(
@@ -25,14 +40,14 @@ function countBy<T>(
   return counts;
 }
 
-// This table deliberately counts only direct national observations. The runtime map may use a
-// country's own measured regions before it reaches these proxies, but those are a different
-// evidence tier than a climate or neighbouring-country donor.
+// The runtime map uses a country's own measured Admin-1 curves before it reaches neighbouring
+// country curves, so this table reports that same region-first evidence order.
 export function buildFallbackDonorCoverage(
   features: CountryFeature[],
   seasonality: SeasonalityData,
   proxies: SeasonalityProxies | null,
   neighborsByM49: NeighborsByM49,
+  regions: SubnationalSeasonalityRegion[] = [],
 ): FallbackDonorCoverage[] {
   const observedIds = new Set(
     Object.entries(seasonality.countries)
@@ -52,6 +67,16 @@ export function buildFallbackDonorCoverage(
     const latitude = latitudeByM49.get(m49);
     return latitude == null ? [] : [{ m49, latitude }];
   });
+  const measuredRegionsByM49 = new Map<number, SubnationalSeasonalityRegion[]>();
+  for (const region of regions) {
+    if (region.geo !== "adm1" || region.measurement === "climate-modeled" || !region.curve.length)
+      continue;
+    const m49 = m49ForIso3(region.country);
+    if (m49 == null) continue;
+    const members = measuredRegionsByM49.get(m49) ?? [];
+    members.push(region);
+    measuredRegionsByM49.set(m49, members);
+  }
 
   return features
     .filter((feature) => !observedIds.has(Number(feature.id)))
@@ -71,6 +96,10 @@ export function buildFallbackDonorCoverage(
         : hasFamilyBlend
           ? `${target?.family} family`
           : "No climate blend";
+      const regionalDonors = measuredRegionsByM49.get(m49)?.length ?? 0;
+      const neighboringCountryDonors = (neighborsByM49.get(m49) ?? []).filter((id) =>
+        observedIds.has(id),
+      ).length;
 
       return {
         m49,
@@ -83,7 +112,8 @@ export function buildFallbackDonorCoverage(
         ).length,
         climateDonors,
         climateLabel,
-        neighborDonors: (neighborsByM49.get(m49) ?? []).filter((id) => observedIds.has(id)).length,
+        localDonors: regionalDonors || neighboringCountryDonors,
+        localDonorUnit: regionalDonors ? ("regions" as const) : ("countries" as const),
       };
     })
     .sort((left, right) => left.country.localeCompare(right.country));

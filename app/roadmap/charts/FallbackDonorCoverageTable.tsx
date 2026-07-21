@@ -1,6 +1,12 @@
 "use client";
 
-import type { CountryFeature, NeighborsByM49, SeasonalityData, SeasonalityProxies } from "../types";
+import type {
+  CountryFeature,
+  NeighborsByM49,
+  SeasonalityData,
+  SeasonalityProxies,
+  SubnationalSeasonalityRegion,
+} from "../types";
 import {
   buildFallbackDonorCoverage,
   LATITUDE_DONOR_TOLERANCE_DEGREES,
@@ -11,6 +17,7 @@ interface FallbackDonorCoverageTableProps {
   seasonality: SeasonalityData | null;
   proxies: SeasonalityProxies | null;
   neighborsByM49: NeighborsByM49 | null;
+  regions: SubnationalSeasonalityRegion[] | null;
 }
 
 export default function FallbackDonorCoverageTable({
@@ -18,9 +25,16 @@ export default function FallbackDonorCoverageTable({
   seasonality,
   proxies,
   neighborsByM49,
+  regions,
 }: FallbackDonorCoverageTableProps) {
   if (!features || !seasonality || !neighborsByM49) return null;
-  const rows = buildFallbackDonorCoverage(features, seasonality, proxies, neighborsByM49);
+  const rows = buildFallbackDonorCoverage(
+    features,
+    seasonality,
+    proxies,
+    neighborsByM49,
+    regions ?? [],
+  );
 
   return (
     <section className="chart-panel wide" aria-labelledby="fallback-donor-coverage-title">
@@ -44,7 +58,7 @@ export default function FallbackDonorCoverageTable({
                 Climate-zone donors
               </th>
               <th scope="col" className="num">
-                Neighbour-country donors
+                Regional / neighbour donors
               </th>
             </tr>
           </thead>
@@ -57,7 +71,7 @@ export default function FallbackDonorCoverageTable({
                   {row.climateDonors} · {row.climateLabel}
                 </td>
                 <td className="num">
-                  {row.neighborDonors} {row.neighborDonors === 1 ? "country" : "countries"}
+                  {row.localDonors} {row.localDonorUnit === "regions" ? "regions" : "countries"}
                 </td>
               </tr>
             ))}
@@ -68,9 +82,9 @@ export default function FallbackDonorCoverageTable({
         Latitude donors have a country-centroid absolute latitude within ±
         {LATITUDE_DONOR_TOLERANCE_DEGREES}° and are in the same hemisphere. The running map still
         evaluates a globally fitted, latitude-scaled curve rather than directly averaging this band.
-        Climate uses the live class blend when available, otherwise its climate-family blend.
-        Neighbour counts include only observed national curves on a direct land border; own measured
-        regions are a separate, earlier evidence tier.
+        Climate uses the live class blend when available, otherwise its climate-family blend. The
+        final column follows the runtime order: observed Admin-1 regions in the target country
+        first; otherwise observed national curves in directly bordering countries.
       </p>
     </section>
   );
