@@ -29,6 +29,10 @@ describe("buildFallbackDonorCoverage", () => {
         ampClamp: [1, 20],
       },
       countries: { 32: curve(1.2, 0.8), 840: curve(1.2, 0.8) },
+      quality: {
+        32: { nYears: 2 },
+        840: { nYears: 10 },
+      },
       climate: {
         classCurves: { Cfa: curve(1.05, 0.95) },
         familyCurves: { C: curve(1.04, 0.96) },
@@ -95,6 +99,10 @@ describe("buildFallbackDonorCoverage", () => {
     expect(classTarget?.climate.amplitude).toBeCloseTo(0.05);
     expect(classTarget?.neighbor.amplitude).toBeCloseTo(0.3);
     expect(classTarget?.amplitudeSpread).toBeCloseTo(0.25);
+    expect(classTarget?.highestQualityDonorGroup).toMatchObject({
+      groups: ["Climate"],
+      quality: { cadence: "week", geography: "region" },
+    });
 
     const familyTarget = coverage.find((row) => row.m49 === 4);
     expect(familyTarget).toMatchObject({
@@ -105,5 +113,9 @@ describe("buildFallbackDonorCoverage", () => {
     });
     expect(familyTarget?.climate.amplitude).toBeCloseTo(0.04);
     expect(familyTarget?.amplitudeSpread).toBeCloseTo(0.16);
+    expect(familyTarget?.highestQualityDonorGroup).toMatchObject({
+      groups: ["Latitude"],
+      quality: { cadence: "week", medianYears: 10, geography: "country" },
+    });
   });
 });

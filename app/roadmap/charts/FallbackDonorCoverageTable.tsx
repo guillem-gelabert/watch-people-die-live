@@ -33,6 +33,18 @@ function formatFallback(summary: {
   }`;
 }
 
+function formatHighestQuality(row: ReturnType<typeof buildFallbackDonorCoverage>[number]) {
+  const winner = row.highestQualityDonorGroup;
+  if (!winner) return "—";
+  const cadence = winner.quality.cadence ? `${winner.quality.cadence}ly` : "cadence unknown";
+  const years =
+    winner.quality.medianYears == null
+      ? "years unknown"
+      : `${winner.quality.medianYears % 1 ? winner.quality.medianYears.toFixed(1) : winner.quality.medianYears} median years`;
+  const geography = winner.quality.geography === "region" ? "regions" : "countries";
+  return `${winner.groups.join(" / ")} — ${cadence}; ${years}; ${geography}`;
+}
+
 export default function FallbackDonorCoverageTable({
   features,
   seasonality,
@@ -78,6 +90,7 @@ export default function FallbackDonorCoverageTable({
               <th scope="col" className="num">
                 Amplitude spread
               </th>
+              <th scope="col">Highest-quality donor group</th>
             </tr>
           </thead>
           <tbody>
@@ -97,6 +110,7 @@ export default function FallbackDonorCoverageTable({
                 <td className="num">
                   {row.amplitudeSpread == null ? "—" : fmtPlainPct(row.amplitudeSpread)}
                 </td>
+                <td>{formatHighestQuality(row)}</td>
               </tr>
             ))}
           </tbody>
@@ -108,7 +122,9 @@ export default function FallbackDonorCoverageTable({
         hemisphere. Climate uses the live class blend when available, otherwise its climate-family
         blend. The regional/neighbour curve uses observed Admin-1 regions in the target country
         first; otherwise evidence from directly bordering countries. Amplitude spread is the maximum
-        minus minimum available fallback amplitude: lower means closer agreement.
+        minus minimum available fallback amplitude: lower means closer agreement. The final column
+        ranks the donor groups by their finest known cadence (weekly, then monthly, then quarterly),
+        then median coverage years, then regional over country donors.
       </p>
     </section>
   );

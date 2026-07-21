@@ -32,6 +32,7 @@ export interface SeasonalityData {
   method: string;
   months: number;
   countries: Record<string, number[]>;
+  quality?: Record<string, { annualDeaths?: number; nYears?: number }>;
   fallback: SeasonalityFallback;
   climate?: ClimateFallbackModel; // attached at fetch, feeds the spatial estimator's climate tier
 }
