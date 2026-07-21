@@ -119,7 +119,7 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
   }, [features]);
 
   return (
-    <section className="chart-panel wide">
+    <section className="chart-panel wide map-panel">
       <p className="chart-copy">
         Blue dots appear at exponentially random intervals, averaging nearly two events every second
         (~0.5s between deaths), and at uniformly random points on the Earth&apos;s surface. This

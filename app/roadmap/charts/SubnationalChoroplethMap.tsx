@@ -186,7 +186,7 @@ export default function SubnationalChoroplethMap({
   const loading = !drawn || !ratePer100kByKey;
 
   return (
-    <section className="chart-panel wide">
+    <section className="chart-panel wide map-panel">
       <p className="chart-copy">
         Every first-level region colored by its own crude death rate. Inside a single country the
         spread is dramatic — Russia&apos;s is the widest of all, Pskov running over 5× Ingushetia;

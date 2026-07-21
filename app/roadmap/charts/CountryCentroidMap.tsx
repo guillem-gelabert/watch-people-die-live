@@ -155,7 +155,7 @@ export default function CountryCentroidMap({
   }, [features, deathsPerYearById]);
 
   return (
-    <section className="chart-panel wide">
+    <section className="chart-panel wide map-panel">
       <p className="chart-copy">
         Each country now fires deaths at its own real rate — populous countries pulse faster — but
         every death still lands on the same single point: that country&apos;s geographic center.

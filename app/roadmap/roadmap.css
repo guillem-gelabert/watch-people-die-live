@@ -850,6 +850,13 @@ body {
   grid-column: 1 / -1;
 }
 
+.chart-panel.map-panel {
+  border: none;
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}
+
 .pulse-line {
   position: relative;
   height: 24px;

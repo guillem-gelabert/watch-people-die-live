@@ -148,7 +148,7 @@ export default function Step5SeasonalMortality({
           />
 
           <div className="chart-grid" aria-label="Seasonal mortality amplitude map">
-            <section className="chart-panel wide">
+            <section className="chart-panel wide map-panel">
               <h4 className="chart-title">Amplitude By Country And Region</h4>
               <p className="chart-copy">
                 Every rendered country and region is colored by seasonal amplitude. Observations use

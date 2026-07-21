@@ -273,7 +273,7 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
   }, [grid, features, deathsPerYearById, logScale]);
 
   return (
-    <section className="chart-panel wide">
+    <section className="chart-panel wide map-panel">
       <p className="chart-copy">
         GPWv4 population counts on the 0.5° grid, equirectangular projection. Brighter cells hold
         more people. Dots now land on a grid cell chosen in proportion to that cell&apos;s
