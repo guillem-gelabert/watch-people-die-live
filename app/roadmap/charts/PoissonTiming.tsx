@@ -2,8 +2,10 @@
 
 import { showTooltip, hideTooltip } from "../tooltip";
 
-const LAMBDA = 2;
-const DAYS = 365;
+const ANNUAL_DEATHS = 61_600_000;
+const SECONDS_PER_YEAR = 365.25 * 24 * 60 * 60;
+const LAMBDA_PER_SECOND = ANNUAL_DEATHS / SECONDS_PER_YEAR;
+const SAMPLE_SECONDS = 365;
 
 function seededRandom(seed: number) {
   let state = seed >>> 0;
@@ -17,7 +19,7 @@ function seededRandom(seed: number) {
 }
 
 function samplePoisson(random: () => number) {
-  const limit = Math.exp(-LAMBDA);
+  const limit = Math.exp(-LAMBDA_PER_SECOND);
   let product = 1;
   let count = 0;
   do {
@@ -28,10 +30,10 @@ function samplePoisson(random: () => number) {
 }
 
 const random = seededRandom(2000);
-// Fixed display order for the day-blocks (5 stands for the "5+" bucket) — not a
+// Fixed display order for the sample blocks (5 stands for the "5+" bucket) — not a
 // probability sort, just the arrangement the chart groups squares into.
 const categoryOrder = [2, 3, 1, 0, 4, 5];
-const samples = Array.from({ length: DAYS }, () => samplePoisson(random)).sort(
+const samples = Array.from({ length: SAMPLE_SECONDS }, () => samplePoisson(random)).sort(
   (left, right) =>
     categoryOrder.indexOf(category(left)) - categoryOrder.indexOf(category(right)) || left - right,
 );
@@ -43,25 +45,25 @@ function category(value: number) {
 export default function PoissonTiming() {
   return (
     <section className="chart-panel wide">
-      <h4 className="chart-title">One Poisson-distributed year: deaths per day</h4>
+      <h4 className="chart-title">365 sampled seconds: deaths per second</h4>
       <p className="chart-copy">
-        Each square is one of 365 days. With an average of λ = 2 deaths per day, a Poisson model
-        draws a random daily count; the colour shows how many deaths landed on that day. The squares
-        are grouped by block size — 2, 3, 1, 0, 4, then the rare 5+ block last — rather than shown
-        as a chronological calendar.
+        An annual average of roughly 61.6 million deaths implies λ ≈ 1.95 deaths per second. Each
+        square is one sampled one-second interval; the colour shows how many deaths the Poisson
+        model placed in it. The squares are grouped by block size — 2, 3, 1, 0, 4, then the rare 5+
+        block last — rather than shown chronologically.
       </p>
       <div
         className="poisson-calendar"
         role="img"
-        aria-label="A simulated year of 365 days, sorted by the number of deaths per day from a Poisson distribution with a mean of two deaths per day"
+        aria-label="365 sampled one-second intervals, sorted by the number of deaths in each second from a Poisson distribution with a mean of approximately 1.95 deaths per second"
       >
-        {samples.map((sample, day) => (
+        {samples.map((sample, index) => (
           <span
             className={`poisson-day poisson-day-${category(sample)}`}
-            key={day}
+            key={index}
             onPointerMove={(event) =>
               showTooltip(
-                `${sample} ${sample === 1 ? "death" : "deaths"} on this simulated day`,
+                `${sample} ${sample === 1 ? "death" : "deaths"} in this simulated second`,
                 event.clientX,
                 event.clientY,
               )
@@ -70,7 +72,7 @@ export default function PoissonTiming() {
           />
         ))}
       </div>
-      <div className="poisson-legend" aria-label="Deaths-per-day color legend">
+      <div className="poisson-legend" aria-label="Deaths-per-second color legend">
         {categoryOrder.map((label) => (
           <span key={label}>
             <i className={`poisson-day poisson-day-${label}`} />
