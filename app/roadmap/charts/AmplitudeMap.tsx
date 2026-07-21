@@ -115,7 +115,7 @@ export default function AmplitudeMap({
     const color = d3
       .scaleSequential()
       .domain([0, maxAmp])
-      .interpolator(d3.interpolateRgb("#233142", "#ff6b6b"));
+      .interpolator(d3.interpolateRgb("#233142", "#ff3b30"));
     const defs = svg.append("defs");
     const stripeId = "amplitude-map-calculated-stripes";
     const stripes = defs
@@ -161,8 +161,8 @@ export default function AmplitudeMap({
       .append("path")
       .datum<d3.GeoSphere>({ type: "Sphere" })
       .attr("d", path)
-      .attr("fill", "rgba(255,255,255,0.025)")
-      .attr("stroke", "rgba(255,255,255,0.16)");
+      .attr("fill", "rgba(15,15,30,0.02)")
+      .attr("stroke", "rgba(15,15,30,0.14)");
 
     svg
       .append("g")

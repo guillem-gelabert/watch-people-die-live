@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
-import { expGap, REAL_MEAN_GAP_MS, formatMeanGap, MAP_GRATICULE } from "../chartHelpers";
+import { expGap, REAL_MEAN_GAP_MS, MAP_GRATICULE } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, DensityGrid, DeathsPerYearById } from "../types";
 
@@ -29,7 +29,6 @@ interface DensityMapProps {
 // single centroid.
 export default function DensityMap({ grid, features, deathsPerYearById }: DensityMapProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [status, setStatus] = useState("Loading density grid…");
   const [logScale, setLogScale] = useState(true);
 
   useEffect(() => {
@@ -187,12 +186,6 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
     let rafId: number;
     let cancelled = false;
 
-    setStatus(
-      canAnimate
-        ? `${grid.count.toLocaleString()} grid cells at ${grid.resolution} resolution. Every death still fires at its country's real rate, one dot every ${formatMeanGap(meanGapMs)} on average, but now lands on a cell chosen in proportion to that cell's population.`
-        : `${grid.count.toLocaleString()} grid cells at ${grid.resolution} resolution, GPWv4 2015 population counts.`,
-    );
-
     function frame(now: number) {
       if (cancelled) return;
       if (canAnimate) {
@@ -281,7 +274,6 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
 
   return (
     <section className="chart-panel wide">
-      <h4 className="chart-title">Population Density (flat)</h4>
       <p className="chart-copy">
         GPWv4 population counts on the 0.5° grid, equirectangular projection. Brighter cells hold
         more people. Dots now land on a grid cell chosen in proportion to that cell&apos;s
@@ -314,9 +306,6 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
         role="img"
         aria-label="World map colored by population density per grid cell, with dots landing on cells in proportion to their population"
       />
-      <p id="density-chart-status" className="chart-status" aria-live="polite">
-        {status}
-      </p>
     </section>
   );
 }

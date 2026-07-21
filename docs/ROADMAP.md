@@ -17,6 +17,8 @@ The problem is that that's not true. Or not completely true. The truth behind th
 
 [blinking dot every 500ms]
 
+[chart showing 365 sampled one-second intervals]
+
 In reality there's a big chance that during any given second nobody dies, because deaths don't happen on a steady rhythm. In fact, if deaths where randomly distributed accross the year at the observed annual average, there would be about a 27% chance that exactly two people died in any given second — and roughly the same chance that exactly one person died in that second.
 
 That 27% figure, and every column in the chart above, comes straight out of the Poisson probability mass function — the standard way to model a count of independent random events (here, deaths) over a fixed window (here, one second) when you only know the average rate. The observed annual average is first converted into a per-second average:
@@ -177,8 +179,6 @@ Here the bottom axis shows the absolute latitude; in other words how far a count
 We see an expected pattern: amplitude is the lowest between the tropics, as countries there don't experience astronomical seasons. And an —at least for me— unexpected one: above 35° seasonality decreases, instead of keeping raising because of colder and longer winters. A possible explanation is that above a certain threshold people understand that they should adapt to winter and implement social, behavioral, and housing adaptations. That Spain (with a more temperate climate) shows higher mortality in winter than Sweden would point in this direction. [note: Another factor that could cause this are that most countries closer to the pole happen to be relatively rich countries (Canada, Scandinavia, baltic countries, Russia)]
 
 [latitude scatter chart]
-
-Zooming into the region-level dots shows the country-level rule doesn't hold _inside_ a country: within Russia and the US, higher-latitude regions are less seasonal, not more — a hint of the same cold-climate adaptation, just visible a layer down. Argentina keeps the cross-country sign, and so does Brazil — though there it's less "higher latitude, more seasonal" and more "closer to its one temperate corner (the three southern states), less flat".
 
 :::
 

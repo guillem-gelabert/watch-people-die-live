@@ -45,7 +45,7 @@ export default function RoadmapClient({ markdown, onClose }: RoadmapClientProps)
   const activeSeasonality = unified || seasonality;
 
   return (
-    <main>
+    <main className="roadmap">
       {onClose ? (
         <button className="back" type="button" onClick={onClose} aria-label="Back to the globe">
           <span className="back-earth" aria-hidden="true" />
@@ -55,66 +55,65 @@ export default function RoadmapClient({ markdown, onClose }: RoadmapClientProps)
           <span className="back-earth" aria-hidden="true" />
         </Link>
       )}
-      <h1>Roadmap</h1>
 
-      <div className="tracks">
-        <section className="track" aria-label="Mortality track">
-          <ol className="steps">
-            <Step1GlobalDeathRate
-              features={features}
-              copy={roadmapSection(markdown, "Global Death Rate")}
-            />
-            <Step2DeathRateByCountry
-              features={features}
-              deathsPerYearById={deathsPerYearById}
-              copy={roadmapSection(markdown, "Death Rate By Country")}
-            />
-            <Step3PopulationDensity
-              features={features}
-              grid={grid}
-              deathsPerYearById={deathsPerYearById}
-              copy={roadmapSection(markdown, "Population Density")}
-            />
-            <Step4Region
-              admin1Features={admin1Features}
-              nuts2Features={nuts2Features}
-              ratePer100kByKey={ratePer100kByKey}
-              ratePer100kByCountry={ratePer100kByCountry}
-              nutsCountries={nutsCountries}
-              nutsIso2ToIso3={nutsIso2ToIso3}
-              subnational={subnational}
-              copy={roadmapSection(markdown, "Death Rate By Region")}
-            />
-            <Step5SeasonalMortality
-              features={features}
-              neighborsByM49={neighborsByM49}
-              activeSeasonality={activeSeasonality}
-              unified={unified}
-              appliedFallbacks={appliedFallbacks}
-              proxies={proxies}
-              looValidation={looValidation}
-              admin1Features={admin1Features}
-              subnationalSeasonality={subnationalSeasonality}
-              subnationalLoo={subnationalLoo}
-              regionNeighbors={regionNeighbors}
-              copy={roadmapSection(markdown, "Death Rate By Time Of Year")}
-            />
-            <Step6Conflicts
-              conflicts={conflicts}
-              copy={roadmapSection(markdown, "Ongoing Conflicts")}
-            />
-            <Step7Epidemics copy={roadmapSection(markdown, "Ongoing Epidemics")} />
-          </ol>
-        </section>
+      <div className="roadmap-shell">
+        <h1>Roadmap</h1>
+
+        <div className="steps">
+          <Step1GlobalDeathRate
+            features={features}
+            copy={roadmapSection(markdown, "Global Death Rate")}
+          />
+          <Step2DeathRateByCountry
+            features={features}
+            deathsPerYearById={deathsPerYearById}
+            copy={roadmapSection(markdown, "Death Rate By Country")}
+          />
+          <Step3PopulationDensity
+            features={features}
+            grid={grid}
+            deathsPerYearById={deathsPerYearById}
+            copy={roadmapSection(markdown, "Population Density")}
+          />
+          <Step4Region
+            admin1Features={admin1Features}
+            nuts2Features={nuts2Features}
+            ratePer100kByKey={ratePer100kByKey}
+            ratePer100kByCountry={ratePer100kByCountry}
+            nutsCountries={nutsCountries}
+            nutsIso2ToIso3={nutsIso2ToIso3}
+            subnational={subnational}
+            copy={roadmapSection(markdown, "Death Rate By Region")}
+          />
+          <Step5SeasonalMortality
+            features={features}
+            neighborsByM49={neighborsByM49}
+            activeSeasonality={activeSeasonality}
+            unified={unified}
+            appliedFallbacks={appliedFallbacks}
+            proxies={proxies}
+            looValidation={looValidation}
+            admin1Features={admin1Features}
+            subnationalSeasonality={subnationalSeasonality}
+            subnationalLoo={subnationalLoo}
+            regionNeighbors={regionNeighbors}
+            copy={roadmapSection(markdown, "Death Rate By Time Of Year")}
+          />
+          <Step6Conflicts
+            conflicts={conflicts}
+            copy={roadmapSection(markdown, "Ongoing Conflicts")}
+          />
+          <Step7Epidemics copy={roadmapSection(markdown, "Ongoing Epidemics")} />
+        </div>
+
+        <p className="note">
+          The globe is statistical, not a feed of individual records. A flash and persona should be
+          read as a representative event drawn from public aggregate data, never as an identifiable
+          death.
+        </p>
+
+        <footer>This is a personal project exploring statistical mortality visualization.</footer>
       </div>
-
-      <p className="note">
-        The globe is statistical, not a feed of individual records. A flash and persona should be
-        read as a representative event drawn from public aggregate data, never as an identifiable
-        death.
-      </p>
-
-      <footer>This is a personal project exploring statistical mortality visualization.</footer>
     </main>
   );
 }

@@ -154,6 +154,24 @@ function renderLines(
       }
       index += 1;
       const value = code.join("\n");
+
+      // A two-line "Q: … / A: …" code fence (Step 1's intro) renders as a chat exchange
+      // instead of a preformatted block — same copy, no prose wording changes.
+      const question = code[0]?.trim();
+      const answer = code[1]?.trim();
+      if (code.length === 2 && question?.startsWith("Q:") && answer?.startsWith("A:")) {
+        output.push(
+          <div className="chat" key={"chat-" + output.length}>
+            <div className="chat-bubble-user">{inline(question.slice(2).trim())}</div>
+            <div className="chat-bubble-assistant-row">
+              <span className="chat-avatar" aria-hidden="true" />
+              <div className="chat-bubble-assistant">{inline(answer.slice(2).trim())}</div>
+            </div>
+          </div>,
+        );
+        continue;
+      }
+
       if (!hiddenCodeBlockStarts.some((prefix) => value.startsWith(prefix))) {
         output.push(
           <pre className="roadmap-code" key={"code-" + output.length}>

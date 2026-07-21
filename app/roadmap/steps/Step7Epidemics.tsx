@@ -2,14 +2,17 @@ import RoadmapMarkdown from "../roadmapMarkdown";
 
 export default function Step7Epidemics({ copy }: { copy: string }) {
   return (
-    <li className="step todo">
-      <span className="ring" aria-hidden="true" />
+    <section className="step step-07 todo">
+      <header className="step-header">
+        <span className="step-sphere" aria-hidden="true" />
+        <div>
+          <p className="step-eyebrow">Step 07 · Planned</p>
+          <h2>Ongoing Epidemics</h2>
+        </div>
+      </header>
       <div className="step-body">
-        <h3>
-          <span className="num">7</span> Ongoing Epidemics
-        </h3>
         <RoadmapMarkdown source={copy} />
       </div>
-    </li>
+    </section>
   );
 }

@@ -45,7 +45,6 @@ function category(value: number) {
 export default function PoissonTiming() {
   return (
     <section className="chart-panel wide">
-      <h4 className="chart-title">365 sampled seconds: deaths per second</h4>
       <p className="chart-copy">
         An annual average of roughly 61.6 million deaths implies λ ≈ 1.95 deaths per second. Each
         square is one sampled one-second interval; the colour shows how many deaths the Poisson

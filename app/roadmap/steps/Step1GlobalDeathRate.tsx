@@ -14,12 +14,15 @@ interface Step1GlobalDeathRateProps {
 
 export default function Step1GlobalDeathRate({ features, copy }: Step1GlobalDeathRateProps) {
   return (
-    <li className="step done">
-      <span className="ring" aria-hidden="true" />
+    <section className="step step-01 done">
+      <header className="step-header">
+        <span className="step-sphere" aria-hidden="true" />
+        <div>
+          <p className="step-eyebrow">Step 01 · Implemented</p>
+          <h2>Global Death Rate</h2>
+        </div>
+      </header>
       <div className="step-body">
-        <h3>
-          <span className="num">1</span> Global Death Rate
-        </h3>
         <div className="rate-explainer">
           <RoadmapMarkdown
             source={copy}
@@ -29,7 +32,7 @@ export default function Step1GlobalDeathRate({ features, copy }: Step1GlobalDeat
                   <PulseComparison />
                 </div>
               ),
-              "[chart showing how many days in a year what number of people would die]": (
+              "[chart showing 365 sampled one-second intervals]": (
                 <div className="chart-grid" aria-label="Poisson-distributed deaths across a year">
                   <PoissonTiming />
                 </div>
@@ -48,6 +51,6 @@ export default function Step1GlobalDeathRate({ features, copy }: Step1GlobalDeat
           />
         </div>
       </div>
-    </li>
+    </section>
   );
 }

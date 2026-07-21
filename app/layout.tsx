@@ -1,5 +1,20 @@
 import type { Metadata } from "next";
+import { Archivo, Public_Sans } from "next/font/google";
 import type { ReactNode } from "react";
+
+const archivo = Archivo({
+  subsets: ["latin"],
+  weight: ["700", "800", "900"],
+  variable: "--font-archivo",
+  display: "swap",
+});
+
+const publicSans = Public_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-public-sans",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Watch People Die Live",
@@ -26,7 +41,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${archivo.variable} ${publicSans.variable}`}>
       <body>{children}</body>
     </html>
   );

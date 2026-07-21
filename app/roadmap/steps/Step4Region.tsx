@@ -31,26 +31,29 @@ export default function Step4Region({
   copy,
 }: Step4RegionProps) {
   return (
-    <li className="step done">
-      <span className="ring" aria-hidden="true" />
-      <div className="step-body">
-        <h3>
-          <span className="num">4</span> Death Rate By Region
-        </h3>
-        <div className="rate-explainer">
+    <section className="step step-04 done">
+      <header className="step-header">
+        <span className="step-sphere" aria-hidden="true" />
+        <div>
+          <p className="step-eyebrow">Step 04 · Implemented</p>
+          <h2>Death Rate By Region</h2>
+        </div>
+      </header>
+      <div className="two-col">
+        <div className="rate-explainer step-body-prose">
           <RoadmapMarkdown source={copy} />
-          <div className="chart-grid" aria-label="Subnational death rate map">
-            <SubnationalChoroplethMap
-              admin1Features={admin1Features}
-              nuts2Features={nuts2Features}
-              ratePer100kByKey={ratePer100kByKey}
-              ratePer100kByCountry={ratePer100kByCountry}
-              nutsCountries={nutsCountries}
-              nutsIso2ToIso3={nutsIso2ToIso3}
-            />
-          </div>
+        </div>
+        <div className="chart-grid" aria-label="Subnational death rate map">
+          <SubnationalChoroplethMap
+            admin1Features={admin1Features}
+            nuts2Features={nuts2Features}
+            ratePer100kByKey={ratePer100kByKey}
+            ratePer100kByCountry={ratePer100kByCountry}
+            nutsCountries={nutsCountries}
+            nutsIso2ToIso3={nutsIso2ToIso3}
+          />
         </div>
       </div>
-    </li>
+    </section>
   );
 }

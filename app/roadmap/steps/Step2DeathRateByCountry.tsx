@@ -16,12 +16,15 @@ export default function Step2DeathRateByCountry({
   copy,
 }: Step2DeathRateByCountryProps) {
   return (
-    <li className="step done">
-      <span className="ring" aria-hidden="true" />
+    <section className="step step-02 done">
+      <header className="step-header">
+        <span className="step-sphere" aria-hidden="true" />
+        <div>
+          <p className="step-eyebrow">Step 02 · Implemented</p>
+          <h2>Death Rate By Country</h2>
+        </div>
+      </header>
       <div className="step-body">
-        <h3>
-          <span className="num">2</span> Death Rate By Country
-        </h3>
         <div className="rate-explainer">
           <RoadmapMarkdown
             source={copy}
@@ -35,6 +38,6 @@ export default function Step2DeathRateByCountry({
           />
         </div>
       </div>
-    </li>
+    </section>
   );
 }

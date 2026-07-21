@@ -1,12 +1,50 @@
-:root {
-  --bg: #0d0f14;
-  --fg: #e8eaed;
-  --muted: #9aa3af;
-  --accent: #ff5252;
-  --line: rgb(255 255 255 / 12%);
-  --panel: #141821;
-  --done: #4ade80;
-  --todo: var(--fg);
+/* Scoped to .roadmap (never :root) — this stylesheet loads on the globe page too (RoadmapClient
+   is rendered inside Globe.tsx), so tokens must not leak onto the globe, which keeps its own
+   dark tokens in app/globe.css. See docs/DENSITY-MORTALITY-JOIN.md sibling note in CLAUDE.md. */
+.roadmap {
+  --paper: #f4f5f7;
+  --ink: #191a2e;
+  --card: #fff;
+  --line: #e7e8ec;
+  --line-strong: #d6d8de;
+  --blue: #2f4bff;
+  --red: #ff3b30;
+  --muted: #8a8b96;
+  --body: #2f3042;
+  --body-soft: #3a3c48;
+
+  /* Legacy variable names — the rest of this file (and every chart component's CSS classes)
+     already reference these, so remapping them here is what flips the whole page from the
+     globe's dark theme to the roadmap's bright one without touching a single selector below. */
+  --bg: var(--paper);
+  --fg: var(--ink);
+  --accent: var(--red);
+  --panel: var(--card);
+  --done: var(--blue);
+  --todo: var(--muted);
+
+  /* One color per step, used by .step-sphere. */
+  --s01: #2f4bff;
+  --s02: #6b3df0;
+  --s03: #10a08a;
+  --s04: #e8912b;
+  --s05: #ff3b30;
+  --s06: #b23ad6;
+  --s07: #b7b8c0;
+
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--body);
+  font-family:
+    var(--font-public-sans),
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  line-height: 1.55;
 }
 
 * {
@@ -15,47 +53,63 @@
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--fg);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  line-height: 1.55;
 }
 
-main {
-  max-width: 920px;
+.roadmap-shell {
+  max-width: 1300px;
   margin: 0 auto;
-  padding: 3rem 1.25rem 5rem;
+  padding: 6.5rem clamp(24px, 5vw, 80px) 6rem;
 }
 
-h1 {
-  margin: 0 0 0.35rem;
-  font-size: 1.9rem;
-  letter-spacing: 0.2px;
+.roadmap h1 {
+  margin: 0;
+  max-width: 16ch;
+  font-family: var(--font-archivo), sans-serif;
+  font-weight: 800;
+  font-size: clamp(2.4rem, 6vw, 4.6rem);
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+  color: var(--ink);
 }
 
-h3 {
+.roadmap h2 {
+  margin: 0;
+  font-family: var(--font-archivo), sans-serif;
+  font-weight: 800;
+  font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+  line-height: 1.04;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.roadmap h3,
+.roadmap h4,
+.roadmap h5 {
   margin: 0 0 0.2rem;
-  font-size: 1rem;
+  font-family: var(--font-archivo), sans-serif;
+  color: var(--ink);
 }
 
-p,
-li {
-  color: #d6dae0;
+.roadmap p,
+.roadmap li {
+  color: var(--body);
 }
 
-a {
-  color: var(--accent);
+.roadmap a {
+  color: var(--blue);
   text-decoration: none;
 }
 
-a:hover {
+.roadmap a:hover {
+  color: var(--red);
   text-decoration: underline;
 }
 
 /* Circular "return to the globe" control, fixed at the top-right corner — mirrors the globe
    page's #info-button position, so the same corner toggles between globe and roadmap. Shared by
    the standalone-route <Link> and the overlay's <button> (which closes the iris); the button
-   normalization makes the two render identically. */
+   normalization makes the two render identically. Restyled as a light "card" surface to sit on
+   the bright page (the globe's own #info-button, in globe.css, is untouched and stays dark). */
 .back {
   position: fixed;
   top: 1rem;
@@ -67,13 +121,12 @@ a:hover {
   width: 2.6rem;
   height: 2.6rem;
   padding: 0;
-  border: 0;
+  border: 1px solid var(--line);
   border-radius: 50%;
-  background: rgb(20 24 34 / 90%);
+  background: var(--card);
   font: inherit;
   cursor: pointer;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 2px 10px rgb(0 0 0 / 50%);
+  box-shadow: 0 2px 10px rgb(15 15 30 / 12%);
   transition: transform 0.2s ease;
 }
 
@@ -130,88 +183,83 @@ a:hover {
   border: 2px solid var(--todo);
 }
 
-/* Track layout — a flex row so a second track (Causes) can sit beside it later */
-.tracks {
-  display: flex;
-  gap: 3rem;
-  margin-top: 2rem;
-}
-
-.track {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.track-label {
-  display: block;
-  margin: 0 0 1.5rem;
-  padding-left: 0.1rem;
-  color: var(--muted);
-  font-size: 0.78rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
+/* ============ Step sections ============ */
 
 .steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6.5rem;
+  margin-top: 5rem;
 }
 
 .step {
-  position: relative;
-  display: grid;
-  grid-template-columns: 40px 1fr;
-  column-gap: 0.9rem;
-  padding-bottom: 2.1rem;
+  min-width: 0;
 }
 
-.step:last-child {
-  padding-bottom: 0;
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 1.4rem;
+  margin-bottom: 0.5rem;
 }
 
-/* Connecting line segment: drawn downward from each ring to the next step.
-   Colored by the step's own state, so the line turns from green to white
-   at the boundary between implemented and planned steps. */
-.step:not(:last-child)::before {
-  content: "";
-  position: absolute;
-  left: 19px; /* center of the 40px ring gutter (ring is 16px wide) */
-  top: 18px;
-  bottom: -2px;
-  width: 2px;
-  background: var(--todo);
-}
-
-.step.done:not(:last-child)::before {
-  background: var(--done);
-}
-
-.ring {
-  position: relative;
-  z-index: 1;
-  width: 16px;
-  height: 16px;
-  margin: 1px auto 0;
+/* Realistic sphere marker, one color per step — same recipe as .back-earth, tinted per --s0N. */
+.step-sphere {
+  width: 3.6rem;
+  height: 3.6rem;
+  flex: none;
   border-radius: 50%;
-  background: var(--bg);
-  border: 2px solid var(--todo);
+  box-shadow:
+    inset 0 0 10px rgb(0 0 0 / 35%),
+    0 2px 8px rgb(0 0 0 / 12%);
 }
 
-.step.done .ring {
-  background: var(--done);
-  border-color: var(--done);
-  box-shadow: 0 0 0 4px rgb(74 222 128 / 15%);
+.step-01 .step-sphere {
+  background: radial-gradient(circle at 35% 30%, #93a4ff, var(--s01) 60%, #10228f);
+}
+
+.step-02 .step-sphere {
+  background: radial-gradient(circle at 35% 30%, #b7a3ff, var(--s02) 60%, #341f78);
+}
+
+.step-03 .step-sphere {
+  background: radial-gradient(circle at 35% 30%, #7fe3d1, var(--s03) 60%, #075147);
+}
+
+.step-04 .step-sphere {
+  background: radial-gradient(circle at 35% 30%, #ffcf94, var(--s04) 60%, #7a4308);
+}
+
+.step-05 .step-sphere {
+  background: radial-gradient(circle at 35% 30%, #ff9b93, var(--s05) 60%, #8c0f08);
+}
+
+.step-06 .step-sphere {
+  background: radial-gradient(circle at 35% 30%, #e4a3f2, var(--s06) 60%, #5c1968);
+}
+
+.step-07 .step-sphere {
+  background: radial-gradient(circle at 35% 30%, #eaeaee, var(--s07) 60%, #8c8d96);
+}
+
+.step-eyebrow {
+  display: block;
+  margin: 0 0 0.3rem;
+  color: var(--muted);
+  font-family: var(--font-archivo), sans-serif;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.step.todo .step-eyebrow {
+  color: var(--red);
 }
 
 .step-body {
   min-width: 0;
-}
-
-.step-body h3 {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
+  margin-top: 2.2rem;
 }
 
 .num {
@@ -219,30 +267,42 @@ a:hover {
   font-variant-numeric: tabular-nums;
 }
 
-.step-body p {
-  margin: 0.2rem 0 0.5rem;
+/* Prose-carrying elements — scoped to direct children of the step body / explainer
+   wrappers only, so nested chart captions (inside .chart-grid / .chart-panel, further
+   down the tree) are untouched. Full width, matching the figures below them. */
+:is(.step-body, .rate-explainer, .density-explainer, .seasonality-explainer) > :is(p, ul) {
+  margin: 0 0 1.1rem;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--body);
 }
 
 .source {
   display: block;
+  margin: 0 0 2rem;
   color: var(--muted);
   font-size: 0.82rem;
 }
 
 .source.tbd {
-  color: #6b7280;
+  color: #a9abb5;
   font-style: italic;
 }
 
 .roadmap-subheading {
-  margin: 1.4rem 0 0.35rem;
-  color: var(--fg);
-  font-size: 0.95rem;
+  margin: 2.2rem 0 0.6rem;
+  font-family: var(--font-archivo), sans-serif;
+  font-weight: 800;
+  font-size: 1.55rem;
+  letter-spacing: -0.01em;
+  color: var(--ink);
 }
 
 .roadmap-list-heading {
-  margin: 0.8rem 0 0.15rem;
+  margin: 0.9rem 0 0.2rem;
   color: var(--muted);
+  font-family: var(--font-archivo), sans-serif;
+  font-weight: 700;
   font-size: 0.76rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -251,50 +311,70 @@ a:hover {
 .seasonality-explainer,
 .rate-explainer,
 .density-explainer {
-  margin-top: 1rem;
+  margin-top: 0;
 }
 
 .seasonality-explainer p,
 .rate-explainer p,
 .density-explainer p {
-  margin: 0 0 0.85rem;
-  color: #cfd5de;
+  margin: 0 0 1.1rem;
+  color: var(--body);
 }
 
+/* ============ Two-column prose/figure grid (Steps 2 and 4, where the prose and the
+   chart are already separate sibling elements — no markdown restructuring needed). ============ */
+.two-col {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: start;
+  gap: clamp(2rem, 4vw, 3.5rem);
+  max-width: none;
+}
+
+.two-col .step-body,
+.two-col .step-body-prose {
+  max-width: none;
+  margin-top: 0;
+}
+
+/* ============ Full-bleed chart/map breaks — direct children of the step body /
+   explainer wrappers are NOT width-capped (only the prose selectors above are), so
+   these span the full 1300px shell instead of being squeezed to reading width. ============ */
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
-  margin: 1.35rem 0;
+  gap: 1.25rem;
+  margin: 2.75rem 0;
 }
 
 .roadmap-code {
   overflow-x: auto;
-  margin: 0 0 0.85rem;
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #090b0f;
-  color: #d8dde6;
-  font-size: 0.8rem;
-  line-height: 1.5;
+  margin: 0 0 1.1rem;
+  padding: 1.1rem 1.3rem;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 12px;
+  background: var(--ink);
+  color: #e8eaed;
+  font-size: 0.85rem;
+  line-height: 1.6;
   white-space: pre;
 }
 
-/* Block-math formulas (rendered by KaTeX via roadmapMarkdown's `$$` fences). */
+/* Block-math formulas (rendered by KaTeX via roadmapMarkdown's `$$` fences) — kept as a dark
+   "ink tile", matching the design's one intentional dark pseudo-code/formula block. */
 .roadmap-math {
   display: block;
   overflow-x: auto;
-  margin: 0 0 0.85rem;
-  padding: 0.85rem 1rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #090b0f;
+  margin: 0 0 1.1rem;
+  padding: 1.1rem 1.3rem;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 12px;
+  background: var(--ink);
 }
 
 .roadmap-math-title {
-  margin: 0 0 0.5rem;
-  color: var(--muted);
+  margin: 0 0 0.6rem;
+  color: #9aa3af;
   font-size: 0.72rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -302,36 +382,39 @@ a:hover {
 
 .roadmap-math .katex {
   font-size: 1.05rem;
-  color: #d8dde6;
+  color: #e8eaed;
 }
 
 /* GFM tables in roadmap copy (rendered by roadmapMarkdown). */
 .roadmap-table-wrap {
   overflow-x: auto;
-  margin: 0 0 0.95rem;
+  margin: 0 0 1.3rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
 }
 
 .roadmap-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
 }
 
 .roadmap-table th,
 .roadmap-table td {
-  padding: 0.4rem 0.7rem;
+  padding: 0.55rem 0.8rem;
   border: 1px solid var(--line);
   text-align: left;
 }
 
 .roadmap-table th {
-  color: var(--fg);
-  font-weight: 600;
-  background: rgb(255 255 255 / 3%);
+  color: var(--ink);
+  font-weight: 700;
+  background: #fafafc;
 }
 
 .roadmap-table td {
-  color: #cfd5de;
+  color: var(--body);
 }
 
 .roadmap-table .ta-right {
@@ -347,12 +430,60 @@ a:hover {
   text-align: left;
 }
 
+/* ============ Step 1 — chat bubbles (renders the Q/A code fence; see roadmapMarkdown.tsx) ==== */
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  max-width: 34rem;
+  margin: 0 0 1.3rem;
+}
+
+.chat-bubble-user {
+  align-self: flex-end;
+  max-width: 82%;
+  padding: 0.7rem 1.05rem;
+  border-radius: 18px 18px 5px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 0.97rem;
+  line-height: 1.45;
+}
+
+.chat-bubble-assistant-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  max-width: 94%;
+}
+
+.chat-avatar {
+  width: 1.85rem;
+  height: 1.85rem;
+  flex: none;
+  margin-top: 0.1rem;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 26%, rgb(255 255 255 / 90%), rgb(255 255 255 / 0%) 42%),
+    radial-gradient(circle at 70% 78%, rgb(0 0 0 / 50%), rgb(0 0 0 / 0%) 62%), var(--ink);
+}
+
+.chat-bubble-assistant {
+  padding: 0.7rem 1.05rem;
+  border: 1px solid var(--line);
+  border-radius: 18px 18px 18px 5px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 0.97rem;
+  line-height: 1.5;
+}
+
 .pulse-example {
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 0.7rem;
-  background: rgb(0 0 0 / 18%);
+  border-radius: 12px;
+  padding: 0.9rem;
+  background: var(--card);
 }
 
 .pulse-line {
@@ -368,11 +499,11 @@ a:hover {
   height: 13px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 12px rgb(255 82 82 / 65%);
+  box-shadow: 0 0 12px rgb(255 59 48 / 55%);
 
   /* Matches the steady-pulse keyframes' 0%/100% state, so a dot not currently animating
      (e.g. a Poisson dot before its first pulse) rests dim/small instead of full-bright. */
-  opacity: 0.15;
+  opacity: 0.18;
   transform: scale(0.7);
 }
 
@@ -417,7 +548,7 @@ a:hover {
 @keyframes steady-pulse {
   0%,
   100% {
-    opacity: 0.15;
+    opacity: 0.18;
     transform: scale(0.7);
   }
 
@@ -440,31 +571,31 @@ a:hover {
   display: block;
   aspect-ratio: 1;
   border-radius: 1px;
-  background: #303845;
+  background: #eef0ff;
 }
 
 .poisson-day-0 {
-  background: #252b35;
+  background: #eef0ff;
 }
 
 .poisson-day-1 {
-  background: #43617a;
+  background: #c7d0ff;
 }
 
 .poisson-day-2 {
-  background: #4f8b70;
+  background: #8fa0ff;
 }
 
 .poisson-day-3 {
-  background: #c29a50;
+  background: #5570ff;
 }
 
 .poisson-day-4 {
-  background: #dc7849;
+  background: #2f4bff;
 }
 
 .poisson-day-5 {
-  background: #e34f4f;
+  background: #ff3b30;
 }
 
 .poisson-legend {
@@ -486,25 +617,29 @@ a:hover {
   width: 0.7rem;
 }
 
+/* ============ Step 5 — proxy grid ============ */
 .proxy-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
-  margin: 1.3rem 0;
+  gap: 1rem;
+  margin: 1.6rem 0;
+  max-width: 900px;
 }
 
 .proxy-card {
   min-width: 0;
-  padding: 0.95rem;
+  padding: 1.3rem 1.4rem;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgb(255 255 255 / 2%);
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
 }
 
 .proxy-card h4 {
-  margin: 0 0 0.45rem;
-  color: var(--fg);
-  font-size: 0.95rem;
+  margin: 0 0 0.5rem;
+  color: var(--ink);
+  font-weight: 800;
+  font-size: 1rem;
 }
 
 .proxy-card p {
@@ -541,14 +676,14 @@ a:hover {
 .proxy-definition {
   min-width: 0;
   padding: 0.85rem;
-  border: 1px dashed rgb(255 255 255 / 22%);
-  border-radius: 8px;
-  background: rgb(255 255 255 / 2%);
+  border: 1px dashed var(--line-strong);
+  border-radius: 10px;
+  background: var(--card);
 }
 
 .proxy-definition h4 {
   margin: 0;
-  color: var(--fg);
+  color: var(--ink);
   font-size: 0.84rem;
 }
 
@@ -559,7 +694,7 @@ a:hover {
 }
 
 .proxy-definition span {
-  color: #fbbf24;
+  color: #b45309;
   font-size: 0.72rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -580,7 +715,7 @@ a:hover {
 
 .proxy-results-intro strong {
   flex: 0 0 auto;
-  color: var(--fg);
+  color: var(--ink);
   font-size: 0.88rem;
 }
 
@@ -619,14 +754,14 @@ a:hover {
   height: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgb(255 255 255 / 7%);
+  background: #edeef2;
 }
 
 .correlation-fill {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: #7d6870;
+  background: #b8b3c9;
 }
 
 .correlation-row.is-selected .correlation-fill {
@@ -634,14 +769,14 @@ a:hover {
 }
 
 .correlation-row strong {
-  color: #c7c9ce;
+  color: var(--body);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
 .correlation-row.is-selected .correlation-name,
 .correlation-row.is-selected strong {
-  color: var(--fg);
+  color: var(--ink);
 }
 
 .correlation-secondary {
@@ -650,7 +785,7 @@ a:hover {
 
 .correlation-direction {
   margin: 0.55rem 0 0;
-  color: rgb(255 255 255 / 38%);
+  color: var(--muted);
   font-size: 0.64rem;
   letter-spacing: 0.06em;
   text-align: right;
@@ -667,8 +802,8 @@ a:hover {
   margin: 1rem 0 1.25rem;
   overflow-x: auto;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgb(255 255 255 / 2%);
+  border-radius: 12px;
+  background: var(--card);
 }
 
 .seasonality-proxy-table {
@@ -680,16 +815,16 @@ a:hover {
 
 .seasonality-proxy-table caption {
   padding: 0.8rem 0.85rem;
-  color: var(--fg);
+  color: var(--ink);
   font-size: 0.86rem;
-  font-weight: 650;
+  font-weight: 700;
   text-align: left;
 }
 
 .seasonality-proxy-table th,
 .seasonality-proxy-table td {
   padding: 0.65rem 0.75rem;
-  border-top: 1px solid rgb(255 255 255 / 10%);
+  border-top: 1px solid var(--line);
   vertical-align: top;
   text-align: left;
 }
@@ -703,25 +838,26 @@ a:hover {
 
 .seasonality-proxy-table tbody th {
   min-width: 8.5rem;
-  color: var(--fg);
-  font-weight: 650;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .seasonality-proxy-table tbody td {
-  color: var(--muted);
+  color: var(--body);
   line-height: 1.45;
 }
 
 .seasonality-proxy-table tbody tr:hover {
-  background: rgb(255 255 255 / 3%);
+  background: #fafafc;
 }
 
 .chart-panel {
   min-width: 0;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  background: rgb(255 255 255 / 3%);
-  padding: 0.85rem;
+  border-radius: 14px;
+  background: var(--card);
+  padding: 1.1rem 1.2rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
 }
 
 .chart-panel.wide {
@@ -729,36 +865,40 @@ a:hover {
 }
 
 .chart-title {
-  margin: 0 0 0.1rem;
-  color: var(--fg);
-  font-size: 0.86rem;
-  font-weight: 650;
+  margin: 0 0 0.15rem;
+  color: var(--ink);
+  font-family: var(--font-archivo), sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .chart-copy,
 .chart-status {
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.75rem;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
 }
 
 /* Proxy scatter panels whose title + prose live in ROADMAP.md (:::chart-panel), so the
    authored copy renders inside the chart box. Match the .chart-title / .chart-copy look
    the components used to render, and space the stacked boxes like a .chart-grid did. */
 .seasonality-explainer > .chart-panel {
-  margin: 1.35rem 0;
+  max-width: 640px;
+  margin: 1.6rem 0;
 }
 
 .seasonality-explainer > .chart-panel > .roadmap-subheading {
-  margin: 0 0 0.1rem;
-  font-size: 0.86rem;
-  font-weight: 650;
+  margin: 0 0 0.15rem;
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .seasonality-explainer > .chart-panel > p {
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.75rem;
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.82rem;
 }
 
 .chart-status {
@@ -773,7 +913,7 @@ a:hover {
 
 .chart-toggle button {
   border: 1px solid var(--line);
-  background: rgb(255 255 255 / 3%);
+  background: var(--card);
   color: var(--muted);
   font-size: 0.72rem;
   padding: 0.28rem 0.6rem;
@@ -783,13 +923,13 @@ a:hover {
 }
 
 .chart-toggle button:hover {
-  color: var(--fg);
+  color: var(--ink);
 }
 
 .chart-toggle button.active {
-  background: rgb(255 255 255 / 14%);
-  color: var(--fg);
-  border-color: rgb(255 255 255 / 35%);
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
 }
 
 /* Independent country/region layer checkboxes on the amplitude-proxy scatters (LayerToggle). */
@@ -833,11 +973,11 @@ a:hover {
 .cc-input {
   width: 100%;
   border: 1px solid var(--line);
-  background: rgb(255 255 255 / 3%);
-  color: var(--fg);
+  background: var(--card);
+  color: var(--ink);
   font-size: 0.8rem;
   padding: 0.4rem 0.65rem;
-  border-radius: 6px;
+  border-radius: 8px;
 }
 
 .cc-input::placeholder {
@@ -846,7 +986,7 @@ a:hover {
 
 .cc-input:focus {
   outline: none;
-  border-color: rgb(255 255 255 / 35%);
+  border-color: var(--blue);
 }
 
 .cc-input:disabled {
@@ -867,21 +1007,21 @@ a:hover {
   list-style: none;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 45%);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgb(15 15 30 / 14%);
 }
 
 .cc-option {
   padding: 0.35rem 0.5rem;
-  border-radius: 4px;
+  border-radius: 6px;
   font-size: 0.78rem;
-  color: var(--fg);
+  color: var(--ink);
   cursor: pointer;
 }
 
 .cc-option:hover,
 .cc-option.active {
-  background: rgb(255 255 255 / 10%);
+  background: #f0f1f5;
 }
 
 .cc-empty {
@@ -928,8 +1068,8 @@ a:hover {
   align-items: center;
   gap: 0.4rem;
   border: 1px solid var(--line);
-  background: rgb(255 255 255 / 3%);
-  color: var(--fg);
+  background: var(--card);
+  color: var(--ink);
   font-size: 0.74rem;
   padding: 0.25rem 0.4rem 0.25rem 0.6rem;
   border-radius: 999px;
@@ -946,7 +1086,7 @@ a:hover {
 }
 
 .cc-chip-remove:hover {
-  color: var(--fg);
+  color: var(--ink);
 }
 
 .cc-clear {
@@ -962,7 +1102,7 @@ a:hover {
 }
 
 .cc-clear:hover {
-  color: var(--fg);
+  color: var(--ink);
 }
 
 .cc-status {
@@ -991,12 +1131,12 @@ a:hover {
   flex: 1;
   height: 8px;
   border-radius: 999px;
-  background: linear-gradient(to right, #ffc, #fed976, #fd8d3c, #e31a1c, #800026);
+  background: linear-gradient(to right, #ffe08a, #ffb24d, #ff7a3c, #ff3b30, #c81e2b, #7d1420);
 }
 
 .chart-axis,
 .chart-gridline {
-  stroke: rgb(255 255 255 / 16%);
+  stroke: var(--line-strong);
   shape-rendering: crispedges;
 }
 
@@ -1018,21 +1158,21 @@ a:hover {
 
 .chart-line-north {
   fill: none;
-  stroke: #ff6b6b;
+  stroke: #ff3b30;
   stroke-width: 2.4;
 }
 
 .chart-line-south {
   fill: none;
-  stroke: #4ade80;
+  stroke: #16a34a;
   stroke-width: 2.4;
 }
 
 .chart-point {
-  fill: #ff6b6b;
-  fill-opacity: 0.78;
-  stroke: rgb(13 15 20 / 80%);
-  stroke-width: 1;
+  fill: var(--accent);
+  fill-opacity: 0.85;
+  stroke: var(--card);
+  stroke-width: 1.3;
   transition:
     fill-opacity 120ms ease,
     stroke-opacity 120ms ease;
@@ -1047,20 +1187,21 @@ a:hover {
 
 .chart-point.is-active {
   fill-opacity: 1;
-  stroke: rgb(255 255 255 / 90%);
-  stroke-width: 1.4;
+  stroke: var(--ink);
+  stroke-width: 1.6;
 }
 
 .chart-fit {
   fill: none;
-  stroke: #e8eaed;
+  stroke: var(--ink);
   stroke-width: 1.5;
   stroke-dasharray: 5 5;
+  stroke-opacity: 0.55;
 }
 
 .chart-band {
-  fill: #e8eaed;
-  fill-opacity: 0.16;
+  fill: var(--ink);
+  fill-opacity: 0.08;
   stroke: none;
 }
 
@@ -1073,14 +1214,14 @@ a:hover {
 }
 
 .climate-band-boundary {
-  stroke: rgb(255 255 255 / 22%);
+  stroke: rgb(0 0 0 / 16%);
   stroke-width: 0.75;
   stroke-dasharray: 2 3;
 }
 
 .map-country {
-  fill: rgb(255 255 255 / 8%);
-  stroke: rgb(255 255 255 / 18%);
+  fill: #eef0f4;
+  stroke: var(--line-strong);
   stroke-width: 0.45;
 }
 
@@ -1091,14 +1232,14 @@ a:hover {
 /* Country outlines on the animated-dot maps: border only, no fill. */
 .map-outline {
   fill: none;
-  stroke: rgb(255 255 255 / 18%);
+  stroke: var(--line-strong);
   stroke-width: 0.45;
 }
 
 /* Plain 1°×1° lat/lon reference grid drawn over every world map — no data, no hover. */
 .map-graticule {
   fill: none;
-  stroke: rgb(255 255 255 / 12%);
+  stroke: var(--line);
   stroke-width: 0.35;
   pointer-events: none;
 }
@@ -1125,18 +1266,18 @@ a:hover {
 /* Subnational choropleth regions: fill is set per-path via attr(); a faint stroke
    separates neighbours. */
 .map-region {
-  stroke: rgb(0 0 0 / 28%);
-  stroke-width: 0.2;
+  stroke: rgb(255 255 255 / 55%);
+  stroke-width: 0.3;
   cursor: pointer;
 }
 
 .map-callout-label {
-  fill: rgb(255 255 255 / 92%);
+  fill: var(--ink);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   paint-order: stroke;
-  stroke: rgb(0 0 0 / 55%);
-  stroke-width: 2.4;
+  stroke: rgb(255 255 255 / 85%);
+  stroke-width: 2.6;
   stroke-linejoin: round;
   pointer-events: none;
 }
@@ -1181,13 +1322,13 @@ a:hover {
 
 .loo-summary-table tr.best th,
 .loo-summary-table tr.best td {
-  color: var(--fg);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .loo-summary-table .best-tag {
-  color: #22d3ee;
-  font-weight: 600;
+  color: #0891b2;
+  font-weight: 700;
 }
 
 .loo-cohorts {
@@ -1223,7 +1364,7 @@ a:hover {
 }
 
 .ewma-seg-focus {
-  stroke: var(--fg);
+  stroke: var(--ink);
   stroke-width: 1.5;
   stroke-opacity: 0.85;
 }
@@ -1239,7 +1380,7 @@ a:hover {
 }
 
 .ewma-prediction-label {
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .ewma-controls {
@@ -1259,8 +1400,8 @@ a:hover {
 }
 
 .ewma-widget .ewma-controls strong {
-  color: var(--fg);
-  font-weight: 600;
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .ewma-controls input[type="range"] {
@@ -1270,12 +1411,12 @@ a:hover {
 
 .ewma-readout {
   margin: 0;
-  color: var(--fg);
+  color: var(--ink);
   font-size: 0.82rem;
 }
 
 .ewma-widget .ewma-readout strong {
-  color: #f97316;
+  color: #ea580c;
 }
 
 .ewma-readout-aside {
@@ -1337,7 +1478,7 @@ a:hover {
 
 .legend-step:hover,
 .legend-step.is-guided {
-  background: rgb(255 255 255 / 22%);
+  background: rgb(0 0 0 / 14%);
 }
 
 .legend-tour-hand {
@@ -1347,8 +1488,8 @@ a:hover {
   left: 0;
   width: 32px;
   height: 32px;
-  color: var(--fg);
-  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 75%));
+  color: var(--ink);
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 25%));
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%);
@@ -1389,18 +1530,19 @@ a:hover {
 }
 
 .swatch.north {
-  color: #ff6b6b;
+  color: #ff3b30;
 }
 
 .swatch.south {
-  color: #4ade80;
+  color: #16a34a;
 }
 
 .note {
   border-left: 2px solid var(--accent);
-  margin-top: 3rem;
-  padding-left: 1rem;
-  color: #d6dae0;
+  margin-top: 4rem;
+  padding-left: 1.1rem;
+  color: var(--body);
+  font-size: 0.95rem;
 }
 
 footer {
@@ -1414,13 +1556,13 @@ footer {
   position: fixed;
   z-index: 1000;
   pointer-events: none;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 6px;
+  background: var(--ink);
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 8px;
   padding: 0.4rem 0.6rem;
   font-size: 0.78rem;
-  color: var(--fg);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 40%);
+  color: #e8eaed;
+  box-shadow: 0 4px 16px rgb(15 15 30 / 20%);
   white-space: pre-line;
   opacity: 0;
   transition: opacity 0.08s ease-out;
@@ -1430,16 +1572,53 @@ footer {
   opacity: 1;
 }
 
+/* ============ Step 3 — density panels, dark-navy tiles by design (kept as the
+   original two markdown slots, each paired with its own explanatory paragraph). ============ */
+.density-cluster .chart-panel {
+  background: #0e1730;
+  border-color: rgb(255 255 255 / 8%);
+  display: flex;
+  flex-direction: column;
+}
+
+.density-cluster .chart-title {
+  color: #fff;
+}
+
+.density-cluster .chart-copy,
+.density-cluster .chart-status {
+  color: rgb(255 255 255 / 55%);
+}
+
+@media (width <= 900px) {
+  .two-col {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (width <= 680px) {
-  main {
-    padding-top: 2rem;
+  .roadmap-shell {
+    padding-top: 4.5rem;
   }
 
-  .tracks {
-    gap: 1.5rem;
+  .steps {
+    gap: 4rem;
+  }
+
+  .step-header {
+    gap: 1rem;
+  }
+
+  .step-sphere {
+    width: 2.6rem;
+    height: 2.6rem;
   }
 
   .chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .proxy-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1455,5 +1634,17 @@ footer {
 
   .correlation-row {
     grid-template-columns: minmax(6.5rem, 0.9fr) minmax(3rem, 1fr) 3.35rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot,
+  .pulse-dot.steady,
+  .pulse-dot.once {
+    animation: none;
+  }
+
+  .back {
+    transition: none;
   }
 }

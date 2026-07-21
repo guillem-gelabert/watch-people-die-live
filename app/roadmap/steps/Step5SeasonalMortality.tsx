@@ -56,12 +56,15 @@ export default function Step5SeasonalMortality({
 }: Step5SeasonalMortalityProps) {
   const subnationalRegions = subnationalSeasonality?.regions ?? null;
   return (
-    <li className="step done">
-      <span className="ring" aria-hidden="true" />
+    <section className="step step-05 done">
+      <header className="step-header">
+        <span className="step-sphere" aria-hidden="true" />
+        <div>
+          <p className="step-eyebrow">Step 05 · Implemented</p>
+          <h2>Death Rate By Time Of Year</h2>
+        </div>
+      </header>
       <div className="step-body">
-        <h3>
-          <span className="num">5</span> Death Rate By Time Of Year
-        </h3>
         <div className="seasonality-explainer">
           <RoadmapMarkdown
             source={copy}
@@ -165,6 +168,6 @@ export default function Step5SeasonalMortality({
           </div>
         </div>
       </div>
-    </li>
+    </section>
   );
 }

@@ -346,11 +346,6 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
   return (
     <section className="chart-panel wide">
       <h4 className="chart-title">A Cluster Of Similar Curves</h4>
-      <p className="chart-copy">
-        Add any country with a directly-measured curve, or a whole climate zone, GDP band, or
-        latitude band, to compare. Southern-hemisphere curves are shifted six months so seasons
-        align across hemispheres; hover any point for its true calendar month.
-      </p>
 
       <div className="cc-combobox">
         <label className="cc-label" htmlFor="country-compare-input">

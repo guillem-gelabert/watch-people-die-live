@@ -39,7 +39,7 @@ const CALLOUTS: { name: string; kind: "high" | "low"; label?: string }[] = [
 
 const WIDTH = 860;
 const HEIGHT = 430;
-const NO_DATA = "#2a2a30";
+const NO_DATA = "#e7e8ec";
 
 // Step 5: a static, fully-vector (SVG) world choropleth of first-level regions colored by their
 // real crude death rate. Two geometry layers — Eurostat NUTS-2 across Europe, Natural Earth
@@ -124,8 +124,8 @@ export default function SubnationalChoroplethMap({
       .append("path")
       .datum<d3.GeoSphere>({ type: "Sphere" })
       .attr("d", path)
-      .attr("fill", "rgba(255,255,255,0.025)")
-      .attr("stroke", "rgba(255,255,255,0.14)");
+      .attr("fill", "rgba(15,15,30,0.02)")
+      .attr("stroke", "rgba(15,15,30,0.12)");
 
     // One <path> per region — exact SVG hit-testing (no pick-canvas antialiasing that could
     // report the wrong region on hover).
@@ -170,7 +170,7 @@ export default function SubnationalChoroplethMap({
       .attr("cx", (d) => d.x)
       .attr("cy", (d) => d.y)
       .attr("r", 2.6)
-      .attr("fill", (d) => (d.kind === "high" ? "#ff5252" : "#7ec8ff"))
+      .attr("fill", (d) => (d.kind === "high" ? "#ff3b30" : "#2f4bff"))
       .attr("stroke", "rgba(0,0,0,0.5)")
       .attr("stroke-width", 0.75);
     g.selectAll("text")
@@ -187,7 +187,6 @@ export default function SubnationalChoroplethMap({
 
   return (
     <section className="chart-panel wide">
-      <h4 className="chart-title">One Country, Many Rates</h4>
       <p className="chart-copy">
         Every first-level region colored by its own crude death rate. Inside a single country the
         spread is dramatic — Russia&apos;s is the widest of all, Pskov running over 5× Ingushetia;
@@ -210,11 +209,11 @@ export default function SubnationalChoroplethMap({
           <span>{Math.round(domain[1])}+ deaths / 100k/yr</span>
         </div>
       )}
-      <p className="chart-status" aria-live="polite">
-        {loading
-          ? "Loading subnational death rates…"
-          : "Sources: IHME Global Burden of Disease 2023 (crude, all-cause) worldwide; Eurostat 2023 NUTS-2 for Europe; national statistical offices for Russia, Canada, Australia (2023), Argentina and Chile (2022) — Rosstat, StatCan, ABS, DEIS. Most of the gap reflects age structure, then real health differences."}
-      </p>
+      {loading && (
+        <p className="chart-status" aria-live="polite">
+          Loading subnational death rates…
+        </p>
+      )}
     </section>
   );
 }

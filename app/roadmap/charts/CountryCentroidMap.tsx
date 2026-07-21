@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import * as d3 from "d3";
-import { expGap, REAL_MEAN_GAP_MS, formatMeanGap, MAP_GRATICULE } from "../chartHelpers";
+import { expGap, REAL_MEAN_GAP_MS, MAP_GRATICULE } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, DeathsPerYearById } from "../types";
 
@@ -37,14 +37,6 @@ export default function CountryCentroidMap({
 }: CountryCentroidMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
 
-  // Derived (not effect state) so the status can't trigger a cascading render.
-  const status = useMemo(() => {
-    if (!features || !deathsPerYearById || !deathsPerYearById.size)
-      return "Loading country death rates…";
-    const n = features.filter((f) => (deathsPerYearById.get(Number(f.id)) ?? 0) > 0).length;
-    return `${n} countries with a known death rate, one dot every ${formatMeanGap(REAL_MEAN_GAP_MS)} on average. Every death lands on its country's single geographic center.`;
-  }, [features, deathsPerYearById]);
-
   useEffect(() => {
     if (!ref.current || !features || !deathsPerYearById || !deathsPerYearById.size) return;
     const svg = d3.select(ref.current);
@@ -64,8 +56,8 @@ export default function CountryCentroidMap({
       .append("path")
       .datum<d3.GeoSphere>({ type: "Sphere" })
       .attr("d", path)
-      .attr("fill", "rgba(255,255,255,0.025)")
-      .attr("stroke", "rgba(255,255,255,0.16)");
+      .attr("fill", "rgba(15,15,30,0.02)")
+      .attr("stroke", "rgba(15,15,30,0.14)");
     svg
       .append("g")
       .selectAll("path")
@@ -126,9 +118,9 @@ export default function CountryCentroidMap({
             .attr("cy", (d) => d.y),
         )
         .attr("r", (d) => 2.2 + (now - d.born) / 850)
-        .attr("fill", "#ff6b6b")
+        .attr("fill", "#6b3df0")
         .attr("fill-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.9)
-        .attr("stroke", "#ff6b6b")
+        .attr("stroke", "#6b3df0")
         .attr("stroke-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.42);
       rafId = requestAnimationFrame(frame);
     }
@@ -164,7 +156,6 @@ export default function CountryCentroidMap({
 
   return (
     <section className="chart-panel wide">
-      <h4 className="chart-title">Right Count, Wrong Place</h4>
       <p className="chart-copy">
         Each country now fires deaths at its own real rate — populous countries pulse faster — but
         every death still lands on the same single point: that country&apos;s geographic center.
@@ -178,9 +169,6 @@ export default function CountryCentroidMap({
         role="img"
         aria-label="World map where dots appear at each country's real death rate, all landing on that country's geographic center"
       />
-      <p id="centroid-map-status" className="chart-status" aria-live="polite">
-        {status}
-      </p>
     </section>
   );
 }

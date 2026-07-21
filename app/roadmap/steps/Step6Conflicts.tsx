@@ -9,12 +9,15 @@ interface Step6ConflictsProps {
 
 export default function Step6Conflicts({ conflicts, copy }: Step6ConflictsProps) {
   return (
-    <li className="step done">
-      <span className="ring" aria-hidden="true" />
+    <section className="step step-06 done">
+      <header className="step-header">
+        <span className="step-sphere" aria-hidden="true" />
+        <div>
+          <p className="step-eyebrow">Step 06 · Implemented</p>
+          <h2>Ongoing Conflicts</h2>
+        </div>
+      </header>
       <div className="step-body">
-        <h3>
-          <span className="num">6</span> Ongoing Conflicts
-        </h3>
         <RoadmapMarkdown
           source={copy}
           slots={{
@@ -32,6 +35,6 @@ export default function Step6Conflicts({ conflicts, copy }: Step6ConflictsProps)
           }}
         />
       </div>
-    </li>
+    </section>
   );
 }

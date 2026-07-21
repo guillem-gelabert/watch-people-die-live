@@ -1,14 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import * as d3 from "d3";
-import {
-  expGap,
-  randomPointOnSphere,
-  REAL_MEAN_GAP_MS,
-  formatMeanGap,
-  MAP_GRATICULE,
-} from "../chartHelpers";
+import { expGap, randomPointOnSphere, REAL_MEAN_GAP_MS, MAP_GRATICULE } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature } from "../types";
 
@@ -31,12 +25,6 @@ const DOT_LIFETIME_MS = 5200;
 export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
 
-  // Derived (not effect state) so the status can't trigger a cascading render.
-  const status = useMemo(() => {
-    if (!features) return "Loading random simulation…";
-    return `Running at the global average: one randomly placed dot every ${formatMeanGap(REAL_MEAN_GAP_MS)} on average.`;
-  }, [features]);
-
   useEffect(() => {
     if (!ref.current || !features) return;
     const svg = d3.select(ref.current);
@@ -55,8 +43,8 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
       .append("path")
       .datum<d3.GeoSphere>({ type: "Sphere" })
       .attr("d", path)
-      .attr("fill", "rgba(255,255,255,0.025)")
-      .attr("stroke", "rgba(255,255,255,0.16)");
+      .attr("fill", "rgba(15,15,30,0.02)")
+      .attr("stroke", "rgba(15,15,30,0.14)");
     svg
       .append("g")
       .selectAll("path")
@@ -95,9 +83,9 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
             .attr("cy", (d) => d.y),
         )
         .attr("r", (d) => 2.2 + (now - d.born) / 850)
-        .attr("fill", "#ffffff")
+        .attr("fill", "#2f4bff")
         .attr("fill-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.9)
-        .attr("stroke", "#ffffff")
+        .attr("stroke", "#2f4bff")
         .attr("stroke-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.42);
       rafId = requestAnimationFrame(frame);
     }
@@ -132,11 +120,10 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
 
   return (
     <section className="chart-panel wide">
-      <h4 className="chart-title">Baseline Random Simulation</h4>
       <p className="chart-copy">
-        White dots appear at exponentially random intervals, averaging nearly two events every
-        second (~0.5s between deaths), and at uniformly random points on the Earth&apos;s surface.
-        This first layer has no country, density, or seasonality weighting.
+        Blue dots appear at exponentially random intervals, averaging nearly two events every second
+        (~0.5s between deaths), and at uniformly random points on the Earth&apos;s surface. This
+        first layer has no country, density, or seasonality weighting.
       </p>
       <svg
         ref={ref}
@@ -144,11 +131,8 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
         className="seasonality-chart"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
-        aria-label="World map where white dots appear randomly at the global mortality rate"
+        aria-label="World map where blue dots appear randomly at the global mortality rate"
       />
-      <p id="random-map-status" className="chart-status" aria-live="polite">
-        {status}
-      </p>
     </section>
   );
 }
