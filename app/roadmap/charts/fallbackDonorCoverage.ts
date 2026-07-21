@@ -1,9 +1,12 @@
+import * as d3 from "d3";
 import type { CountryFeature, NeighborsByM49, SeasonalityData, SeasonalityProxies } from "../types";
+
+export const LATITUDE_DONOR_TOLERANCE_DEGREES = 10;
 
 export interface FallbackDonorCoverage {
   m49: number;
   country: string;
-  latitudeDonors: 0;
+  latitudeDonors: number;
   climateDonors: number;
   climateLabel: string;
   neighborDonors: number;
@@ -42,11 +45,19 @@ export function buildFallbackDonorCoverage(
   const classDonorCounts = countBy(observedProxyRows, (row) => row.kgClass);
   const familyDonorCounts = countBy(observedProxyRows, (row) => row.kgFamily);
   const climate = seasonality.climate;
+  const latitudeByM49 = new Map(
+    features.map((feature) => [Number(feature.id), d3.geoCentroid(feature)[1]]),
+  );
+  const latitudeDonors = [...observedIds].flatMap((m49) => {
+    const latitude = latitudeByM49.get(m49);
+    return latitude == null ? [] : [{ m49, latitude }];
+  });
 
   return features
     .filter((feature) => !observedIds.has(Number(feature.id)))
     .map((feature) => {
       const m49 = Number(feature.id);
+      const latitude = latitudeByM49.get(m49) ?? Number.NaN;
       const target = climate?.classByM49[String(m49)];
       const hasClassBlend = Boolean(target && climate?.classCurves[target.class]?.length);
       const hasFamilyBlend = Boolean(target && climate?.familyCurves[target.family]?.length);
@@ -64,7 +75,12 @@ export function buildFallbackDonorCoverage(
       return {
         m49,
         country: feature.properties?.name ?? String(feature.id),
-        latitudeDonors: 0 as const,
+        latitudeDonors: latitudeDonors.filter(
+          (donor) =>
+            Math.sign(donor.latitude) === Math.sign(latitude) &&
+            Math.abs(Math.abs(donor.latitude) - Math.abs(latitude)) <=
+              LATITUDE_DONOR_TOLERANCE_DEGREES,
+        ).length,
         climateDonors,
         climateLabel,
         neighborDonors: (neighborsByM49.get(m49) ?? []).filter((id) => observedIds.has(id)).length,

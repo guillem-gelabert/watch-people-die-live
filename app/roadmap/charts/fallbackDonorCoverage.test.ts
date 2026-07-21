@@ -2,11 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { CountryFeature, SeasonalityData } from "../types";
 import { buildFallbackDonorCoverage } from "./fallbackDonorCoverage";
 
-const feature = (id: number, name: string): CountryFeature => ({
+const feature = (id: number, name: string, latitude: number): CountryFeature => ({
   type: "Feature",
   id,
   properties: { name },
-  geometry: { type: "Point", coordinates: [0, 0] },
+  geometry: { type: "Point", coordinates: [0, latitude] },
 });
 
 describe("buildFallbackDonorCoverage", () => {
@@ -28,10 +28,10 @@ describe("buildFallbackDonorCoverage", () => {
     };
     const coverage = buildFallbackDonorCoverage(
       [
-        feature(1, "Observed A"),
-        feature(2, "Observed B"),
-        feature(3, "Class target"),
-        feature(4, "Family target"),
+        feature(1, "Observed A", 30),
+        feature(2, "Observed B", -30),
+        feature(3, "Class target", 35),
+        feature(4, "Family target", -28),
       ],
       seasonality,
       {
@@ -51,7 +51,7 @@ describe("buildFallbackDonorCoverage", () => {
       {
         m49: 3,
         country: "Class target",
-        latitudeDonors: 0,
+        latitudeDonors: 1,
         climateDonors: 2,
         climateLabel: "Cfa class",
         neighborDonors: 2,
@@ -59,7 +59,7 @@ describe("buildFallbackDonorCoverage", () => {
       {
         m49: 4,
         country: "Family target",
-        latitudeDonors: 0,
+        latitudeDonors: 1,
         climateDonors: 2,
         climateLabel: "C family",
         neighborDonors: 1,

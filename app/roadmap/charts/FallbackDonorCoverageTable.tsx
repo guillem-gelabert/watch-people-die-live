@@ -1,7 +1,10 @@
 "use client";
 
 import type { CountryFeature, NeighborsByM49, SeasonalityData, SeasonalityProxies } from "../types";
-import { buildFallbackDonorCoverage } from "./fallbackDonorCoverage";
+import {
+  buildFallbackDonorCoverage,
+  LATITUDE_DONOR_TOLERANCE_DEGREES,
+} from "./fallbackDonorCoverage";
 
 interface FallbackDonorCoverageTableProps {
   features: CountryFeature[] | null;
@@ -35,7 +38,7 @@ export default function FallbackDonorCoverageTable({
             <tr>
               <th scope="col">Country</th>
               <th scope="col" className="num">
-                Latitude donors
+                Latitude donors (±{LATITUDE_DONOR_TOLERANCE_DEGREES}°)
               </th>
               <th scope="col" className="num">
                 Climate-zone donors
@@ -49,12 +52,7 @@ export default function FallbackDonorCoverageTable({
             {rows.map((row) => (
               <tr key={row.m49}>
                 <th scope="row">{row.country}</th>
-                <td
-                  className="num"
-                  title="Latitude is a fitted model, not a direct country donor pool."
-                >
-                  {row.latitudeDonors} · model
-                </td>
+                <td className="num">{row.latitudeDonors}</td>
                 <td className="num" title={`Runtime climate source: ${row.climateLabel}.`}>
                   {row.climateDonors} · {row.climateLabel}
                 </td>
@@ -65,8 +63,10 @@ export default function FallbackDonorCoverageTable({
         </table>
       </div>
       <p className="loo-cohort-note">
-        Latitude has no direct country donors: it evaluates a globally fitted, latitude-scaled
-        curve. Climate uses the live class blend when available, otherwise its climate-family blend.
+        Latitude donors have a country-centroid absolute latitude within ±
+        {LATITUDE_DONOR_TOLERANCE_DEGREES}° and are in the same hemisphere. The running map still
+        evaluates a globally fitted, latitude-scaled curve rather than directly averaging this band.
+        Climate uses the live class blend when available, otherwise its climate-family blend.
         Neighbour counts include only observed national curves on a direct land border; own measured
         regions are a separate, earlier evidence tier.
       </p>
