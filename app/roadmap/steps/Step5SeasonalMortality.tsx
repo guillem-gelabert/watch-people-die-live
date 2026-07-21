@@ -2,6 +2,7 @@
 
 import AmplitudeMap from "../charts/AmplitudeMap";
 import CountryCurves from "../charts/CountryCurves";
+import FallbackDonorCoverageTable from "../charts/FallbackDonorCoverageTable";
 import GdpScatter from "../charts/GdpScatter";
 import KoppenGeigerScatter from "../charts/KoppenGeigerScatter";
 import LatitudeScatter from "../charts/LatitudeScatter";
@@ -100,6 +101,12 @@ export default function Step5SeasonalMortality({
                     proxies={proxies}
                     neighborsByM49={neighborsByM49}
                     features={features}
+                  />
+                  <FallbackDonorCoverageTable
+                    features={features}
+                    seasonality={activeSeasonality}
+                    proxies={proxies}
+                    neighborsByM49={neighborsByM49}
                   />
                 </div>
               ),
