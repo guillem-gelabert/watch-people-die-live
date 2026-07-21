@@ -734,6 +734,28 @@ a:hover {
   border-color: rgb(255 255 255 / 35%);
 }
 
+/* Independent country/region layer checkboxes on the amplitude-proxy scatters (LayerToggle). */
+.chart-layers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0 0 0.55rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.chart-layers label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.chart-layers input {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 /* Country-comparison combobox (CountryCurves) */
 .cc-combobox {
   position: relative;
@@ -810,6 +832,32 @@ a:hover {
   color: var(--muted);
 }
 
+/* Category options (climate zone / GDP band / latitude band) in the compare listbox: a group
+   tag on the left and the member count on the right, distinguishing them from country rows. */
+.cc-option-cat {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.cc-cat-tag {
+  flex: none;
+  padding: 0 0.3rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.cc-cat-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .cc-chips {
   display: flex;
   flex-wrap: wrap;
@@ -841,6 +889,28 @@ a:hover {
 
 .cc-chip-remove:hover {
   color: var(--fg);
+}
+
+.cc-clear {
+  align-self: center;
+  padding: 0.25rem 0.2rem;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.72rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.cc-clear:hover {
+  color: var(--fg);
+}
+
+.cc-status {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.72rem;
 }
 
 .seasonality-chart {

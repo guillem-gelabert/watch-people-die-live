@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import * as d3 from "d3";
 import type { Feature, Geometry } from "geojson";
+import { MAP_GRATICULE } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { Admin1Feature, Nuts2Feature, RatePer100kByCountry, RatePer100kByKey } from "../types";
 
@@ -100,7 +101,7 @@ export default function SubnationalChoroplethMap({
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
 
-    const projection = d3.geoEqualEarth().fitExtent(
+    const projection = d3.geoEquirectangular().fitExtent(
       [
         [6, 6],
         [WIDTH - 6, HEIGHT - 6],
@@ -150,6 +151,8 @@ export default function SubnationalChoroplethMap({
         showTooltip(label, event.clientX, event.clientY);
       })
       .on("pointerleave", hideTooltip);
+
+    svg.append("path").datum(MAP_GRATICULE).attr("class", "map-graticule").attr("d", path);
 
     // Callout leader dots + labels.
     const byName = new Map(drawn.map((r) => [r.name, r]));

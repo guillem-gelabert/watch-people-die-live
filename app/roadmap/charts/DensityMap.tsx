@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
-import { expGap, REAL_MEAN_GAP_MS, formatMeanGap } from "../chartHelpers";
+import { expGap, REAL_MEAN_GAP_MS, formatMeanGap, MAP_GRATICULE } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, DensityGrid, DeathsPerYearById } from "../types";
 
@@ -40,7 +40,7 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
     const height = canvas.height;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const projection = d3.geoEqualEarth().fitExtent(
+    const projection = d3.geoEquirectangular().fitExtent(
       [
         [18, 18],
         [width - 18, height - 18],
@@ -92,6 +92,12 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
       bgCtx.fillStyle = color(scaleValue(pop));
       bgCtx.fillRect(x, y, w, h);
     }
+
+    bgCtx.beginPath();
+    bgPath(MAP_GRATICULE);
+    bgCtx.strokeStyle = "rgba(255,255,255,0.12)";
+    bgCtx.lineWidth = 0.35;
+    bgCtx.stroke();
 
     const legendX = width - 260;
     const legendY = height - 32;
@@ -277,9 +283,9 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
     <section className="chart-panel wide">
       <h4 className="chart-title">Population Density (flat)</h4>
       <p className="chart-copy">
-        GPWv4 population counts on the 0.5° grid, equal-earth projection. Brighter cells hold more
-        people. Dots now land on a grid cell chosen in proportion to that cell&apos;s population,
-        instead of a country&apos;s single geographic center.
+        GPWv4 population counts on the 0.5° grid, equirectangular projection. Brighter cells hold
+        more people. Dots now land on a grid cell chosen in proportion to that cell&apos;s
+        population, instead of a country&apos;s single geographic center.
       </p>
       <div className="chart-toggle" role="group" aria-label="Color scale">
         <button

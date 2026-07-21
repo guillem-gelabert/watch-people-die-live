@@ -295,6 +295,36 @@ export function randomPointOnSphere(): [number, number] {
   return [lon, lat];
 }
 
+// A uniform lon/lat reference grid with exactly `cols` × `rows` cells covering the whole
+// globe. Lines are placed at exact fractional boundaries rather than stepped outward from
+// 0° (which is what d3.geoGraticule's step() does) — that stepping only lands cleanly on
+// the map edges when 360/cols and 180/rows are both even multiples of the step; 45 rows
+// wouldn't reach ±90° evenly and would leave two odd-sized polar caps.
+function buildGraticule(cols: number, rows: number): GeoJSON.MultiLineString {
+  // Densify every line so the path generator traces the true meridian/parallel rather than
+  // the great-circle geodesic between two endpoints. A 2-point parallel is also degenerate:
+  // [-180, lat] and [180, lat] are the same point, so it clips away to nothing.
+  const STEP = 2; // degrees between vertices
+  const coordinates: [number, number][][] = [];
+  for (let i = 1; i < cols; i++) {
+    const lon = -180 + (360 * i) / cols;
+    const line: [number, number][] = [];
+    for (let lat = -90; lat <= 90; lat += STEP) line.push([lon, lat]);
+    coordinates.push(line);
+  }
+  for (let j = 1; j < rows; j++) {
+    const lat = -90 + (180 * j) / rows;
+    const line: [number, number][] = [];
+    for (let lon = -180; lon <= 180; lon += STEP) line.push([lon, lat]);
+    coordinates.push(line);
+  }
+  return { type: "MultiLineString", coordinates };
+}
+
+// Plain reference grid shared by every world map — no data, no hover. Pure lon/lat
+// geometry, reprojected fresh by each map's own path generator.
+export const MAP_GRATICULE = buildGraticule(90, 45);
+
 // Ten countries found (notebooks/seasonality.ipynb) to be mutually similar in curve
 // *shape* despite spanning very different latitudes and death tolls. Default
 // selection for the interactive country-comparison chart.

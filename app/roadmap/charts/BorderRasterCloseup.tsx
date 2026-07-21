@@ -6,8 +6,8 @@ import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, DensityGrid } from "../types";
 
 // Fixed viewBox: same aspect for every panel so a responsive grid gives every box the
-// same height. Mercator is conformal, so cells stay square regardless of the panel's
-// aspect — no manual per-region aspect correction is needed.
+// same height. Equirectangular maps lon/lat linearly, so cell squareness now depends on
+// the roi's aspect ratio matching the panel's — a mismatch stretches cells uniformly.
 const NOMINAL_W = 600;
 const PANEL_AR = 1.5; // width / height (3:2)
 const NOMINAL_H = Math.round(NOMINAL_W / PANEL_AR);
@@ -104,7 +104,7 @@ export default function BorderRasterCloseup({
     // axis are filled by overscan (below), then everything is cropped to the viewBox.
     const width = NOMINAL_W;
     const height = NOMINAL_H;
-    const projection = d3.geoMercator().fitExtent(
+    const projection = d3.geoEquirectangular().fitExtent(
       [
         [0, 0],
         [width, height],

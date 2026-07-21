@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import * as d3 from "d3";
 import * as topojson from "topojson-client";
 import type { Topology, GeometryCollection, GeometryObject } from "topojson-specification";
-import type { ClimateFallbackModel } from "@/lib/spatial-seasonality";
+import type { AppliedSeasonalityFallbacks, ClimateFallbackModel } from "@/lib/spatial-seasonality";
 import type {
   Admin1Feature,
   Admin1Properties,
@@ -35,6 +35,7 @@ interface RoadmapState {
   neighborsByM49: NeighborsByM49 | null; // shared-border adjacency, for the step-5 neighbour scatter
   seasonality: SeasonalityData | null;
   unified: SeasonalityData | null;
+  appliedFallbacks: AppliedSeasonalityFallbacks | null;
   grid: DensityGrid | null;
   gridStatus: GridStatus;
   deathsPerYearById: DeathsPerYearById | null; // Map<m49, number>, for the step-2 centroid chart
@@ -81,6 +82,7 @@ export function useRoadmapData(): RoadmapState {
     neighborsByM49: null,
     seasonality: null,
     unified: null,
+    appliedFallbacks: null,
     grid: null,
     gridStatus: "loading", // "loading" | "ready" | "error"
     deathsPerYearById: null, // Map<m49, number>, for the step-2 centroid chart
@@ -191,8 +193,11 @@ export function useRoadmapData(): RoadmapState {
       d3.json<SeasonalityProxies>("/data/seasonality-proxies.json").catch(() => null),
       d3.json<LooValidation>("/data/seasonality-loo-validation.json").catch(() => null),
       d3.json<ClimateFallbackModel>("/data/seasonality-climate-fallback.json").catch(() => null),
+      d3
+        .json<AppliedSeasonalityFallbacks>("/data/seasonality-applied-fallbacks.json")
+        .catch(() => null),
     ])
-      .then(([seasonality, topo, unified, proxies, looValidation, climate]) => {
+      .then(([seasonality, topo, unified, proxies, looValidation, climate, appliedFallbacks]) => {
         if (cancelled) return null;
         if (!seasonality || !topo) return null;
         // Attach the climate model so the amplitude map's spatial estimator can use its
@@ -223,6 +228,7 @@ export function useRoadmapData(): RoadmapState {
           neighborsByM49,
           seasonality,
           unified: unified ?? null,
+          appliedFallbacks: appliedFallbacks ?? null,
           proxies: proxies ?? null,
           looValidation: looValidation ?? null,
         }));

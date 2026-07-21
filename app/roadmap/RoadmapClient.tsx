@@ -21,6 +21,7 @@ export default function RoadmapClient({ markdown }: RoadmapClientProps) {
     neighborsByM49,
     seasonality,
     unified,
+    appliedFallbacks,
     grid,
     deathsPerYearById,
     admin1Features,
@@ -79,6 +80,7 @@ export default function RoadmapClient({ markdown }: RoadmapClientProps) {
               neighborsByM49={neighborsByM49}
               activeSeasonality={activeSeasonality}
               unified={unified}
+              appliedFallbacks={appliedFallbacks}
               proxies={proxies}
               looValidation={looValidation}
               admin1Features={admin1Features}

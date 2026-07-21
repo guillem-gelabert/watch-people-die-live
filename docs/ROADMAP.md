@@ -85,7 +85,7 @@ An illustrative example of how big the age structure of a place is to it's CDR i
 
 ### ● 5 · Death Rate By Time Of Year
 
-> Source: UN Demographic Yearbook monthly deaths, with a latitude-scaled fallback for countries without monthly reports.
+> Source: UN Demographic Yearbook, HMD STMF and World Mortality Dataset, with a quality-ranked climate, neighbouring-area or latitude proxy where no seasonal curve is observed.
 
 From a timing perspective, we're still at the same place that we were at the beginning. Dots still appear at random moments. This looks definitely better than having regular intervals like a metronome, but it's not closer to reality. Randomness feels more organic, but we're striving for something more than feeling.
 
@@ -217,13 +217,12 @@ How about neighbouring countries? That's better. There's a strong correlation he
 
 [prediction comparison chart]
 
-Bordering-neighbour adjacency is the strongest proxy — the lowest median error, the highest correlation, and the only one with positive skill against both the mean-curve floor and latitude. Latitude and climate class land close together just behind, with climate edging latitude on the typical country, and all three clear the mean-curve floor comfortably. Countries with no bordering donor use the latitude model, both in this benchmark and in production.
+Bordering-neighbour adjacency is the strongest proxy — the lowest median error, the highest correlation, and the only one with positive skill against both the mean-curve floor and latitude. Latitude and climate class land close together just behind, with climate edging latitude on the typical country, and all three clear the mean-curve floor comfortably. For every country or region without its own curve, production applies the highest-quality available donor group after adjusting for history, cadence, climate specificity, coverage and distance.
 
-**Amplitude By Country And Region** — Every rendered country is colored by seasonal amplitude:
-observed curves where available, measured regions where a national curve is missing, and bordering
-measured countries otherwise. Islands and countries without a measured bordering donor use the
-latitude model. Calculated country fills are striped; those without an observed bordering donor are
-checkered. Observations are solid. Russia, the US, Canada, Australia and Argentina all span a huge
+**Amplitude By Country And Region** — Every rendered country and region is colored by seasonal
+amplitude. Observations use their measured curves; targets without observations use their assigned
+climate, neighbouring-area or latitude proxy. Patterned fills identify the applied proxy, while
+observations are solid. Russia, the US, Canada, Australia and Argentina all span a huge
 range of latitude, so one national curve hides real internal variation;
 Brazil and Mexico span a huge range of _area_ instead, sitting mostly nearer the equator with only
 a few non-flat corners. South Africa is included too, though its province-level series is a

@@ -2,7 +2,6 @@
 
 import AmplitudeMap from "../charts/AmplitudeMap";
 import CountryCurves from "../charts/CountryCurves";
-import FallbackDonorCoverageTable from "../charts/FallbackDonorCoverageTable";
 import GdpScatter from "../charts/GdpScatter";
 import KoppenGeigerScatter from "../charts/KoppenGeigerScatter";
 import LatitudeScatter from "../charts/LatitudeScatter";
@@ -13,6 +12,7 @@ import RegionNeighbourScatter from "../charts/RegionNeighbourScatter";
 import RegionPredictionComparison from "../charts/RegionPredictionComparison";
 import SeasonalityProxyTable from "../charts/SeasonalityProxyTable";
 import RoadmapMarkdown from "../roadmapMarkdown";
+import type { AppliedSeasonalityFallbacks } from "@/lib/spatial-seasonality";
 import type {
   Admin1Feature,
   CountryFeature,
@@ -30,6 +30,7 @@ interface Step5SeasonalMortalityProps {
   neighborsByM49: NeighborsByM49 | null;
   activeSeasonality: SeasonalityData | null;
   unified: SeasonalityData | null;
+  appliedFallbacks: AppliedSeasonalityFallbacks | null;
   proxies: SeasonalityProxies | null;
   looValidation: LooValidation | null;
   admin1Features: Admin1Feature[] | null;
@@ -44,6 +45,7 @@ export default function Step5SeasonalMortality({
   neighborsByM49,
   activeSeasonality,
   unified,
+  appliedFallbacks,
   proxies,
   looValidation,
   admin1Features,
@@ -66,7 +68,11 @@ export default function Step5SeasonalMortality({
             slots={{
               "[similar curves chart]": (
                 <div className="chart-grid" aria-label="Similar seasonal mortality curves">
-                  <CountryCurves seasonality={activeSeasonality} features={features} />
+                  <CountryCurves
+                    seasonality={activeSeasonality}
+                    features={features}
+                    proxies={proxies}
+                  />
                 </div>
               ),
               "[seasonality proxy table]": <SeasonalityProxyTable />,
@@ -79,7 +85,12 @@ export default function Step5SeasonalMortality({
                 />
               ),
               "[amplitude by climate zone scatter]": (
-                <KoppenGeigerScatter unified={unified} proxies={proxies} features={features} />
+                <KoppenGeigerScatter
+                  unified={unified}
+                  proxies={proxies}
+                  features={features}
+                  regions={subnationalRegions}
+                />
               ),
               "[amplitude by age over 65 scatter]": (
                 <Pop65Scatter unified={unified} proxies={proxies} features={features} />
@@ -92,6 +103,8 @@ export default function Step5SeasonalMortality({
                   unified={unified}
                   features={features}
                   neighborsByM49={neighborsByM49}
+                  regions={subnationalRegions}
+                  regionNeighbors={regionNeighbors}
                 />
               ),
               "[prediction comparison chart]": (
@@ -101,14 +114,6 @@ export default function Step5SeasonalMortality({
                     proxies={proxies}
                     neighborsByM49={neighborsByM49}
                     features={features}
-                  />
-                  <FallbackDonorCoverageTable
-                    features={features}
-                    seasonality={activeSeasonality}
-                    proxies={proxies}
-                    neighborsByM49={neighborsByM49}
-                    regions={subnationalRegions}
-                    admin1Features={admin1Features}
                   />
                 </div>
               ),
@@ -143,13 +148,10 @@ export default function Step5SeasonalMortality({
             <section className="chart-panel wide">
               <h4 className="chart-title">Amplitude By Country And Region</h4>
               <p className="chart-copy">
-                Every rendered country is colored by seasonal amplitude: observed curves where
-                available, measured regions where a national curve is missing, and bordering
-                measured countries otherwise. Islands and countries without a measured bordering
-                donor use the latitude model. Measured Admin-1 regions are colored by their own
-                observed amplitude, showing the variation a national curve hides. Calculated country
-                fills are striped; those without an observed bordering donor are checkered.
-                Observations are solid.
+                Every rendered country and region is colored by seasonal amplitude. Observations use
+                their measured curves; targets without observations use the assigned climate,
+                neighbour, or latitude proxy. Patterned fills identify the applied proxy, while
+                observations are solid.
               </p>
               <AmplitudeMap
                 seasonality={activeSeasonality}
@@ -157,6 +159,7 @@ export default function Step5SeasonalMortality({
                 neighborsByM49={neighborsByM49}
                 regions={subnationalRegions}
                 admin1Features={admin1Features}
+                appliedFallbacks={appliedFallbacks}
               />
             </section>
           </div>

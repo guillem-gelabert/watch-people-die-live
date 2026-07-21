@@ -4,9 +4,11 @@ import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import {
   buildSpatialSeasonality,
+  type AppliedFallbackCurve,
+  type AppliedSeasonalityFallbacks,
   type SpatialSeasonalityEstimate,
 } from "@/lib/spatial-seasonality";
-import { fmtPlainPct, strength } from "../chartHelpers";
+import { fmtPlainPct, strength, MAP_GRATICULE } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type {
   Admin1Feature,
@@ -26,6 +28,7 @@ interface RegionRow {
   feature: Admin1Feature;
   amplitude: number;
   region: SubnationalSeasonalityRegion;
+  appliedFallback?: AppliedFallbackCurve;
 }
 
 interface AmplitudeMapProps {
@@ -34,6 +37,7 @@ interface AmplitudeMapProps {
   neighborsByM49: NeighborsByM49 | null;
   regions: SubnationalSeasonalityRegion[] | null;
   admin1Features: Admin1Feature[] | null;
+  appliedFallbacks: AppliedSeasonalityFallbacks | null;
 }
 
 // Every country colored by seasonal amplitude — observed curve where available, then own
@@ -45,6 +49,7 @@ export default function AmplitudeMap({
   neighborsByM49,
   regions,
   admin1Features,
+  appliedFallbacks,
 }: AmplitudeMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
 
@@ -55,7 +60,7 @@ export default function AmplitudeMap({
 
     const width = 860;
     const height = 360;
-    const projection = d3.geoEqualEarth().fitExtent(
+    const projection = d3.geoEquirectangular().fitExtent(
       [
         [18, 18],
         [width - 18, height - 18],
@@ -64,7 +69,13 @@ export default function AmplitudeMap({
     );
     const path = d3.geoPath(projection);
 
-    const estimates = buildSpatialSeasonality(features, neighborsByM49, seasonality, regions ?? []);
+    const estimates = buildSpatialSeasonality(
+      features,
+      neighborsByM49,
+      seasonality,
+      regions ?? [],
+      appliedFallbacks,
+    );
     const countryRows: CountryRow[] = features.flatMap((feature) => {
       const estimate = estimates.get(Number(feature.id));
       return estimate ? [{ feature, estimate, amplitude: strength(estimate.curve) }] : [];
@@ -72,15 +83,27 @@ export default function AmplitudeMap({
 
     const regionRows: RegionRow[] = [];
     if (regions && admin1Features) {
-      const ampByCode = new Map<string, { amp: number; region: SubnationalSeasonalityRegion }>();
+      const ampByCode = new Map<
+        string,
+        {
+          amp: number;
+          region: SubnationalSeasonalityRegion;
+          appliedFallback?: AppliedFallbackCurve;
+        }
+      >();
       for (const r of regions) {
         if (r.geo === "adm1") {
-          ampByCode.set(r.key, { amp: strength(r.curve), region: r });
+          const appliedFallback = appliedFallbacks?.regions[r.key];
+          ampByCode.set(r.key, {
+            amp: strength(appliedFallback?.curve ?? r.curve),
+            region: r,
+            ...(appliedFallback ? { appliedFallback } : {}),
+          });
         }
       }
       for (const feature of admin1Features) {
         const hit = ampByCode.get(feature.properties?.adm1_code ?? "");
-        if (hit) regionRows.push({ feature, amplitude: hit.amp, region: hit.region });
+        if (hit) regionRows.push({ feature, amplitude: hit.amp, ...hit });
       }
     }
 
@@ -120,6 +143,19 @@ export default function AmplitudeMap({
       .attr("width", 2.2)
       .attr("height", 7)
       .attr("fill", "rgba(10, 16, 28, 0.62)");
+    const climatePatternId = "amplitude-map-climate-dots";
+    const climateDots = defs
+      .append("pattern")
+      .attr("id", climatePatternId)
+      .attr("patternUnits", "userSpaceOnUse")
+      .attr("width", 6)
+      .attr("height", 6);
+    climateDots
+      .append("circle")
+      .attr("cx", 3)
+      .attr("cy", 3)
+      .attr("r", 1.3)
+      .attr("fill", "rgba(10, 16, 28, 0.72)");
 
     svg
       .append("path")
@@ -160,19 +196,38 @@ export default function AmplitudeMap({
       })
       .on("pointerleave", hideTooltip);
 
-    // A separate pointer-transparent overlay preserves each estimate's amplitude color
-    // while giving every calculated country the same unmistakable diagonal stripe encoding.
+    // Proxy-specific overlays preserve the amplitude color while distinguishing the selected
+    // donor method: diagonal for neighbours, dots for climate, cross-hatch for latitude.
     svg
       .append("g")
       .selectAll("path")
-      .data(countryRows.filter((d) => d.estimate.source !== "observed"))
+      .data(
+        countryRows.filter(
+          (d) => d.estimate.source === "bordering-countries" || d.estimate.source === "own-regions",
+        ),
+      )
       .join("path")
       .attr("class", "map-country-stripes")
       .attr("fill", `url(#${stripeId})`)
       .attr("d", (d) => path(d.feature));
 
-    // Countries without an observed bordering donor use the latitude fallback.
-    // Add the opposing diagonal on top of the standard estimate hatch so they read as checkered.
+    svg
+      .append("g")
+      .selectAll("path")
+      .data(countryRows.filter((d) => d.estimate.source === "climate"))
+      .join("path")
+      .attr("class", "map-country-stripes")
+      .attr("fill", `url(#${climatePatternId})`)
+      .attr("d", (d) => path(d.feature));
+
+    svg
+      .append("g")
+      .selectAll("path")
+      .data(countryRows.filter((d) => d.estimate.source === "latitude"))
+      .join("path")
+      .attr("class", "map-country-stripes")
+      .attr("fill", `url(#${stripeId})`)
+      .attr("d", (d) => path(d.feature));
     svg
       .append("g")
       .selectAll("path")
@@ -199,7 +254,7 @@ export default function AmplitudeMap({
       .on("pointermove", (event, d) => {
         const note =
           d.region.measurement === "climate-modeled"
-            ? ` · climate estimate (Köppen ${d.region.kgFamily ?? "?"})`
+            ? ` · ${d.appliedFallback?.proxy.toLowerCase() ?? "climate"} estimate${d.appliedFallback?.overridden ? " (manual override)" : ""}`
             : d.region.imputed
               ? ` · imputed from ${d.region.imputedFrom?.join(", ")}`
               : "";
@@ -211,16 +266,24 @@ export default function AmplitudeMap({
       })
       .on("pointerleave", hideTooltip);
 
-    // Striped overlay for the climate-modeled (India/China) region estimates, matching the
-    // country-level estimate encoding so they never read as observed data.
-    svg
-      .append("g")
-      .selectAll("path")
-      .data(regionRows.filter((d) => d.region.measurement === "climate-modeled"))
-      .join("path")
-      .attr("class", "map-country-stripes")
-      .attr("fill", `url(#${stripeId})`)
-      .attr("d", (d) => path(d.feature));
+    for (const [source, patternIds] of [
+      ["bordering-countries", [stripeId]],
+      ["climate", [climatePatternId]],
+      ["latitude", [stripeId, crossStripeId]],
+    ] as const) {
+      for (const patternId of patternIds) {
+        svg
+          .append("g")
+          .selectAll("path")
+          .data(regionRows.filter((d) => d.appliedFallback?.source === source))
+          .join("path")
+          .attr("class", "map-country-stripes")
+          .attr("fill", `url(#${patternId})`)
+          .attr("d", (d) => path(d.feature));
+      }
+    }
+
+    svg.append("path").datum(MAP_GRATICULE).attr("class", "map-graticule").attr("d", path);
 
     const legendX = width - 260;
     const legendY = height - 32;
@@ -267,55 +330,43 @@ export default function AmplitudeMap({
 
     const estimateLegendX = 28;
     const estimateLegendY = height - 29;
-    svg
-      .append("rect")
-      .attr("x", estimateLegendX)
-      .attr("y", estimateLegendY)
-      .attr("width", 22)
-      .attr("height", 10)
-      .attr("rx", 2)
-      .attr("fill", color(maxAmp * 0.55));
-    svg
-      .append("rect")
-      .attr("x", estimateLegendX)
-      .attr("y", estimateLegendY)
-      .attr("width", 22)
-      .attr("height", 10)
-      .attr("rx", 2)
-      .attr("fill", `url(#${stripeId})`);
-    svg
-      .append("text")
-      .attr("class", "chart-label")
-      .attr("x", estimateLegendX + 30)
-      .attr("y", estimateLegendY + 9)
-      .text("spatial estimate");
-
-    const noNeighborLegendX = 180;
-    svg
-      .append("rect")
-      .attr("x", noNeighborLegendX)
-      .attr("y", estimateLegendY)
-      .attr("width", 22)
-      .attr("height", 10)
-      .attr("rx", 2)
-      .attr("fill", color(maxAmp * 0.55));
-    for (const patternId of [stripeId, crossStripeId]) {
+    const proxyLegend = [
+      { x: estimateLegendX, label: "observed", patterns: [] },
+      { x: estimateLegendX + 112, label: "neighbours", patterns: [stripeId] },
+      { x: estimateLegendX + 238, label: "climate", patterns: [climatePatternId] },
+      {
+        x: estimateLegendX + 338,
+        label: "latitude",
+        patterns: [stripeId, crossStripeId],
+      },
+    ];
+    for (const item of proxyLegend) {
       svg
         .append("rect")
-        .attr("x", noNeighborLegendX)
+        .attr("x", item.x)
         .attr("y", estimateLegendY)
         .attr("width", 22)
         .attr("height", 10)
         .attr("rx", 2)
-        .attr("fill", `url(#${patternId})`);
+        .attr("fill", color(maxAmp * 0.55));
+      for (const patternId of item.patterns) {
+        svg
+          .append("rect")
+          .attr("x", item.x)
+          .attr("y", estimateLegendY)
+          .attr("width", 22)
+          .attr("height", 10)
+          .attr("rx", 2)
+          .attr("fill", `url(#${patternId})`);
+      }
+      svg
+        .append("text")
+        .attr("class", "chart-label")
+        .attr("x", item.x + 30)
+        .attr("y", estimateLegendY + 9)
+        .text(item.label);
     }
-    svg
-      .append("text")
-      .attr("class", "chart-label")
-      .attr("x", noNeighborLegendX + 30)
-      .attr("y", estimateLegendY + 9)
-      .text("no observed neighbour");
-  }, [seasonality, features, neighborsByM49, regions, admin1Features]);
+  }, [seasonality, features, neighborsByM49, regions, admin1Features, appliedFallbacks]);
 
   return (
     <svg

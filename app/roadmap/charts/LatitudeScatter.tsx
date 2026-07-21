@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import { fmtPlainPct, pearson, strength, styleAxis } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
+import LayerToggle from "./LayerToggle";
 import partidoLatitudeData from "../../../data/argentina-partido-latitudes.json";
 import type {
   Admin1Feature,
@@ -47,6 +48,8 @@ export default function LatitudeScatter({
 }: LatitudeScatterProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const legendRef = useRef<HTMLDivElement | null>(null);
+  const [showCountries, setShowCountries] = useState(true);
+  const [showRegions, setShowRegions] = useState(true);
 
   useEffect(() => {
     if (!unified || !features || !svgRef.current) return;
@@ -131,46 +134,51 @@ export default function LatitudeScatter({
         .text(b.label);
     });
 
-    g.selectAll("circle.country-pt")
-      .data(countryRows)
-      .join("circle")
-      .attr("class", "country-pt chart-point")
-      .attr("cx", (d) => x(d.absLat))
-      .attr("cy", (d) => y(d.amplitude))
-      .attr("r", 3.2)
-      .style("cursor", "pointer")
-      .on("pointermove", (event, d) =>
-        showTooltip(
-          `${d.name}: ${d.absLat.toFixed(1)}° lat, ${fmtPlainPct(d.amplitude)}`,
-          event.clientX,
-          event.clientY,
-        ),
-      )
-      .on("pointerleave", hideTooltip);
+    if (showCountries) {
+      g.selectAll("circle.country-pt")
+        .data(countryRows)
+        .join("circle")
+        .attr("class", "country-pt chart-point")
+        .attr("cx", (d) => x(d.absLat))
+        .attr("cy", (d) => y(d.amplitude))
+        .attr("r", 3.2)
+        .style("cursor", "pointer")
+        .on("pointermove", (event, d) =>
+          showTooltip(
+            `${d.name}: ${d.absLat.toFixed(1)}° lat, ${fmtPlainPct(d.amplitude)}`,
+            event.clientX,
+            event.clientY,
+          ),
+        )
+        .on("pointerleave", hideTooltip);
+    }
 
     // Regions drawn on top as hollow rings, matching the hollow-dot weight used across the other
     // seasonality scatters (r 3, stroke-width 0.8) so the two charts read as one family.
-    g.selectAll("circle.region-pt")
-      .data(regionRows)
-      .join("circle")
-      .attr("class", "region-pt")
-      .attr("cx", (d) => x(d.absLat))
-      .attr("cy", (d) => y(d.amplitude))
-      .attr("r", 3)
-      .attr("fill", "none")
-      .attr("stroke", ACCENT)
-      .attr("stroke-width", 0.8)
-      .attr("opacity", 0.7)
-      .style("cursor", "pointer")
-      .on("pointermove", (event, d) =>
-        showTooltip(
-          `${d.name} (${d.country}): ${d.absLat.toFixed(1)}° lat, ${fmtPlainPct(d.amplitude)}`,
-          event.clientX,
-          event.clientY,
-        ),
-      )
-      .on("pointerleave", hideTooltip);
+    if (showRegions) {
+      g.selectAll("circle.region-pt")
+        .data(regionRows)
+        .join("circle")
+        .attr("class", "region-pt")
+        .attr("cx", (d) => x(d.absLat))
+        .attr("cy", (d) => y(d.amplitude))
+        .attr("r", 3)
+        .attr("fill", "none")
+        .attr("stroke", ACCENT)
+        .attr("stroke-width", 0.8)
+        .attr("opacity", 0.7)
+        .style("cursor", "pointer")
+        .on("pointermove", (event, d) =>
+          showTooltip(
+            `${d.name} (${d.country}): ${d.absLat.toFixed(1)}° lat, ${fmtPlainPct(d.amplitude)}`,
+            event.clientX,
+            event.clientY,
+          ),
+        )
+        .on("pointerleave", hideTooltip);
+    }
 
+    const r2 = (r: number | null) => (r != null ? (r * r).toFixed(2) : "—");
     const rCountry = pearson(
       countryRows.map((d) => d.absLat),
       countryRows.map((d) => d.amplitude),
@@ -181,16 +189,16 @@ export default function LatitudeScatter({
           regionRows.map((d) => d.amplitude),
         )
       : null;
-    const r2 = (r: number | null) => (r != null ? (r * r).toFixed(2) : "—");
-    g.append("text")
-      .attr("class", "chart-note")
-      .attr("x", 0)
-      .attr("y", 10)
-      .text(
-        rRegion != null
-          ? `countries R² = ${r2(rCountry)}  ·  regions R² = ${r2(rRegion)}`
-          : `R² = ${r2(rCountry)}`,
-      );
+    const noteParts: string[] = [];
+    if (showCountries) noteParts.push(`countries R² = ${r2(rCountry)}`);
+    if (showRegions && rRegion != null) noteParts.push(`regions R² = ${r2(rRegion)}`);
+    if (noteParts.length) {
+      g.append("text")
+        .attr("class", "chart-note")
+        .attr("x", 0)
+        .attr("y", 10)
+        .text(noteParts.join("  ·  "));
+    }
 
     g.append("g")
       .attr("transform", `translate(0,${innerH})`)
@@ -211,18 +219,28 @@ export default function LatitudeScatter({
 
     const legend = d3.select(legendRef.current);
     legend.selectAll("span").remove();
-    legend
-      .append("span")
-      .html(`<span class="swatch-dot" style="background:${ACCENT}"></span>each country`);
-    legend
-      .append("span")
-      .html(
-        `<span class="swatch-dot" style="background:none;border:1.5px solid ${ACCENT}"></span>each region`,
-      );
-  }, [unified, features, regions, admin1Features]);
+    if (showCountries) {
+      legend
+        .append("span")
+        .html(`<span class="swatch-dot" style="background:${ACCENT}"></span>each country`);
+    }
+    if (showRegions) {
+      legend
+        .append("span")
+        .html(
+          `<span class="swatch-dot" style="background:none;border:1.5px solid ${ACCENT}"></span>each region`,
+        );
+    }
+  }, [unified, features, regions, admin1Features, showCountries, showRegions]);
 
   return (
     <>
+      <LayerToggle
+        showCountries={showCountries}
+        showRegions={showRegions}
+        onShowCountries={setShowCountries}
+        onShowRegions={setShowRegions}
+      />
       <svg
         ref={svgRef}
         id="latitude-scatter-chart"

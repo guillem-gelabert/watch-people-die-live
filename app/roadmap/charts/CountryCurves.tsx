@@ -6,46 +6,96 @@ import {
   MONTHS,
   COUNTRY_CURVE_PICKS,
   EXTRA_CURVE_COLORS,
+  KG_FAMILIES,
   MAX_COMPARE_COUNTRIES,
   styleAxis,
 } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
-import type { CountryFeature, SeasonalityData } from "../types";
+import type { CountryFeature, SeasonalityData, SeasonalityProxies } from "../types";
 
 interface Series {
   id: number;
   name: string;
   color: string;
-  curve: number[];
+  curve: number[]; // phase-aligned (southern hemisphere shifted 6 months)
+  shift: number; // months the calendar curve was rotated, for true-month tooltips
 }
 
 interface CountryCurvesProps {
   seasonality: SeasonalityData | null;
   features: CountryFeature[] | null;
+  proxies: SeasonalityProxies | null;
+}
+
+// A combobox option: either a single country or a category that bulk-adds its member countries.
+interface Option {
+  optionKey: string;
+  kind: "country" | "category";
+  group: string; // "Climate" | "GDP" | "Latitude" for categories, "" for countries
+  label: string;
+  ids: number[];
 }
 
 const COLOR_POOL = [...COUNTRY_CURVE_PICKS.map((d) => d.color), ...EXTRA_CURVE_COLORS];
 const DEFAULT_NAME_BY_ID = new Map(COUNTRY_CURVE_PICKS.map((d) => [d.id, d.name]));
+const SWITZERLAND_ID = 756;
+const SWITZERLAND_COLOR =
+  COUNTRY_CURVE_PICKS.find((d) => d.id === SWITZERLAND_ID)?.color ?? COLOR_POOL[0]!;
+
+// City-states with a measured curve but absent from the world-atlas 110m topology (folded into
+// their surrounding country at that resolution), so `nameById` can't name them — they'd otherwise
+// render as their bare M49 code (344, 702). No proxy/centroid either, so they never enter the
+// climate/GDP/latitude categories; they remain individually addable.
+const M49_NAME_FALLBACK = new Map<number, string>([
+  [344, "Hong Kong SAR"],
+  [702, "Singapore"],
+]);
+
+// GDP-per-capita bins (current USD) and absolute-latitude bins, chosen to spread the measured
+// countries across non-trivial groups; empty bins are dropped before display.
+const GDP_BINS = [
+  { key: "gdp-0", label: "GDP < $10k", lo: -Infinity, hi: 10_000 },
+  { key: "gdp-1", label: "GDP $10k–$30k", lo: 10_000, hi: 30_000 },
+  { key: "gdp-2", label: "GDP $30k–$50k", lo: 30_000, hi: 50_000 },
+  { key: "gdp-3", label: "GDP > $50k", lo: 50_000, hi: Infinity },
+];
+const LAT_BINS = [
+  { key: "lat-0", label: "Tropics (0–23.5°)", lo: 0, hi: 23.5 },
+  { key: "lat-1", label: "Subtropics (23.5–35°)", lo: 23.5, hi: 35 },
+  { key: "lat-2", label: "Temperate (35–50°)", lo: 35, hi: 50 },
+  { key: "lat-3", label: "High latitude (50°+)", lo: 50, hi: Infinity },
+];
 
 // Chart 3: multi-line seasonal mortality curves, comparable across any country with a
 // directly-measured curve (no latitude-fallback countries — those never appear in
-// `seasonality.countries`). Starts on the 10-country default from chartHelpers.
-export default function CountryCurves({ seasonality, features }: CountryCurvesProps) {
+// `seasonality.countries`). Starts on Switzerland alone; categories bulk-add measured countries
+// by climate zone, GDP bin, or latitude bin, up to the colour-pool cap.
+export default function CountryCurves({ seasonality, features, proxies }: CountryCurvesProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const [selectedIds, setSelectedIds] = useState<number[]>(() =>
-    COUNTRY_CURVE_PICKS.map((d) => d.id),
-  );
+  const [selectedIds, setSelectedIds] = useState<number[]>([SWITZERLAND_ID]);
   const [colorById, setColorById] = useState<Map<number, string>>(
-    () => new Map(COUNTRY_CURVE_PICKS.map((d) => [d.id, d.color])),
+    () => new Map([[SWITZERLAND_ID, SWITZERLAND_COLOR]]),
   );
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [status, setStatus] = useState<string | null>(null);
 
   const nameById = useMemo(
     () => new Map((features ?? []).map((f) => [Number(f.id), f.properties?.name ?? "Unknown"])),
+    [features],
+  );
+  const resolveName = (id: number) =>
+    DEFAULT_NAME_BY_ID.get(id) ?? nameById.get(id) ?? M49_NAME_FALLBACK.get(id) ?? String(id);
+
+  // Signed centroid latitude per country, for hemisphere phase alignment: southern-hemisphere
+  // curves are shifted six months so their winter lines up with the northern winter — the same
+  // northern-canonical re-phasing the estimator uses (lib/spatial-seasonality.ts). Countries with
+  // no 110m feature (Hong Kong, Singapore) are northern, so the 0 default is correct.
+  const signedLatById = useMemo(
+    () => new Map((features ?? []).map((f) => [Number(f.id), d3.geoCentroid(f)[1]])),
     [features],
   );
 
@@ -55,27 +105,109 @@ export default function CountryCurves({ seasonality, features }: CountryCurvesPr
     if (!seasonality) return [];
     return Object.keys(seasonality.countries)
       .map(Number)
-      .map((id) => ({ id, name: DEFAULT_NAME_BY_ID.get(id) ?? nameById.get(id) ?? String(id) }))
+      .map((id) => ({ id, name: resolveName(id) }))
       .sort((a, b) => a.name.localeCompare(b.name));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seasonality, nameById]);
 
-  const matches = useMemo(() => {
+  // Categories that bulk-add measured countries. Built from proxies (climate family, GDP) and
+  // feature centroids (absolute latitude); only non-empty groups are kept.
+  const categories = useMemo<Option[]>(() => {
+    if (!seasonality) return [];
+    const curveIds = Object.keys(seasonality.countries).map(Number);
+    const out: Option[] = [];
+
+    if (proxies) {
+      for (const fam of KG_FAMILIES) {
+        const ids = curveIds.filter((id) => proxies.byM49[id]?.kgFamily === fam.key);
+        if (ids.length) {
+          out.push({
+            optionKey: `climate-${fam.key}`,
+            kind: "category",
+            group: "Climate",
+            label: fam.name,
+            ids,
+          });
+        }
+      }
+      for (const bin of GDP_BINS) {
+        const ids = curveIds.filter((id) => {
+          const g = proxies.byM49[id]?.gdpPerCapita;
+          return g != null && g >= bin.lo && g < bin.hi;
+        });
+        if (ids.length) {
+          out.push({ optionKey: bin.key, kind: "category", group: "GDP", label: bin.label, ids });
+        }
+      }
+    }
+
+    for (const bin of LAT_BINS) {
+      const ids = curveIds.filter((id) => {
+        const lat = signedLatById.get(id);
+        return lat != null && Math.abs(lat) >= bin.lo && Math.abs(lat) < bin.hi;
+      });
+      if (ids.length) {
+        out.push({
+          optionKey: bin.key,
+          kind: "category",
+          group: "Latitude",
+          label: bin.label,
+          ids,
+        });
+      }
+    }
+    return out;
+  }, [seasonality, proxies, signedLatById]);
+
+  // Listbox contents: matching categories first, then matching not-yet-selected countries.
+  const matches = useMemo<Option[]>(() => {
     const q = query.trim().toLowerCase();
     const selected = new Set(selectedIds);
-    return availableCountries.filter(
-      (c) => !selected.has(c.id) && (q === "" || c.name.toLowerCase().includes(q)),
+    const cats = categories.filter(
+      (c) => q === "" || c.label.toLowerCase().includes(q) || c.group.toLowerCase().includes(q),
     );
-  }, [availableCountries, selectedIds, query]);
+    const countries: Option[] = availableCountries
+      .filter((c) => !selected.has(c.id) && (q === "" || c.name.toLowerCase().includes(q)))
+      .map((c) => ({
+        optionKey: `c-${c.id}`,
+        kind: "country",
+        group: "",
+        label: c.name,
+        ids: [c.id],
+      }));
+    return [...cats, ...countries];
+  }, [categories, availableCountries, selectedIds, query]);
 
   const atCap = selectedIds.length >= MAX_COMPARE_COUNTRIES;
 
-  function addCountry(id: number) {
-    if (selectedIds.includes(id) || selectedIds.length >= MAX_COMPARE_COUNTRIES) return;
+  // Adds as many of `ids` as fit under the colour-pool cap; reports how many were dropped.
+  function addCountries(ids: number[]) {
     const used = new Set(colorById.values());
-    const color = COLOR_POOL.find((c) => !used.has(c));
-    if (!color) return;
-    setSelectedIds((prev) => [...prev, id]);
-    setColorById((prev) => new Map(prev).set(id, color));
+    const nextSelected = [...selectedIds];
+    const nextColors = new Map(colorById);
+    let added = 0;
+    let requested = 0;
+    for (const id of ids) {
+      if (nextColors.has(id)) continue; // already selected
+      requested += 1;
+      if (nextSelected.length >= MAX_COMPARE_COUNTRIES) continue;
+      const color = COLOR_POOL.find((c) => !used.has(c));
+      if (!color) continue;
+      used.add(color);
+      nextSelected.push(id);
+      nextColors.set(id, color);
+      added += 1;
+    }
+    if (added) {
+      setSelectedIds(nextSelected);
+      setColorById(nextColors);
+    }
+    const dropped = requested - added;
+    setStatus(
+      dropped > 0
+        ? `Added ${added} — reached the ${MAX_COMPARE_COUNTRIES}-line limit (${dropped} not shown)`
+        : null,
+    );
     setQuery("");
     setActiveIndex(0);
   }
@@ -87,6 +219,14 @@ export default function CountryCurves({ seasonality, features }: CountryCurvesPr
       next.delete(id);
       return next;
     });
+    setStatus(null);
+  }
+
+  function clearAll() {
+    setSelectedIds([]);
+    setColorById(new Map());
+    setStatus(null);
+    setQuery("");
   }
 
   function onInputKeyDown(event: KeyboardEvent<HTMLInputElement>) {
@@ -101,16 +241,17 @@ export default function CountryCurves({ seasonality, features }: CountryCurvesPr
     } else if (event.key === "Enter") {
       event.preventDefault();
       const match = matches[activeIndex];
-      if (match) addCountry(match.id);
+      if (match) addCountries(match.ids);
     } else if (event.key === "Escape") {
       setOpen(false);
     }
   }
 
-  const selectedNames = useMemo(() => {
-    const byId = new Map(availableCountries.map((c) => [c.id, c.name]));
-    return selectedIds.map((id) => byId.get(id) ?? DEFAULT_NAME_BY_ID.get(id) ?? String(id));
-  }, [availableCountries, selectedIds]);
+  const selectedNames = useMemo(
+    () => selectedIds.map((id) => resolveName(id)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectedIds, availableCountries, nameById],
+  );
 
   useEffect(() => {
     if (!seasonality || !svgRef.current) return;
@@ -127,12 +268,9 @@ export default function CountryCurves({ seasonality, features }: CountryCurvesPr
         const curve = seasonality.countries[String(id)];
         const color = colorById.get(id);
         if (!curve || !color) return null;
-        return {
-          id,
-          name: DEFAULT_NAME_BY_ID.get(id) ?? nameById.get(id) ?? String(id),
-          color,
-          curve,
-        };
+        const shift = (signedLatById.get(id) ?? 0) < 0 ? 6 : 0;
+        const aligned = shift ? curve.map((_, m) => curve[(m + shift) % curve.length]!) : curve;
+        return { id, name: resolveName(id), color, curve: aligned, shift };
       })
       .filter((d): d is Series => d !== null);
     if (!series.length) return;
@@ -181,8 +319,10 @@ export default function CountryCurves({ seasonality, features }: CountryCurvesPr
             i = j;
           }
         }
+        // Report the country's true calendar month, not the aligned x position.
+        const trueMonth = MONTHS[(i + d.shift) % MONTHS.length];
         showTooltip(
-          `${d.name}, ${MONTHS[i]}: ${fmtFactor(d.curve[i]!)}×`,
+          `${d.name}, ${trueMonth}: ${fmtFactor(d.curve[i]!)}×`,
           event.clientX,
           event.clientY,
         );
@@ -200,13 +340,16 @@ export default function CountryCurves({ seasonality, features }: CountryCurvesPr
           .tickFormat((d) => fmtFactor(Number(d))),
       )
       .call(styleAxis);
-  }, [seasonality, selectedIds, colorById, nameById]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seasonality, selectedIds, colorById, nameById, signedLatById]);
 
   return (
     <section className="chart-panel wide">
       <h4 className="chart-title">A Cluster Of Similar Curves</h4>
       <p className="chart-copy">
-        Add or remove any country with a directly-measured curve to compare.
+        Add any country with a directly-measured curve, or a whole climate zone, GDP band, or
+        latitude band, to compare. Southern-hemisphere curves are shifted six months so seasons
+        align across hemispheres; hover any point for its true calendar month.
       </p>
 
       <div className="cc-combobox">
@@ -224,13 +367,13 @@ export default function CountryCurves({ seasonality, features }: CountryCurvesPr
           aria-autocomplete="list"
           aria-activedescendant={
             open && matches[activeIndex]
-              ? `country-compare-option-${matches[activeIndex].id}`
+              ? `country-compare-option-${matches[activeIndex].optionKey}`
               : undefined
           }
           placeholder={
             atCap
               ? `Comparing ${MAX_COMPARE_COUNTRIES} — remove one to add another`
-              : "Add a country…"
+              : "Add a country or category…"
           }
           value={query}
           disabled={atCap}
@@ -245,19 +388,27 @@ export default function CountryCurves({ seasonality, features }: CountryCurvesPr
         />
         {open && !atCap && (
           <ul id="country-compare-listbox" className="cc-listbox" role="listbox">
-            {matches.length === 0 && <li className="cc-empty">No matching countries</li>}
-            {matches.map((c, i) => (
+            {matches.length === 0 && <li className="cc-empty">No matches</li>}
+            {matches.map((opt, i) => (
               <li
-                key={c.id}
-                id={`country-compare-option-${c.id}`}
+                key={opt.optionKey}
+                id={`country-compare-option-${opt.optionKey}`}
                 role="option"
                 aria-selected={i === activeIndex}
-                className={`cc-option${i === activeIndex ? " active" : ""}`}
+                className={`cc-option${i === activeIndex ? " active" : ""}${opt.kind === "category" ? " cc-option-cat" : ""}`}
                 onMouseDown={(e) => e.preventDefault()}
                 onMouseEnter={() => setActiveIndex(i)}
-                onClick={() => addCountry(c.id)}
+                onClick={() => addCountries(opt.ids)}
               >
-                {c.name}
+                {opt.kind === "category" ? (
+                  <>
+                    <span className="cc-cat-tag">{opt.group}</span>
+                    {opt.label}
+                    <span className="cc-cat-count">{opt.ids.length}</span>
+                  </>
+                ) : (
+                  opt.label
+                )}
               </li>
             ))}
           </ul>
@@ -279,10 +430,17 @@ export default function CountryCurves({ seasonality, features }: CountryCurvesPr
             </button>
           </span>
         ))}
+        {selectedIds.length > 0 && (
+          <button type="button" className="cc-clear" onClick={clearAll}>
+            Clear all
+          </button>
+        )}
       </div>
 
+      {status && <p className="cc-status">{status}</p>}
+
       {selectedIds.length === 0 ? (
-        <p className="chart-copy">Add a country above to see its seasonal curve.</p>
+        <p className="chart-copy">Add a country or category above to see its seasonal curve.</p>
       ) : (
         <svg
           ref={svgRef}

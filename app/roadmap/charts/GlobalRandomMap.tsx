@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import * as d3 from "d3";
-import { expGap, randomPointOnSphere, REAL_MEAN_GAP_MS, formatMeanGap } from "../chartHelpers";
+import {
+  expGap,
+  randomPointOnSphere,
+  REAL_MEAN_GAP_MS,
+  formatMeanGap,
+  MAP_GRATICULE,
+} from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature } from "../types";
 
@@ -36,7 +42,7 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
 
-    const projection = d3.geoEqualEarth().fitExtent(
+    const projection = d3.geoEquirectangular().fitExtent(
       [
         [18, 18],
         [WIDTH - 18, HEIGHT - 18],
@@ -58,6 +64,7 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
       .join("path")
       .attr("class", "map-outline")
       .attr("d", path);
+    svg.append("path").datum(MAP_GRATICULE).attr("class", "map-graticule").attr("d", path);
 
     const meanGapMs = REAL_MEAN_GAP_MS;
 
