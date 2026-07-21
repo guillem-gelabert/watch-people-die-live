@@ -99,6 +99,7 @@ export default function Step5SeasonalMortality({
                     looValidation={looValidation}
                     proxies={proxies}
                     neighborsByM49={neighborsByM49}
+                    features={features}
                   />
                 </div>
               ),

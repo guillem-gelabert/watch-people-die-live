@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildCohortPerformance } from "./validationCohorts";
+import {
+  buildClimateSubclassPerformance,
+  buildCohortPerformance,
+  buildLatitudePerformance,
+} from "./validationCohorts";
 
 const curve = [1.1, 1.05, 1, 1, 1, 1, 0.95, 0.95, 1, 1, 1, 1];
 const validation = {
@@ -75,5 +79,49 @@ describe("buildCohortPerformance", () => {
     });
     expect(cohorts.find((cohort) => cohort.label === "Island")).toMatchObject({ count: 1 });
     expect(cohorts.find((cohort) => cohort.label === "Data-poor")).toMatchObject({ count: 3 });
+  });
+});
+
+describe("validation performance breakdowns", () => {
+  it("uses disjoint absolute-latitude bands", () => {
+    const bands = buildLatitudePerformance(
+      validation,
+      new Map([
+        [1, 5],
+        [2, 28],
+        [3, -47],
+      ]),
+    );
+
+    expect(bands.map((band) => [band.label, band.count])).toEqual([
+      ["0–15°", 1],
+      ["15–30°", 1],
+      ["30–45°", 0],
+      ["45–60°", 1],
+      ["60°+", 0],
+    ]);
+    expect(bands.find((band) => band.label === "15–30°")).toMatchObject({
+      bestMethod: "climate",
+    });
+  });
+
+  it("groups every country by its Köppen–Geiger sub-class", () => {
+    const subclasses = buildClimateSubclassPerformance(validation, {
+      meta: { source: "test" },
+      byM49: {
+        1: { kgClass: "Af" },
+        2: { kgClass: "Cfb" },
+        3: { kgClass: "Dfb" },
+      },
+    });
+
+    expect(subclasses.map((subclass) => [subclass.label, subclass.count])).toEqual([
+      ["Af", 1],
+      ["Cfb", 1],
+      ["Dfb", 1],
+    ]);
+    expect(subclasses.find((subclass) => subclass.label === "Dfb")).toMatchObject({
+      bestMethod: "neighbor",
+    });
   });
 });

@@ -115,3 +115,54 @@ export function buildCohortPerformance(
     ),
   ];
 }
+
+const LATITUDE_BANDS = [
+  { label: "0–15°", minimum: 0, maximum: 15 },
+  { label: "15–30°", minimum: 15, maximum: 30 },
+  { label: "30–45°", minimum: 30, maximum: 45 },
+  { label: "45–60°", minimum: 45, maximum: 60 },
+  { label: "60°+", minimum: 60, maximum: Number.POSITIVE_INFINITY },
+];
+
+export function buildLatitudePerformance(
+  looValidation: LooValidation,
+  latitudeByM49: ReadonlyMap<number, number>,
+): CohortPerformance[] {
+  return LATITUDE_BANDS.map(({ label, minimum, maximum }) =>
+    summarize(
+      label,
+      `Absolute country-centroid latitude ${minimum}°–${
+        Number.isFinite(maximum) ? `${maximum}°` : "90°"
+      }.`,
+      looValidation.perCountry.filter((entry) => {
+        const latitude = Math.abs(latitudeByM49.get(entry.m49) ?? Number.NaN);
+        return latitude >= minimum && latitude < maximum;
+      }),
+    ),
+  );
+}
+
+export function buildClimateSubclassPerformance(
+  looValidation: LooValidation,
+  proxies: SeasonalityProxies | null,
+): CohortPerformance[] {
+  const entriesBySubclass = new Map<string, LooPerCountry[]>();
+  for (const entry of looValidation.perCountry) {
+    const subclass = proxies?.byM49[String(entry.m49)]?.kgClass ?? "Unclassified";
+    const members = entriesBySubclass.get(subclass) ?? [];
+    members.push(entry);
+    entriesBySubclass.set(subclass, members);
+  }
+
+  return [...entriesBySubclass.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([subclass, members]) =>
+      summarize(
+        subclass,
+        subclass === "Unclassified"
+          ? "No population-weighted Köppen–Geiger sub-class is available in the proxy data."
+          : `Population-weighted Köppen–Geiger climate sub-class ${subclass}.`,
+        members,
+      ),
+    );
+}
