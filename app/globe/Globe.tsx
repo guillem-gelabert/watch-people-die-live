@@ -223,6 +223,46 @@ export default function Globe({ roadmapMarkdown }: GlobeProps) {
 
   const onFirstFrame = useCallback(() => setLoaded(true), []);
 
+  // r3f's <Canvas> re-runs `configure()` — and with it this `gl` factory — on every render of
+  // this component, and its "create the renderer once" guard reads `state.gl` *before* awaiting
+  // the factory. Since `WebGPURenderer.init()` is async, any re-render during that window (geo
+  // resolving, globe data arriving, the first feed line) slips past the guard and builds a second
+  // renderer on the same canvas. Two WebGPU devices then fight over the one GPUCanvasContext —
+  // the last `configure()` wins it, so the renderer r3f actually kept draws into textures owned
+  // by the other device and nothing ever presents (blank globe + "WebGPU Device Lost").
+  // Caching the promise per canvas makes the factory idempotent: every call gets one renderer.
+  const rendererRef = useRef<{
+    canvas: unknown;
+    renderer: Promise<THREE.WebGPURenderer>;
+  } | null>(null);
+
+  const createRenderer = useCallback((props: { canvas: unknown }) => {
+    const cached = rendererRef.current;
+    if (cached && cached.canvas === props.canvas) return cached.renderer;
+    const renderer = (async () => {
+      // `props` is typed for a generic (WebGL-shaped) canvas context — e.g. its
+      // powerPreference includes "default", which WebGPURendererParameters doesn't
+      // accept. WebGPURenderer ignores fields it doesn't recognize at runtime.
+      const r = new THREE.WebGPURenderer({
+        ...props,
+        antialias: true,
+      } as ConstructorParameters<typeof THREE.WebGPURenderer>[0]);
+      await r.init();
+      return r;
+    })();
+    rendererRef.current = { canvas: props.canvas, renderer };
+    return renderer;
+  }, []);
+
+  // Same reason: stable prop identities so the repeated `configure()` calls have nothing to
+  // re-apply, instead of handing it a fresh camera/scene/dpr descriptor several times a second.
+  const cameraProps = useMemo(
+    () => ({ fov: FOV, near: 0.1, far: 100, position: [0, 0, 3] as const }),
+    [],
+  );
+  const sceneProps = useMemo(() => ({ background: new THREE.Color(0x000011) }), []);
+  const dpr = useMemo(() => [1, 2] as [number, number], []);
+
   // Globe re-renders on every death-feed line (several/second). Memoize the roadmap subtree so
   // those re-renders don't re-parse the markdown or reconcile all 16 charts — keeping the feed
   // cheap and, critically, keeping the re-render off the reveal animation's frames.
@@ -239,20 +279,10 @@ export default function Globe({ roadmapMarkdown }: GlobeProps) {
 
       <div id="globe" aria-label="3D globe of real-time deaths">
         <Canvas
-          camera={{ fov: FOV, near: 0.1, far: 100, position: [0, 0, 3] }}
-          scene={{ background: new THREE.Color(0x000011) }}
-          dpr={[1, 2]}
-          gl={async (props) => {
-            // `props` is typed for a generic (WebGL-shaped) canvas context — e.g. its
-            // powerPreference includes "default", which WebGPURendererParameters doesn't
-            // accept. WebGPURenderer ignores fields it doesn't recognize at runtime.
-            const renderer = new THREE.WebGPURenderer({
-              ...props,
-              antialias: true,
-            } as ConstructorParameters<typeof THREE.WebGPURenderer>[0]);
-            await renderer.init();
-            return renderer;
-          }}
+          camera={cameraProps}
+          scene={sceneProps}
+          dpr={dpr}
+          gl={createRenderer}
           fallback={<div style={{ color: "#fff", padding: 24 }}>WebGL/WebGPU not supported.</div>}
         >
           {globeData && !globeData.error && (
