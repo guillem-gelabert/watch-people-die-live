@@ -9,19 +9,6 @@ interface RoadmapMarkdownProps {
   hiddenCodeBlockStarts?: string[];
 }
 
-// The original seven-step splitter, keyed on the `### ● N · Title` heading format. Still
-// used by the standalone /roadmap route while the story is built out; retired with that
-// route once every section has moved across.
-export function roadmapSection(markdown: string, title: string) {
-  const escapedTitle = title.replace(/[.*+?^$()|[\]\\{}]/g, "\\$&");
-  const heading = new RegExp("^### [●○] \\d+ · " + escapedTitle + "$", "m");
-  const match = heading.exec(markdown);
-  if (!match) return "";
-  const start = match.index + match[0].length;
-  const next = markdown.slice(start).search(/^### [●○] \d+ · /m);
-  return markdown.slice(start, next === -1 ? undefined : start + next).trim();
-}
-
 export interface StorySection {
   // Stable identifier the section components key their figures off, so renaming a heading
   // never silently unmounts a chart the way matching on the title did.

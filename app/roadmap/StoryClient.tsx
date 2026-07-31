@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import GlobeStage from "../globe/GlobeStage";
 import { setHeroActive } from "../globe/stageState";
 import { smoothstep } from "../globe/helpers";
 import Section from "./Section";
 import { parseSky, skinFromSky } from "./palette";
 import RoadmapMarkdown, { roadmapSections } from "./roadmapMarkdown";
+import { useStorySlots } from "./storySlots";
 import "./roadmap.css";
 
 interface StoryClientProps {
@@ -21,7 +22,8 @@ const EXIT_SCREENS = 0.95;
 const SKY_LINE = 0.42;
 
 export default function StoryClient({ markdown }: StoryClientProps) {
-  const sections = roadmapSections(markdown);
+  const sections = useMemo(() => roadmapSections(markdown), [markdown]);
+  const slotsByKey = useStorySlots();
   const [skyIndex, setSkyIndex] = useState(0);
   const phaseRef = useRef(0);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -116,7 +118,8 @@ export default function StoryClient({ markdown }: StoryClientProps) {
       <div id="story-flow" ref={flowRef}>
         {sections.map((section) => (
           <Section key={section.key} sky={section.sky} label={section.label}>
-            <RoadmapMarkdown source={section.body} />
+            <h2 className="story-chapter">{section.label}</h2>
+            <RoadmapMarkdown source={section.body} slots={slotsByKey[section.key]} />
           </Section>
         ))}
       </div>
