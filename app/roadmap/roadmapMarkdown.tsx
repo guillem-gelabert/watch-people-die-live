@@ -9,6 +9,9 @@ interface RoadmapMarkdownProps {
   hiddenCodeBlockStarts?: string[];
 }
 
+// The original seven-step splitter, keyed on the `### ● N · Title` heading format. Still
+// used by the standalone /roadmap route while the story is built out; retired with that
+// route once every section has moved across.
 export function roadmapSection(markdown: string, title: string) {
   const escapedTitle = title.replace(/[.*+?^$()|[\]\\{}]/g, "\\$&");
   const heading = new RegExp("^### [●○] \\d+ · " + escapedTitle + "$", "m");
@@ -17,6 +20,39 @@ export function roadmapSection(markdown: string, title: string) {
   const start = match.index + match[0].length;
   const next = markdown.slice(start).search(/^### [●○] \d+ · /m);
   return markdown.slice(start, next === -1 ? undefined : start + next).trim();
+}
+
+export interface StorySection {
+  // Stable identifier the section components key their figures off, so renaming a heading
+  // never silently unmounts a chart the way matching on the title did.
+  key: string;
+  label: string;
+  // The section's palette seed. Everything else it wears is generated from this.
+  sky: string;
+  body: string;
+}
+
+// Sections are declared as `### <key> · <Label> · <#sky>`. Carrying the sky in the heading
+// keeps the whole running order — names, order and colour — in the markdown rather than
+// split between the document and a table in the composition root.
+const SECTION_HEADING = /^### ([a-z0-9-]+) · (.+?) · (#[0-9a-fA-F]{3,6})$/gm;
+
+export function roadmapSections(markdown: string): StorySection[] {
+  const out: StorySection[] = [];
+  const matches = [...markdown.matchAll(SECTION_HEADING)];
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
+    if (!m) continue;
+    const start = m.index + m[0].length;
+    const end = matches[i + 1]?.index ?? markdown.length;
+    out.push({
+      key: m[1] as string,
+      label: m[2] as string,
+      sky: m[3] as string,
+      body: markdown.slice(start, end).trim(),
+    });
+  }
+  return out;
 }
 
 function inline(text: string): ReactNode[] {

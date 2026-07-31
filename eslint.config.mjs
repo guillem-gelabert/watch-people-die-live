@@ -21,6 +21,9 @@ export default tseslint.config(
       "public/**",
       "notebooks/**",
       "data/**",
+      // Design reference, not source. `support.js` is the prototyping runtime the handoff
+      // was authored in — its own README says to ignore it entirely.
+      "design_handoff_watchpeople_live/**",
       "next-env.d.ts",
       "pnpm-lock.yaml",
     ],

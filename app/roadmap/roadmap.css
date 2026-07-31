@@ -65,7 +65,7 @@ body {
 .roadmap h1 {
   margin: 0;
   max-width: 16ch;
-  font-family: var(--font-archivo), sans-serif;
+  font-family: var(--font-bebas-neue), Impact, sans-serif;
   font-weight: 800;
   font-size: clamp(2.4rem, 6vw, 4.6rem);
   line-height: 0.98;
@@ -75,7 +75,7 @@ body {
 
 .roadmap h2 {
   margin: 0;
-  font-family: var(--font-archivo), sans-serif;
+  font-family: var(--font-bebas-neue), Impact, sans-serif;
   font-weight: 800;
   font-size: clamp(1.7rem, 3.4vw, 2.5rem);
   line-height: 1.04;
@@ -87,7 +87,7 @@ body {
 .roadmap h4,
 .roadmap h5 {
   margin: 0 0 0.2rem;
-  font-family: var(--font-archivo), sans-serif;
+  font-family: var(--font-bebas-neue), Impact, sans-serif;
   color: var(--ink);
 }
 
@@ -247,7 +247,7 @@ body {
   display: block;
   margin: 0 0 0.3rem;
   color: var(--muted);
-  font-family: var(--font-archivo), sans-serif;
+  font-family: var(--font-bebas-neue), Impact, sans-serif;
   font-weight: 700;
   font-size: 0.72rem;
   letter-spacing: 0.14em;
@@ -292,7 +292,7 @@ body {
 
 .roadmap-subheading {
   margin: 2.2rem 0 0.6rem;
-  font-family: var(--font-archivo), sans-serif;
+  font-family: var(--font-bebas-neue), Impact, sans-serif;
   font-weight: 800;
   font-size: 1.55rem;
   letter-spacing: -0.01em;
@@ -302,7 +302,7 @@ body {
 .roadmap-list-heading {
   margin: 0.9rem 0 0.2rem;
   color: var(--muted);
-  font-family: var(--font-archivo), sans-serif;
+  font-family: var(--font-bebas-neue), Impact, sans-serif;
   font-weight: 700;
   font-size: 0.76rem;
   letter-spacing: 0.08em;
@@ -850,7 +850,7 @@ body {
 .chart-title {
   margin: 0 0 0.15rem;
   color: var(--ink);
-  font-family: var(--font-archivo), sans-serif;
+  font-family: var(--font-bebas-neue), Impact, sans-serif;
   font-weight: 700;
   font-size: 0.9rem;
   text-transform: uppercase;
@@ -1680,5 +1680,115 @@ footer {
 
   .back {
     transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Story shell — one vertical scroll: a sticky globe stage that exits as the
+   reader moves, then the sections. The sky is set inline by StoryClient and
+   cross-faded here rather than interpolated per frame.
+   --------------------------------------------------------------------------- */
+
+.story {
+  position: relative;
+  min-height: 100vh;
+  transition: background-color 0.55s ease;
+}
+
+#story-stage {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  height: 100dvh;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+#story-stage #globe,
+#story-stage #island-wrap {
+  pointer-events: auto;
+}
+
+#story-hero {
+  position: absolute;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 34px);
+  left: 0;
+  padding: 0 22px;
+  text-align: left;
+  pointer-events: none;
+}
+
+#story-hero h1 {
+  margin: 0;
+  font:
+    400 86px/0.86 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  color: #fff;
+  letter-spacing: 0;
+}
+
+.story-cue {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin: 26px 0 0;
+  font:
+    600 13px/1 var(--font-public-sans),
+    sans-serif;
+  color: rgb(255 255 255 / 78%);
+}
+
+.story-cue span {
+  animation: story-cue 1.8s ease-in-out infinite;
+}
+
+@keyframes story-cue {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(5px);
+  }
+}
+
+#story-flow {
+  position: relative;
+  z-index: 4;
+}
+
+/* Single column at every width: the phone layout is the layout. */
+.story-section {
+  max-width: 520px;
+  padding: 26px 22px;
+  margin: 0 auto;
+  color: var(--body);
+  font-family: var(--font-libre-baskerville), Georgia, serif;
+}
+
+.story-section :is(h1, h2, h3, h4) {
+  font-family: var(--font-bebas-neue), Impact, sans-serif;
+  color: var(--ink);
+}
+
+.story .story-section p {
+  font-size: 15px;
+  line-height: 1.68;
+  text-wrap: pretty;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story {
+    transition: none;
+  }
+
+  .story-cue span {
+    animation: none;
   }
 }

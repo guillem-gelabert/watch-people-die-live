@@ -5,7 +5,7 @@ import { useFrame, useThree } from "@react-three/fiber";
 import type { OrbitControls } from "@react-three/drei";
 import * as THREE from "three/webgpu";
 import { createEarth, type EarthMaterials } from "./shaders";
-import { sunDirectionNow, expGap, flashIntensity, lonLatToVec3 } from "./helpers";
+import { sunDirectionNow, expGap, flashIntensity, lonLatToVec3, smoothstep } from "./helpers";
 import {
   N_BLASTS,
   MS_PER_YEAR_REAL,
@@ -86,9 +86,16 @@ interface EarthProps {
   globeData: GlobeData | { error: true } | null;
   geo: GeoPayload | null;
   onFirstFrame: () => void;
-  onPushDeath: (m49: number) => void;
+  onPushDeath: (m49: number, lon: number, lat: number) => void;
   camTarget: RefObject<THREE.Vector3 | null>;
   controlsRef: RefObject<OrbitControlsRef | null>;
+  // Scroll progress out of the hero, 0..1. A ref rather than a prop value because the
+  // story's scroll handler updates it every frame — as state it would re-render the whole
+  // canvas subtree on each one.
+  phaseRef: RefObject<number>;
+  // Set while the island is expanded: the clock keeps running but no new deaths spawn, so
+  // the persona on screen stays the one being read.
+  pausedRef: RefObject<boolean>;
 }
 
 // Owns the whole per-frame death simulation: a single global Poisson process sampling
@@ -101,6 +108,8 @@ export default function Earth({
   onPushDeath,
   camTarget,
   controlsRef,
+  phaseRef,
+  pausedRef,
 }: EarthProps) {
   const { camera, gl } = useThree();
   const perspCamera = camera as THREE.PerspectiveCamera;
@@ -240,57 +249,24 @@ export default function Earth({
     };
   }, [perspCamera, gl, controlsRef]);
 
-  // Use an off-axis camera to make room for the landscape feed and keep the globe
-  // above the viewport midpoint. The projected silhouette is also exposed to CSS so
-  // persona text can disappear behind the globe instead of drawing across its face.
+  // Nudge the sphere above the stage midpoint so the hero line has room beneath it. This
+  // used to also make room for the landscape feed panel and export the projected
+  // silhouette to CSS (so persona text could hide behind the globe) — both went with the
+  // feed when the island replaced it.
   useEffect(() => {
-    const feedEl = document.getElementById("death-feed");
-    const projectedCenter = new THREE.Vector3();
-    const projectedEdge = new THREE.Vector3();
-    const cameraRight = new THREE.Vector3();
-
-    function syncPersonaMask(w: number, h: number) {
-      if (!feedEl) return;
-      perspCamera.updateMatrixWorld();
-      projectedCenter.set(0, 0, 0).project(perspCamera);
-      cameraRight.setFromMatrixColumn(perspCamera.matrixWorld, 0).multiplyScalar(GLOBE_R);
-      projectedEdge.copy(cameraRight).project(perspCamera);
-
-      const centerX = ((projectedCenter.x + 1) / 2) * w;
-      const centerY = ((1 - projectedCenter.y) / 2) * h;
-      const flatRadius = Math.hypot(
-        ((projectedEdge.x - projectedCenter.x) / 2) * w,
-        ((projectedEdge.y - projectedCenter.y) / 2) * h,
-      );
-      const distance = perspCamera.position.length();
-      const silhouetteScale = distance / Math.sqrt(distance * distance - GLOBE_R * GLOBE_R);
-      const feedRect = feedEl.getBoundingClientRect();
-
-      feedEl.style.setProperty("--globe-x", `${centerX - feedRect.left}px`);
-      feedEl.style.setProperty("--globe-y", `${centerY - feedRect.top}px`);
-      feedEl.style.setProperty("--globe-screen-r", `${flatRadius * silhouetteScale}px`);
-    }
-
     function updateProjection() {
       const w = gl.domElement.clientWidth || window.innerWidth;
       const h = gl.domElement.clientHeight || window.innerHeight;
-      const isSplitView = window.matchMedia("(orientation: landscape)").matches;
-      const listW = isSplitView ? (feedEl?.getBoundingClientRect().width ?? 0) : 0;
-      const topShift = Math.min(h * (isSplitView ? 0.06 : 0.09), 96);
-      perspCamera.setViewOffset(w + listW, h, 0, topShift, w, h);
-      syncPersonaMask(w, h);
+      perspCamera.setViewOffset(w, h, 0, Math.min(h * 0.09, 96), w, h);
     }
     updateProjection();
-    const controls = controlsRef.current;
-    controls?.addEventListener("change", updateProjection);
     window.addEventListener("resize", updateProjection);
     window.addEventListener("orientationchange", updateProjection);
     return () => {
-      controls?.removeEventListener("change", updateProjection);
       window.removeEventListener("resize", updateProjection);
       window.removeEventListener("orientationchange", updateProjection);
     };
-  }, [perspCamera, gl, controlsRef]);
+  }, [perspCamera, gl]);
 
   // Center on the viewer's IP location once geo resolves (best-effort, non-blocking).
   useEffect(() => {
@@ -348,11 +324,14 @@ export default function Earth({
       s.curMonth = curMonth;
     }
 
+    // Paused (island expanded) still advances the schedule, exactly like the existing
+    // catch-up cap does — the clock is wall-time, so resuming must not fire a backlog.
+    const paused = pausedRef.current;
     while (t >= s.next) {
-      if (t - s.next <= CATCHUP_CAP && s.blasts.length < MAX_DOTS) {
+      if (!paused && t - s.next <= CATCHUP_CAP && s.blasts.length < MAX_DOTS) {
         const [lon, lat, m49] = s.sampler.sampleCell();
         spawnBlast(lon, lat, s.next);
-        onPushDeath(m49);
+        onPushDeath(m49, lon, lat);
       }
       s.next += expGap(s.mean);
     }
@@ -385,6 +364,12 @@ export default function Earth({
       }
     }
     earth.blastCount.value = nBlasts;
+
+    // Scroll exit: the wrapper handles translate/scale/fade in CSS; the parts that have to
+    // happen in the scene are the tip-away rotation and the camera pulling back.
+    const e = smoothstep(phaseRef.current);
+    if (groupRef.current) groupRef.current.rotation.x = -e * 1.25;
+    if (e > 0 && !camTarget.current) perspCamera.position.setLength(3 + e * 0.9);
 
     if (camTarget.current) {
       const dist = perspCamera.position.length();
