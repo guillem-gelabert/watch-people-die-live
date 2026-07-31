@@ -24,6 +24,10 @@ import {
 import type { GlobeData, GeoPayload, Sampler } from "./useGlobeData";
 
 const PLANE_NORMAL = new THREE.Vector3(0, 0, 1); // PlaneGeometry faces +Z
+// The color daylight map. Natural Earth's grayscale relief (GRAY_EARTH_URL) is the basemap for
+// the flat roadmap maps only — pointing the globe at it renders the whole planet gray. Whatever
+// goes here also has to stay inside WebGPU's portable 8192px dimension limit.
+const GLOBE_DAY_TEXTURE_URL = "/earth/earth_day_4096.jpg";
 
 type OrbitControlsRef = React.ComponentRef<typeof OrbitControls>;
 
@@ -125,7 +129,7 @@ export default function Earth({
     let cancelled = false;
     const loader = new THREE.TextureLoader();
     Promise.all([
-      loadTexture(loader, "/maps/gray-earth.jpg", true),
+      loadTexture(loader, GLOBE_DAY_TEXTURE_URL, true),
       loadTexture(loader, "/earth/earth_night_4096.jpg", true),
       loadTexture(loader, "/earth/earth_bump_roughness_clouds_4096.jpg", false),
     ])
