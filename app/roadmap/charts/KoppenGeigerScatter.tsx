@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
-import { KG_FAMILIES, correlationRatio, fmtPlainPct, strength, styleAxis } from "../chartHelpers";
+import {
+  KG_FAMILY_KEYS,
+  correlationRatio,
+  fmtPlainPct,
+  kgFamilies,
+  strength,
+  styleAxis,
+} from "../chartHelpers";
+import { useSkin } from "../SkinContext";
 import { showTooltip, hideTooltip } from "../tooltip";
 import LayerToggle from "./LayerToggle";
 import type {
@@ -49,6 +57,7 @@ export default function KoppenGeigerScatter({
   features,
   regions,
 }: KoppenGeigerScatterProps) {
+  const { sky, skin } = useSkin();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const legendRef = useRef<HTMLDivElement | null>(null);
   const [showCountries, setShowCountries] = useState(true);
@@ -56,6 +65,8 @@ export default function KoppenGeigerScatter({
 
   useEffect(() => {
     if (!unified || !proxies || !features || !svgRef.current) return;
+    const families = kgFamilies(sky);
+    const mute = skin.mute;
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
@@ -90,7 +101,7 @@ export default function KoppenGeigerScatter({
 
     const x = d3
       .scaleBand<string>()
-      .domain(KG_FAMILIES.map((f) => f.key))
+      .domain(KG_FAMILY_KEYS.map((f) => f.key))
       .range([0, innerW])
       .padding(0.35);
     const y = d3
@@ -105,14 +116,14 @@ export default function KoppenGeigerScatter({
       ])
       .nice()
       .range([innerH, 0]);
-    const colorByFamily = new Map(KG_FAMILIES.map((f) => [f.key, f.color]));
+    const colorByFamily = new Map(families.map((f) => [f.key, f.color]));
     const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
     const bw = x.bandwidth();
 
     // Mean amplitude per family with ±1 SD error band and mean line — tied to the country
     // distribution (the primary signal), so it only shows while countries are visible.
     if (showCountries) {
-      for (const f of KG_FAMILIES) {
+      for (const f of families) {
         const group = countryRows.filter((r) => r.family === f.key);
         if (!group.length) continue;
         const mean = d3.mean(group, (d) => d.amplitude) ?? 0;
@@ -147,7 +158,7 @@ export default function KoppenGeigerScatter({
         .attr("cy", (d) => y(d.amplitude))
         .attr("r", 3)
         .attr("fill", "none")
-        .attr("stroke", (d) => colorByFamily.get(d.family) ?? "#8888aa")
+        .attr("stroke", (d) => colorByFamily.get(d.family) ?? mute)
         .attr("stroke-width", 0.9)
         .attr("opacity", 0.75)
         .style("cursor", "pointer")
@@ -165,7 +176,7 @@ export default function KoppenGeigerScatter({
         .attr("cx", (d, i) => (x(d.family) ?? 0) + bw / 2 + jitterAt(i, bw))
         .attr("cy", (d) => y(d.amplitude))
         .attr("r", 3.6)
-        .style("fill", (d) => colorByFamily.get(d.family) ?? "#8888aa")
+        .style("fill", (d) => colorByFamily.get(d.family) ?? mute)
         .style("cursor", "pointer")
         .on("pointermove", (event, d) =>
           showTooltip(`${d.name}: ${fmtPlainPct(d.amplitude)}`, event.clientX, event.clientY),
@@ -191,7 +202,7 @@ export default function KoppenGeigerScatter({
 
     g.append("g")
       .attr("transform", `translate(0,${innerH})`)
-      .call(d3.axisBottom(x).tickFormat((k) => KG_FAMILIES.find((f) => f.key === k)?.name ?? k))
+      .call(d3.axisBottom(x).tickFormat((k) => KG_FAMILY_KEYS.find((f) => f.key === k)?.name ?? k))
       .call(styleAxis);
     g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(fmtPlainPct)).call(styleAxis);
 
@@ -202,16 +213,16 @@ export default function KoppenGeigerScatter({
     if (showCountries) {
       legend
         .append("span")
-        .html('<span class="swatch-dot" style="background:#9aa3af"></span>each country');
+        .html(`<span class="swatch-dot" style="background:${mute}"></span>each country`);
     }
     if (showRegions) {
       legend
         .append("span")
         .html(
-          '<span class="swatch-dot" style="background:none;border:1.5px solid #9aa3af"></span>each region',
+          `<span class="swatch-dot" style="background:none;border:1.5px solid ${mute}"></span>each region`,
         );
     }
-  }, [unified, proxies, features, regions, showCountries, showRegions]);
+  }, [unified, proxies, features, regions, showCountries, showRegions, sky, skin.mute]);
 
   return (
     <>

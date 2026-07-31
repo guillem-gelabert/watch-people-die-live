@@ -11,6 +11,8 @@ import {
   useIsMobileMap,
   type Bbox,
 } from "./basemap";
+import { useSkin } from "../SkinContext";
+import { mapColor } from "../palette";
 import type { CountryFeature, DeathsPerYearById } from "../types";
 
 interface Dot {
@@ -55,6 +57,9 @@ export default function CountryCentroidMap({
   features,
   deathsPerYearById,
 }: CountryCentroidMapProps) {
+  const { skin } = useSkin();
+  // Authored accent, re-expressed in whichever sky is on screen (handoff README, mapColor).
+  const accent = mapColor("#6b3df0", skin);
   const ref = useRef<SVGSVGElement | null>(null);
   const isMobile = useIsMobileMap();
   const width = isMobile ? MOBILE_SIZE : WIDTH;
@@ -125,9 +130,9 @@ export default function CountryCentroidMap({
             .attr("cy", (d) => d.y),
         )
         .attr("r", (d) => 2.2 + (now - d.born) / 850)
-        .attr("fill", "#6b3df0")
+        .attr("fill", accent)
         .attr("fill-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.9)
-        .attr("stroke", "#6b3df0")
+        .attr("stroke", accent)
         .attr("stroke-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.42);
       rafId = requestAnimationFrame(frame);
     }
@@ -159,7 +164,7 @@ export default function CountryCentroidMap({
       cancelled = true;
       cancelAnimationFrame(rafId);
     };
-  }, [features, deathsPerYearById, bbox, width, height]);
+  }, [features, deathsPerYearById, bbox, width, height, accent]);
 
   return (
     <section className="chart-panel wide no-card">

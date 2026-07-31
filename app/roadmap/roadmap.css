@@ -1,52 +1,8 @@
-/* Scoped to .roadmap (never :root) — this stylesheet loads on the globe page too (RoadmapClient
-   is rendered inside Globe.tsx), so tokens must not leak onto the globe, which keeps its own
-   dark tokens in app/globe.css. See docs/DENSITY-MORTALITY-JOIN.md sibling note in CLAUDE.md. */
-.roadmap {
-  --paper: #f4f5f7;
-  --ink: #191a2e;
-  --card: #fff;
-  --line: #e7e8ec;
-  --line-strong: #d6d8de;
-  --blue: #2f4bff;
-  --red: #ff3b30;
-  --muted: #8a8b96;
-  --body: #2f3042;
-  --body-soft: #3a3c48;
-
-  /* Legacy variable names — the rest of this file (and every chart component's CSS classes)
-     already reference these, so remapping them here is what flips the whole page from the
-     globe's dark theme to the roadmap's bright one without touching a single selector below. */
-  --bg: var(--paper);
-  --fg: var(--ink);
-  --accent: var(--red);
-  --panel: var(--card);
-  --done: var(--blue);
-  --todo: var(--muted);
-
-  /* One color per step, used by .step-sphere. */
-  --s01: #2f4bff;
-  --s02: #6b3df0;
-  --s03: #10a08a;
-  --s04: #e8912b;
-  --s05: #ff3b30;
-  --s06: #b23ad6;
-  --s07: #b7b8c0;
-
-  min-height: 100vh;
-  overflow-x: clip;
-  background: var(--paper);
-  color: var(--body);
-  font-family:
-    var(--font-public-sans),
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    Helvetica,
-    Arial,
-    sans-serif;
-  line-height: 1.55;
-}
+/* The story's palette is generated per section at runtime and put on the scroll container
+   as custom properties (see palette.ts skinToCssVars / StoryClient). This stylesheet reads
+   those names — --paper, --ink, --body, --muted, --line, --card, --blue, --red — and never
+   declares them, so every rule below follows whichever sky is in view.
+   ------------------------------------------------------------------------------------- */
 
 * {
   box-sizing: border-box;
@@ -56,13 +12,7 @@ body {
   margin: 0;
 }
 
-.roadmap-shell {
-  max-width: 1300px;
-  margin: 0 auto;
-  padding: 6.5rem clamp(24px, 5vw, 80px) 6rem;
-}
-
-.roadmap h1 {
+.story-section h1 {
   margin: 0;
   max-width: 16ch;
   font-family: var(--font-bebas-neue), Impact, sans-serif;
@@ -73,7 +23,7 @@ body {
   color: var(--ink);
 }
 
-.roadmap h2 {
+.story-section h2 {
   margin: 0;
   font-family: var(--font-bebas-neue), Impact, sans-serif;
   font-weight: 800;
@@ -83,25 +33,22 @@ body {
   color: var(--ink);
 }
 
-.roadmap h3,
-.roadmap h4,
-.roadmap h5 {
+.story-section :is(h3, h4, h5) {
   margin: 0 0 0.2rem;
   font-family: var(--font-bebas-neue), Impact, sans-serif;
   color: var(--ink);
 }
 
-.roadmap p,
-.roadmap li {
+.story-section :is(p, li) {
   color: var(--body);
 }
 
-.roadmap a {
+.story-section a {
   color: var(--blue);
   text-decoration: none;
 }
 
-.roadmap a:hover {
+.story-section a:hover {
   color: var(--red);
   text-decoration: underline;
 }
@@ -271,7 +218,7 @@ body {
 /* Prose-carrying elements — scoped to direct children of the step body / explainer
    wrappers only, so nested chart captions (inside .chart-grid / .chart-panel, further
    down the tree) are untouched. Full width, matching the figures below them. */
-:is(.step-body, .rate-explainer, .density-explainer, .seasonality-explainer) > :is(p, ul) {
+.story-section > :is(p, ul) {
   margin: 0 0 1.1rem;
   font-size: 1.05rem;
   line-height: 1.7;

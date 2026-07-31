@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import GlobeStage from "../globe/GlobeStage";
 import { setHeroActive } from "../globe/stageState";
 import { smoothstep } from "../globe/helpers";
 import Section from "./Section";
-import { parseSky, skinFromSky } from "./palette";
+import { parseSky, skinFromSky, skinToCssVars } from "./palette";
+import { SkinProvider } from "./SkinContext";
 import RoadmapMarkdown, { roadmapSections } from "./roadmapMarkdown";
 import { useStorySlots } from "./storySlots";
 import "./roadmap.css";
@@ -94,12 +96,19 @@ export default function StoryClient({ markdown }: StoryClientProps) {
 
   // Before the first section claims the screen the page wears the pre-hero night sky.
   const activeSky = skyIndex >= 0 ? (sections[skyIndex]?.sky ?? "#000011") : "#000011";
-  const activeSkin = skinFromSky(parseSky(activeSky));
+  const active = useMemo(() => {
+    const sky = parseSky(activeSky);
+    return { sky, skin: skinFromSky(sky) };
+  }, [activeSky]);
 
-  return (
+  const body = (
     <div
       className="story"
-      style={{ backgroundColor: activeSky, colorScheme: activeSkin.dark ? "dark" : "light" }}
+      style={{
+        backgroundColor: activeSky,
+        colorScheme: active.skin.dark ? "dark" : "light",
+        ...(skinToCssVars(active.sky, active.skin) as CSSProperties),
+      }}
     >
       <div id="story-stage" ref={stageRef}>
         <GlobeStage phaseRef={phaseRef} />
@@ -125,4 +134,6 @@ export default function StoryClient({ markdown }: StoryClientProps) {
       </div>
     </div>
   );
+
+  return <SkinProvider value={active}>{body}</SkinProvider>;
 }

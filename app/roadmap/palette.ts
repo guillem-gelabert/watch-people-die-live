@@ -346,9 +346,17 @@ export function marks(cols: string[], sky: Rgb): string[] {
 // --- CSS custom properties -----------------------------------------------------------
 
 // The handoff drives figures through a canvas context proxy that rewrites every fillStyle.
-// We take the alternative it offers instead (README "Port note"): resolve the skin once per
-// section into custom properties and let the cascade reach the charts, which are SVG styled
-// by classes that roadmap.css already scopes.
+// We take the alternative it offers instead (README "Port note"): resolve the skin into
+// custom properties and let the cascade reach the charts, which are SVG styled by classes
+// that roadmap.css already scopes.
+//
+// These go on the scroll container, not on each section: the prototype themes everything to
+// the sky currently in view rather than to each section's own, so a neighbour that is half
+// on screen during a transition never clashes with the section being read.
+//
+// The second block re-points the names roadmap.css already uses across ~120 references, so
+// the existing stylesheet follows the palette without being rewritten. --blue and --red are
+// the design's fixed accents put through mapColor into the current section's palette.
 export function skinToCssVars(sky: Rgb, skin: Skin): Record<string, string> {
   return {
     "--sky": rgbCss(sky),
@@ -362,6 +370,20 @@ export function skinToCssVars(sky: Rgb, skin: Skin): Record<string, string> {
     "--rule": skin.rule,
     "--data": rgbCss(skin.dataRGB),
     "--hi": rgbCss(skin.hiRGB),
+
+    "--bg": skin.paper,
+    "--fg": skin.ink,
+    "--card": skin.tileOpen,
+    "--panel": skin.tileOpen,
+    "--line": skin.rule,
+    "--line-strong": skin.rule,
+    "--muted": skin.mute,
+    "--body-soft": skin.body,
+    "--todo": skin.mute,
+    "--blue": mapColor("#2f4bff", skin),
+    "--done": mapColor("#2f4bff", skin),
+    "--red": mapColor("#ff3b30", skin),
+    "--accent": mapColor("#ff3b30", skin),
   };
 }
 

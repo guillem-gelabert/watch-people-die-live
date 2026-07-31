@@ -11,6 +11,8 @@ import {
   useIsMobileMap,
   type Bbox,
 } from "./basemap";
+import { useSkin } from "../SkinContext";
+import { mapColor } from "../palette";
 import type { CountryFeature } from "../types";
 
 interface Dot {
@@ -44,6 +46,9 @@ const MOBILE_BBOX: Bbox = [
 
 // Chart 1: animated Poisson-dot world map, rendered as SVG.
 export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
+  const { skin } = useSkin();
+  // Authored accent, re-expressed in whichever sky is on screen (handoff README, mapColor).
+  const accent = mapColor("#2f4bff", skin);
   const ref = useRef<SVGSVGElement | null>(null);
   const isMobile = useIsMobileMap();
   const width = isMobile ? MOBILE_SIZE : WIDTH;
@@ -92,9 +97,9 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
             .attr("cy", (d) => d.y),
         )
         .attr("r", (d) => 2.2 + (now - d.born) / 850)
-        .attr("fill", "#2f4bff")
+        .attr("fill", accent)
         .attr("fill-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.9)
-        .attr("stroke", "#2f4bff")
+        .attr("stroke", accent)
         .attr("stroke-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.42);
       rafId = requestAnimationFrame(frame);
     }
@@ -125,7 +130,7 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
       cancelled = true;
       cancelAnimationFrame(rafId);
     };
-  }, [features, bbox, width, height]);
+  }, [features, bbox, width, height, accent]);
 
   return (
     <section className="chart-panel wide no-card">

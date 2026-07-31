@@ -5,11 +5,12 @@ import * as d3 from "d3";
 import {
   MONTHS,
   COUNTRY_CURVE_PICKS,
-  EXTRA_CURVE_COLORS,
-  KG_FAMILIES,
+  curveColors,
+  KG_FAMILY_KEYS,
   MAX_COMPARE_COUNTRIES,
   styleAxis,
 } from "../chartHelpers";
+import { useSkin } from "../SkinContext";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, SeasonalityData, SeasonalityProxies } from "../types";
 
@@ -36,11 +37,8 @@ interface Option {
   ids: number[];
 }
 
-const COLOR_POOL = [...COUNTRY_CURVE_PICKS.map((d) => d.color), ...EXTRA_CURVE_COLORS];
 const DEFAULT_NAME_BY_ID = new Map(COUNTRY_CURVE_PICKS.map((d) => [d.id, d.name]));
 const SWITZERLAND_ID = 756;
-const SWITZERLAND_COLOR =
-  COUNTRY_CURVE_PICKS.find((d) => d.id === SWITZERLAND_ID)?.color ?? COLOR_POOL[0]!;
 
 // City-states with a measured curve but absent from the world-atlas 110m topology (folded into
 // their surrounding country at that resolution), so `nameById` can't name them — they'd otherwise
@@ -71,12 +69,16 @@ const LAT_BINS = [
 // `seasonality.countries`). Starts on Switzerland alone; categories bulk-add measured countries
 // by climate zone, GDP bin, or latitude bin, up to the colour-pool cap.
 export default function CountryCurves({ seasonality, features, proxies }: CountryCurvesProps) {
+  const { sky } = useSkin();
+  const palette = useMemo(() => curveColors(sky, MAX_COMPARE_COUNTRIES), [sky]);
   const svgRef = useRef<SVGSVGElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [selectedIds, setSelectedIds] = useState<number[]>([SWITZERLAND_ID]);
-  const [colorById, setColorById] = useState<Map<number, string>>(
-    () => new Map([[SWITZERLAND_ID, SWITZERLAND_COLOR]]),
+  // Palette slots, not literal colours: the pool is generated from the section's sky, so a
+  // stored colour would go stale the moment the sky changes.
+  const [colorById, setColorById] = useState<Map<number, number>>(
+    () => new Map([[SWITZERLAND_ID, 0]]),
   );
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -118,7 +120,7 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
     const out: Option[] = [];
 
     if (proxies) {
-      for (const fam of KG_FAMILIES) {
+      for (const fam of KG_FAMILY_KEYS) {
         const ids = curveIds.filter((id) => proxies.byM49[id]?.kgFamily === fam.key);
         if (ids.length) {
           out.push({
@@ -191,11 +193,12 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
       if (nextColors.has(id)) continue; // already selected
       requested += 1;
       if (nextSelected.length >= MAX_COMPARE_COUNTRIES) continue;
-      const color = COLOR_POOL.find((c) => !used.has(c));
-      if (!color) continue;
-      used.add(color);
+      let slot = 0;
+      while (slot < MAX_COMPARE_COUNTRIES && used.has(slot)) slot += 1;
+      if (slot >= MAX_COMPARE_COUNTRIES) continue;
+      used.add(slot);
       nextSelected.push(id);
-      nextColors.set(id, color);
+      nextColors.set(id, slot);
       added += 1;
     }
     if (added) {
@@ -266,7 +269,8 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
     const series: Series[] = selectedIds
       .map((id): Series | null => {
         const curve = seasonality.countries[String(id)];
-        const color = colorById.get(id);
+        const slot = colorById.get(id);
+        const color = slot === undefined ? undefined : palette[slot % palette.length];
         if (!curve || !color) return null;
         const shift = (signedLatById.get(id) ?? 0) < 0 ? 6 : 0;
         const aligned = shift ? curve.map((_, m) => curve[(m + shift) % curve.length]!) : curve;
@@ -341,7 +345,7 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
       )
       .call(styleAxis);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seasonality, selectedIds, colorById, nameById, signedLatById]);
+  }, [seasonality, selectedIds, colorById, nameById, signedLatById, palette]);
 
   return (
     <section className="chart-panel wide">
@@ -413,7 +417,10 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
       <div className="cc-chips" aria-label="Selected countries">
         {selectedIds.map((id, i) => (
           <span className="cc-chip" key={id}>
-            <span className="swatch" style={{ color: colorById.get(id) }} />
+            <span
+              className="swatch"
+              style={{ color: palette[(colorById.get(id) ?? 0) % palette.length] }}
+            />
             {selectedNames[i]}
             <button
               type="button"

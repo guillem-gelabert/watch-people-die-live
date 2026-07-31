@@ -1,4 +1,5 @@
 import * as d3 from "d3";
+import { harmony, marks, skinFromSky, type Rgb } from "./palette";
 import { showTooltip, hideTooltip } from "./tooltip";
 
 export const MONTHS = [
@@ -257,22 +258,28 @@ export function renderGradientLegend<Datum extends { step: number }, GParent ext
   return () => stopTour(false);
 }
 
-// The five Köppen–Geiger families, tropics → poles, with a display colour each. Shared by
-// the climate-zone scatter and the latitude-correlation scatter, so a family reads as the
-// same colour in both charts.
-export const KG_FAMILIES: { key: string; name: string; color: string }[] = [
-  { key: "A", name: "Tropical", color: "#3a7d5b" },
-  { key: "B", name: "Arid", color: "#c7a24a" },
-  { key: "C", name: "Temperate", color: "#5aa9d6" },
-  { key: "D", name: "Continental", color: "#7e6bd0" },
-  { key: "E", name: "Polar", color: "#9fb4c4" },
-];
+// The five Köppen–Geiger families, tropics → poles. Shared by the climate-zone scatter and
+// the latitude-correlation scatter, so a family reads as the same colour in both.
+export const KG_FAMILY_KEYS = [
+  { key: "A", name: "Tropical" },
+  { key: "B", name: "Arid" },
+  { key: "C", name: "Temperate" },
+  { key: "D", name: "Continental" },
+  { key: "E", name: "Polar" },
+] as const;
 
-const KG_FAMILY_COLOR = new Map(KG_FAMILIES.map((f) => [f.key, f.color]));
+// Colours are generated from the section's sky rather than fixed, so the families sit in
+// whatever palette is on screen. Five distinct hues from the analogous scheme, then through
+// marks() because these land on transparent SVG over the sky itself.
+export function kgFamilies(sky: Rgb): { key: string; name: string; color: string }[] {
+  const cols = marks(harmony(KG_FAMILY_KEYS.length, sky, true), sky);
+  return KG_FAMILY_KEYS.map((f, i) => ({ ...f, color: cols[i] as string }));
+}
 
-// Colour for a country's Köppen–Geiger family, or a neutral grey when it's unmapped.
-export function kgFamilyColor(kgFamily: string | undefined): string {
-  return (kgFamily && KG_FAMILY_COLOR.get(kgFamily)) || "#8a93a3";
+// Colour for a country's Köppen–Geiger family, or the section's muted tone when unmapped.
+export function kgFamilyColor(kgFamily: string | undefined, sky: Rgb): string {
+  const hit = kgFamily && kgFamilies(sky).find((f) => f.key === kgFamily);
+  return hit ? hit.color : skinFromSky(sky).mute;
 }
 
 export function expGap(meanMs: number): number {
@@ -296,29 +303,32 @@ export function randomPointOnSphere(): [number, number] {
 }
 
 // Ten countries found (notebooks/seasonality.ipynb) to be mutually similar in curve
-// *shape* despite spanning very different latitudes and death tolls. Default
-// selection for the interactive country-comparison chart.
+// *shape* despite spanning very different latitudes and death tolls. Default selection for
+// the interactive country-comparison chart.
 export const COUNTRY_CURVE_PICKS = [
-  { id: 250, name: "France", color: "#ff6b6b" },
-  { id: 703, name: "Slovakia", color: "#ffb26b" },
-  { id: 840, name: "USA", color: "#f4d35e" },
-  { id: 752, name: "Sweden", color: "#4ade80" },
-  { id: 392, name: "Japan", color: "#2dd4bf" },
-  { id: 191, name: "Croatia", color: "#6ba8ff" },
-  { id: 56, name: "Belgium", color: "#818cf8" },
-  { id: 826, name: "United Kingdom", color: "#c084fc" },
-  { id: 756, name: "Switzerland", color: "#f472b6" },
-  { id: 528, name: "Netherlands", color: "#facc15" },
+  { id: 250, name: "France" },
+  { id: 703, name: "Slovakia" },
+  { id: 840, name: "USA" },
+  { id: 752, name: "Sweden" },
+  { id: 392, name: "Japan" },
+  { id: 191, name: "Croatia" },
+  { id: 56, name: "Belgium" },
+  { id: 826, name: "United Kingdom" },
+  { id: 756, name: "Switzerland" },
+  { id: 528, name: "Netherlands" },
 ];
 
-// Extra hues for countries added beyond the default 10, checked against the picks
-// above with the dataviz skill's validate_palette.js (dark mode, --pairs all) — they
-// don't introduce any colorblind-safety collision worse than the existing palette's.
-export const EXTRA_CURVE_COLORS = ["#a3e635", "#38bdf8", "#f97316", "#0891b2"];
+// Series colours for the country-comparison chart, generated from the section's sky.
+// Capped at six hues and cycled, matching the prototype — past six the harmony rule would
+// fall back to shades of one hue, which is unreadable for overlapping curves.
+export function curveColors(sky: Rgb, count: number): string[] {
+  const pool = marks(harmony(Math.max(2, Math.min(6, count)), sky, true), sky);
+  return Array.from({ length: Math.max(count, 1) }, (_, i) => pool[i % pool.length] as string);
+}
 
-// Total distinct colors available — the cap on how many countries can be compared
-// at once (beyond this, colors would repeat and series would become ambiguous).
-export const MAX_COMPARE_COUNTRIES = COUNTRY_CURVE_PICKS.length + EXTRA_CURVE_COLORS.length;
+// Cap on how many countries can be compared at once. Colours cycle every six, so past this
+// the legend stops being able to tell series apart at a glance.
+export const MAX_COMPARE_COUNTRIES = 14;
 
 export function styleAxis(g: d3.Selection<SVGGElement, unknown, Element | null, unknown>): void {
   g.selectAll("path,line").attr("class", "chart-axis");
