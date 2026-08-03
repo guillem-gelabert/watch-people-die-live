@@ -636,64 +636,6 @@ body {
     background 0.25s ease;
 }
 
-.poisson-calendar {
-  display: grid;
-  grid-template-columns: repeat(31, minmax(6px, 1fr));
-  grid-template-rows: repeat(12, minmax(6px, 1fr));
-  grid-auto-flow: column;
-  gap: 2px;
-}
-
-.poisson-day {
-  display: block;
-  aspect-ratio: 1;
-  border-radius: 1px;
-  background: #eef0ff;
-}
-
-.poisson-day-0 {
-  background: #eef0ff;
-}
-
-.poisson-day-1 {
-  background: #c7d0ff;
-}
-
-.poisson-day-2 {
-  background: #8fa0ff;
-}
-
-.poisson-day-3 {
-  background: #5570ff;
-}
-
-.poisson-day-4 {
-  background: #2f4bff;
-}
-
-.poisson-day-5 {
-  background: #ff3b30;
-}
-
-.poisson-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-top: 0.65rem;
-  color: var(--muted);
-  font-size: 0.72rem;
-}
-
-.poisson-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-}
-
-.poisson-legend .poisson-day {
-  width: 0.7rem;
-}
-
 /* ============ Step 5 — proxy grid ============ */
 
 .seasonality-proxy-table-wrap {
