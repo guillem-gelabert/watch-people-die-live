@@ -609,19 +609,23 @@ body {
   cursor: help;
 }
 
-/* The two beat strips in First light: 44 bars, one per death. The metronome holds every bar at
-   its resting height; the Poisson strip lets each bar's height carry how long that gap was. Both
-   sit directly on the sky. */
+/* The two beat strips in First light: one bar per death. The metronome holds every bar at its
+   resting height; the Poisson strip lets each bar's height carry how long that gap was. Both sit
+   directly on the sky. The gap is wider than the design's 3px, so BARS in BeatStrip is lower to
+   match — the bars are flex:1 and would otherwise thin to slivers to pay for it. */
 .beat-strip {
   display: flex;
-  gap: 3px;
+  gap: 5px;
   align-items: flex-end;
   height: 38px;
 }
 
 .beat-bar {
   flex: 1;
-  border-radius: 2px;
+
+  /* Fully rounded rather than the design's 2px: a bar this narrow reads as a capsule, and the
+     rounded cap keeps the short Poisson bars from looking like clipped stubs. */
+  border-radius: 999px;
   transition:
     height 0.18s ease,
     background 0.18s ease;
