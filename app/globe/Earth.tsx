@@ -19,6 +19,7 @@ import {
   ATMOSPHERE_TWILIGHT_COLOR,
   CALIBRATION,
   FIT_MARGIN,
+  HERO_FILL,
   START_ZOOM,
 } from "./constants";
 import type { GlobeData, GeoPayload, Sampler } from "./useGlobeData";
@@ -127,11 +128,22 @@ export default function Earth({
   const revealed = useRef(false);
   const startRef = useRef<number | null>(null);
   const centeredOnce = useRef(false);
+  // Whether the reader has asked for reduced motion. Held in a ref and read in the frame loop
+  // so flipping the setting takes effect without re-rendering the canvas subtree.
+  const stillRef = useRef(false);
 
   const calibrate = useMemo(
     () => typeof window !== "undefined" && /[?&]calibrate\b/.test(window.location.search),
     [],
   );
+
+  useEffect(() => {
+    const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => (stillRef.current = query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
 
   // Load earth textures + build the TSL materials once.
   useEffect(() => {
@@ -218,7 +230,10 @@ export default function Earth({
         controlsRef.current.maxDistance = maxDist;
       }
       if (!didInitZoom.current) {
-        perspCamera.position.setLength(Math.max(fitDist * START_ZOOM, GLOBE_R * 1.15));
+        // Framed off the height alone, so the crop holds at any aspect: a wide window shows
+        // more of the globe left and right, never a band of empty sky under it.
+        const fillDist = GLOBE_R / Math.sin((HERO_FILL * ((FOV * Math.PI) / 180)) / 2);
+        perspCamera.position.setLength(Math.max(fillDist, GLOBE_R * 1.15));
         didInitZoom.current = true;
       } else {
         const zoomRatio = previousFitDistance.current
@@ -325,8 +340,11 @@ export default function Earth({
     }
 
     // Paused (island expanded) still advances the schedule, exactly like the existing
-    // catch-up cap does — the clock is wall-time, so resuming must not fire a backlog.
-    const paused = pausedRef.current;
+    // catch-up cap does — the clock is wall-time, so resuming must not fire a backlog. Being
+    // scrolled away counts as paused: once the globe is most of the way out there is nothing
+    // to watch, and every blast is still a shader write and a persona draw. So does asking
+    // for reduced motion, which leaves the globe a still photograph of the same data.
+    const paused = pausedRef.current || phaseRef.current > 0.4 || stillRef.current;
     while (t >= s.next) {
       if (!paused && t - s.next <= CATCHUP_CAP && s.blasts.length < MAX_DOTS) {
         const [lon, lat, m49] = s.sampler.sampleCell();

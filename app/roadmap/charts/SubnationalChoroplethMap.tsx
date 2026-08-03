@@ -4,13 +4,8 @@ import { useEffect, useMemo, useRef } from "react";
 import * as d3 from "d3";
 import type { Feature, Geometry } from "geojson";
 import { showTooltip, hideTooltip } from "../tooltip";
-import {
-  appendGrayEarthBasemap,
-  fitRegionProjection,
-  insideViewport,
-  useIsMobileMap,
-  type Bbox,
-} from "./basemap";
+import { fitProjection, insideViewport, type Bbox } from "./basemap";
+import { useFigureWidth } from "./useFigureSize";
 import type { Admin1Feature, Nuts2Feature, RatePer100kByCountry, RatePer100kByKey } from "../types";
 
 interface SubnationalChoroplethMapProps {
@@ -43,21 +38,26 @@ const CALLOUTS: { name: string; kind: "high" | "low" }[] = [
   { name: "Pskov", kind: "high" },
 ];
 
-const WIDTH = 860;
-const HEIGHT = 430;
-const MOBILE_SIZE = 430;
-const NO_DATA = "#e7e8ec";
+// Seven steps: the same ramp depth the country map uses, so "darker means higher" carries over.
+const RAMP_STEPS = 7;
 
-// Continental United States.
+// Fixed literals rather than palette-derived, matching the design. Like the two border close-ups
+// this map keeps a dark plate through every sky, so its ramp has to stay in one register instead of
+// following the section hue — and a rate ramp needs one hue, not seven harmony members.
+const PLATE = "#251f2b";
+const GRATICULE = "rgb(231,233,228)";
+const RAMP_HI = [240, 72, 152]; // #f04898 — the highest rate
+const RAMP_LO = [252, 214, 232]; // #fcd6e8 — the lowest
+const RAMP = Array.from({ length: RAMP_STEPS }, (_, k) => {
+  const t = k / (RAMP_STEPS - 1);
+  return `rgb(${RAMP_HI.map((v, j) => Math.round(v + ((RAMP_LO[j] as number) - v) * t)).join(",")})`;
+});
+
+// Japan, Okinawa to Hokkaido. The story's own lead example is Akita against Tokyo, and Japan
+// reports every prefecture — so the country that makes the argument is the country on screen.
 const BBOX: Bbox = [
-  [-125, 24],
-  [-66, 50],
-];
-
-// Same center as BBOX, cropped to a square and zoomed in for the 1:1 mobile panel.
-const MOBILE_BBOX: Bbox = [
-  [-105.5, 27],
-  [-85.5, 47],
+  [127, 29],
+  [147, 46],
 ];
 
 // Step 5: a static, fully-vector (SVG) world choropleth of first-level regions colored by their
@@ -74,10 +74,12 @@ export default function SubnationalChoroplethMap({
   nutsIso2ToIso3,
 }: SubnationalChoroplethMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
-  const isMobile = useIsMobileMap();
-  const width = isMobile ? MOBILE_SIZE : WIDTH;
-  const height = isMobile ? MOBILE_SIZE : HEIGHT;
-  const bbox = isMobile ? MOBILE_BBOX : BBOX;
+  const [sizeRef, measured] = useFigureWidth<SVGSVGElement>();
+  // Square, at exactly the width the column gave it: the column's own max-width is the bound, so
+  // the viewBox always equals the rendered size and nothing is scaled.
+  const width = measured;
+  const height = width;
+  // Shades of the section's own hue, inverted so the highest rate takes the darkest step.
 
   // The two layers merged into one draw list (European NE features dropped).
   const drawn = useMemo<DrawnRegion[] | null>(() => {
@@ -124,16 +126,25 @@ export default function SubnationalChoroplethMap({
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
 
-    const projection = fitRegionProjection(bbox, width, height);
-    const path = d3.geoPath(projection);
-    const content = appendGrayEarthBasemap(
-      svg,
-      projection,
+    const projection = fitProjection(
+      d3.geoAzimuthalEquidistant().rotate([-138, -37]),
+      BBOX,
       width,
       height,
-      "subnational-choropleth-map",
+      8,
     );
-    const color = d3.scaleSequential(d3.interpolateYlOrRd).domain(domain);
+    const path = d3.geoPath(projection);
+    // The plate. Like the border close-ups this map is about coverage — where subnational data
+    // exists and where it does not — so "no region here" has to be a colour, not the page.
+    svg.append("rect").attr("width", width).attr("height", height).attr("fill", PLATE);
+    const content = svg.append("g");
+    // Quantised into the ramp's seven steps rather than a continuous interpolation: seven shades
+    // a reader can count beats a gradient they can only compare two at a time.
+    const step = (rate: number) => {
+      const t = (rate - domain[0]) / Math.max(1e-6, domain[1] - domain[0]);
+      const k = Math.round(Math.min(1, Math.max(0, t)) * (RAMP_STEPS - 1));
+      return RAMP[RAMP_STEPS - 1 - k] as string;
+    };
 
     // A region's rate is its own subnational value, falling back to the country's national
     // rate (World Bank) where there's no regional data.
@@ -144,33 +155,96 @@ export default function SubnationalChoroplethMap({
       return nat != null ? { rate: nat, national: true } : { rate: null, national: false };
     };
 
-    // Only US regions are ever visible in this crop — thousands of Admin-1/NUTS polygons
+    // Only Japanese regions are ever visible in this crop — thousands of Admin-1/NUTS polygons
     // for the rest of the world would otherwise get projected and clipped away for nothing.
-    const usRegions = drawn.filter((d) => d.country === "USA");
+    const visibleRegions = drawn.filter((d) => d.country === "JPN");
 
-    // One <path> per region — exact SVG hit-testing (no pick-canvas antialiasing that could
-    // report the wrong region on hover). Hard-light blended so the relief basemap's
-    // texture shows through the rate color instead of sitting under a flat, opaque fill.
+    // Rasterised onto the same 0.5° lattice the globe samples, as in the design: the rates are
+    // real and regional, but they are shown at the resolution the model actually works at, which
+    // is the point the surrounding copy is making. A cell takes the rate of whichever region
+    // contains its centre; coastal cells whose centre falls just outside every outline take the
+    // nearest region's, so the coastline stays solid instead of combing.
+    const CELL = 0.5;
+    const bounds = visibleRegions.map((d) => ({ d, b: d3.geoBounds(d.feature) }));
+    const centroids = visibleRegions.map((d) => d3.geoCentroid(d.feature));
+    const cells: { x: number; y: number; w: number; h: number; region: DrawnRegion }[] = [];
+
+    const q = (v: number, f: "floor" | "ceil") => Math[f](v / CELL) * CELL;
+    const [[lon0, lat0], [lon1, lat1]] = BBOX;
+    for (let lon = q(lon0, "floor"); lon < q(lon1, "ceil"); lon += CELL) {
+      for (let lat = q(lat0, "floor"); lat < q(lat1, "ceil"); lat += CELL) {
+        const tl = projection([lon, lat + CELL]);
+        const br = projection([lon + CELL, lat]);
+        if (!tl || !br || !isFinite(tl[0]) || !isFinite(br[0])) continue;
+        const cw = Math.abs(br[0] - tl[0]);
+        const ch = Math.abs(br[1] - tl[1]);
+        const cx = Math.min(tl[0], br[0]);
+        const cy = Math.min(tl[1], br[1]);
+        if (cx + cw < 0 || cx > width || cy + ch < 0 || cy > height) continue;
+
+        const centre: [number, number] = [lon + CELL / 2, lat + CELL / 2];
+        // Bounding box first: geoContains against every prefecture for every cell is the one
+        // thing here expensive enough to notice.
+        let hit = bounds.find(
+          ({ d, b }) =>
+            centre[0] >= b[0][0] - CELL &&
+            centre[0] <= b[1][0] + CELL &&
+            centre[1] >= b[0][1] - CELL &&
+            centre[1] <= b[1][1] + CELL &&
+            d3.geoContains(d.feature, centre),
+        )?.d;
+
+        if (!hit) {
+          // Nearest region, but only close enough to be this coastline rather than the mainland
+          // across the sea — otherwise the ocean fills in.
+          let best = Infinity;
+          let near: DrawnRegion | undefined;
+          centroids.forEach((c, i) => {
+            const dist = d3.geoDistance(c, centre);
+            if (dist < best) {
+              best = dist;
+              near = visibleRegions[i];
+            }
+          });
+          if (near && best < 0.02) hit = near;
+        }
+        if (!hit) continue;
+
+        // Snapped to whole pixels so neighbouring cells butt up with no hairline between them.
+        const x0 = Math.round(cx);
+        const y0 = Math.round(cy);
+        cells.push({
+          x: x0,
+          y: y0,
+          w: Math.max(1, Math.round(cx + cw) - x0),
+          h: Math.max(1, Math.round(cy + ch) - y0),
+          region: hit,
+        });
+      }
+    }
+
     content
       .append("g")
-      .attr("class", "map-region-fills")
-      .selectAll("path")
-      .data(usRegions)
-      .join("path")
-      .attr("class", "map-region")
-      .attr("d", (d) => path(d.feature))
-      .attr("fill", (d) => {
-        const { rate } = rateOf(d);
-        return rate != null ? color(rate) : NO_DATA;
+      .attr("class", "map-region-cells")
+      .selectAll("rect")
+      .data(cells)
+      .join("rect")
+      .attr("x", (c) => c.x)
+      .attr("y", (c) => c.y)
+      .attr("width", (c) => c.w)
+      .attr("height", (c) => c.h)
+      .attr("fill", (c) => {
+        const { rate } = rateOf(c.region);
+        return rate != null ? step(rate) : PLATE;
       })
-      .on("pointermove", (event, d) => {
-        const { rate, national } = rateOf(d);
+      .on("pointermove", (event, c) => {
+        const { rate, national } = rateOf(c.region);
         const label =
           rate == null
-            ? `${d.name}: no data`
+            ? `${c.region.name}: no data`
             : national
-              ? `${d.name} — national rate: ${Math.round(rate)} deaths / 100k/yr`
-              : `${d.name}: ${Math.round(rate)} deaths / 100k/yr`;
+              ? `${c.region.name} — national rate: ${Math.round(rate)} deaths / 100k/yr`
+              : `${c.region.name}: ${Math.round(rate)} deaths / 100k/yr`;
         showTooltip(label, event.clientX, event.clientY);
       })
       .on("pointerleave", hideTooltip);
@@ -196,35 +270,45 @@ export default function SubnationalChoroplethMap({
       .attr("cx", (d) => d.x)
       .attr("cy", (d) => d.y)
       .attr("r", 2.6)
-      .attr("fill", (d) => (d.kind === "high" ? "#ff3b30" : "#2f4bff"))
-      .attr("stroke", "rgba(0,0,0,0.5)")
+      .attr("fill", (d) => (d.kind === "high" ? "#ffffff" : PLATE))
+      .attr("stroke", (d) => (d.kind === "high" ? PLATE : "#ffffff"))
       .attr("stroke-width", 0.75);
-  }, [drawn, ratePer100kByKey, ratePer100kByCountry, domain, bbox, width, height]);
+
+    // A 5° graticule, finer than the world maps use, because at this zoom a 10° grid would put
+    // two lines on the whole picture.
+    svg
+      .append("path")
+      .attr("d", path(d3.geoGraticule().step([5, 5])()) ?? "")
+      .attr("fill", "none")
+      .attr("stroke", GRATICULE)
+      .attr("stroke-width", 1.1)
+      .attr("opacity", 0.55);
+  }, [drawn, ratePer100kByKey, ratePer100kByCountry, domain, width, height]);
 
   const loading = !drawn || !ratePer100kByKey;
 
   return (
-    <section className="chart-panel wide no-card">
-      <p className="chart-copy">
-        Every first-level region colored by its own crude death rate. Inside a single country the
-        spread is dramatic — Russia&apos;s is the widest of all, Pskov running over 5× Ingushetia;
-        rural Akita nearly 2× Tokyo, West Virginia well above Utah, north-west Bulgaria far above
-        Ireland. Countries without regional data (China, most of Africa) are shaded a flat national
-        rate instead.
-      </p>
+    <section className="chart-panel wide">
       <svg
-        ref={ref}
+        ref={(node) => {
+          ref.current = node;
+          sizeRef(node);
+        }}
         id="subnational-choropleth-chart"
-        className="seasonality-chart map-bleed"
+        className="story-figure"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="Map of United States first-level regions shaded by crude death rate, showing large differences within the country"
+        aria-label="Map of Japan's prefectures shaded by crude death rate, showing large differences within one country"
       />
       {!loading && (
         <div className="choropleth-legend" aria-hidden="true">
           <span>{Math.round(domain[0])}</span>
-          <span className="choropleth-legend-bar" />
-          <span>{Math.round(domain[1])}+ deaths / 100k/yr</span>
+          <span className="choropleth-legend-bar">
+            {[...RAMP].reverse().map((c) => (
+              <span key={c} style={{ background: c }} />
+            ))}
+          </span>
+          <span>{Math.round(domain[1])}+ per 100k</span>
         </div>
       )}
       {loading && (

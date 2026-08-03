@@ -2,24 +2,25 @@
 
 ## Overview
 
-A single-page, full-viewport mobile scroll experience for **watchpeople.live**. It opens on a live three.js globe where each flash is a modelled death, then scrolls through a seven-layer narrative that explains how the death model is built: **Where** (global rate → country rate → sub-national region), **When** (seasonality and the search for a proxy), **Who**, conflict deaths, and what is still missing. It closes by letting the reader pull the globe back up.
+A single-page, full-viewport mobile scroll experience for **watchpeople.live**. It opens on a live globe where each flash is a modelled death, then scrolls through a narrative explaining how the death model is built: **Where** (global rate → country rate → sub-national region), **When** (seasonality and the search for a proxy), **Who**, conflict deaths, and what is still missing. It closes by letting the reader pull the globe back up.
 
 The defining idea is a **per-section colour system**: every section declares a "sky" colour, and the entire palette for that section — text, panels, chart series, interactive controls — is generated from it at runtime. Nothing is expected to harmonise across the whole page; only what shares a screen has to agree.
 
-## About the Design Files
+## About the design files
 
-The files in this bundle are **design references created in HTML** — a working prototype of the intended look and behaviour, not production code to copy directly.
+The bundle is a **design reference authored in HTML** — a working prototype of the intended look and behaviour, not production code to copy directly.
 
-The task is to **recreate this design in watchpeople.live's existing environment**, using its established framework, component patterns and data layer. If no front-end environment exists yet, choose the framework that suits a scroll-driven, canvas-heavy editorial page (a light React or Svelte app, or plain modules — there is no need for a heavy UI framework here) and implement the design there.
+The task is to **recreate this design in watchpeople.live's environment**, using its established framework and data layer. If no front-end environment exists yet, pick something light suited to a scroll-driven, canvas-heavy editorial page (small React/Svelte app or plain ES modules).
 
-Two things in the prototype are scaffolding, not design:
+What in the bundle is design vs scaffolding:
 
-- `support.js` and the `.dc.html` wrapper are the prototyping runtime this file was authored in. **Ignore them entirely.** All meaningful code is the `class Component` block inside the HTML.
-- The design is rendered inside a simulated 393 × 852 phone frame (`#device-root` / `#frame` / `#phone`). In production, `#phone` is simply the document scroll container and the frame disappears. Anywhere the prototype measures against `#phone`, production measures against the viewport.
+- **`Watch People Die Live - Mobile.dc.html` is the source of truth.** Everything meaningful is in it: all markup (top of file), all logic and data (the single `class Component` block, ~2,400 lines). Line references below are into this file.
+- `support.js` is the prototyping runtime the file was authored against. **Ignore it; do not port it.**
+- The design renders inside a simulated 393 × 852 phone (`#device-root` / `#frame` / `#phone`). In production `#phone` is the document scroll container and the frame disappears. Anywhere the code measures `#phone`, production measures the viewport. Section padding uses `cqh` (container-query height) units against the phone frame — swap for `vh`/`svh` in production.
 
 ## Fidelity
 
-**High fidelity.** Colours, typography, spacing, motion timings and interaction behaviour are final. Recreate pixel-accurately, but generate colour through the palette system described below rather than hardcoding the values you sample from screenshots — the palette is the design.
+**High fidelity.** Typography, spacing, motion timings and interaction behaviour are final. Recreate pixel-accurately, but generate colour through the palette system rather than hardcoding sampled values — the palette IS the design. Screenshots show whatever the palette resolved to at capture time.
 
 ---
 
@@ -27,186 +28,153 @@ Two things in the prototype are scaffolding, not design:
 
 ### Scroll container
 
-One vertical scroll container holds a `#stage` (sticky, full-height, `z-index:3`, `pointer-events:none`) carrying the globe canvas, and `#flow`, the stacked `<section>` elements. Scroll drives four things every frame, all from one `onScroll` handler:
+One vertical scroll container (`#phone`) holds `#stage` (sticky full-height, `z-index:3`, `pointer-events:none`, carrying the three.js globe canvas and the live tallies) and `#flow`, the stacked `<section>` elements. One `onScroll` handler drives, per frame:
 
-1. **Phase** — `phase = clamp(scrollTop / (viewportHeight × 0.95), 0, 1)`, smoothstepped. Drives the globe's exit (scale, translate, fade) and the hero copy.
-2. **Sky** — the background colour of the scroll container is interpolated between the `data-sky` of the section leaving and the one arriving; on each change the whole palette regenerates and every figure repaints.
-3. **Reveal** — `[data-rv]` elements fade/slide in once when they enter.
-4. **Section-local scroll mechanics** — currently the proxy card (below).
+1. **Phase** — `clamp(scrollTop / (vh × 0.95), 0, 1)`, smoothstepped: globe exit (scale/translate/fade) and hero copy.
+2. **Sky** — `applySky()` interpolates the container background between the `data-sky` of the leaving and arriving sections; each change regenerates the palette (`applyTheme`) and repaints every figure (`repaintFigures`).
+3. **Reveal** — `[data-rv]` elements fade/slide in once when entering (`runReveal`); typewriter blocks use `runType`/`typeOut`.
+4. **Section-local mechanics** — the proxy fold (`stackProxies`) and the end-of-page pull-up (`wirePull`).
 
 ### Sections
 
-Each `<section>` carries `data-screen-label` (human name) and `data-sky` (its palette seed):
+Each `<section>` carries `data-screen-label` and `data-sky`:
 
 | Label | Sky | Content |
 |---|---|---|
 | First light | `#2b1c3a` | Opening question, chat exchange, "deaths aren't evenly spaced" |
-| Where — global rate | `#e8956d` | Chapter title "Where", ocean/land tally, Poisson vs metronome strips |
-| Where — country rate | `#f6c58f` | "A country is not an average", grid maps (West Africa, Benelux), Asia density map with log/linear toggle |
-| Where — CDR by region | `#e7e9e4` | Japan polar map, regional rate ramp |
-| Where — region | `#a6d2f5` | "Borders are the wrong unit" |
-| When — seasonality | `#bcd8ee` | Chapter title "When", country curve chart, **proxy ranking card + modal**, five proxy correlation charts, amplitude map |
-| Who | `#d9dbdd` | Persona generation |
-| Conflicts | `#eeb87d` | "A war is not a Poisson process" |
+| Where - global rate | `#e8956d` | Chapter "Where", ocean/sparse/dense dart tally (`bumpCount`/`limits`), Poisson vs metronome strips |
+| Where - country rate | `#f6c58f` | "A country is not an average", grid maps, Asia density map with the log/linear toggle |
+| Where - CDR by region | `#e7e9e4` | Japan polar map, regional rate ramp |
+| Where - region | `#a6d2f5` | "Borders are the wrong unit", closeup + subnational maps |
+| When - seasonality | `#bcd8ee` | Chapter "When", country curve chart (`curveMulti` + `seasChips`), **proxy ranking card + modal**, five proxy charts, amplitude map |
+| Who | `#d9dbdd` | Persona generation (`personaDemo`) |
+| Conflicts | `#eeb87d` | "A war is not a Poisson process", conflict map |
 | Still missing | `#cf7a68` | Open problems |
-| Back to the globe | `#000000` | Pull-up gesture returning to the top |
+| Back to the globe | `#000000` | Pull-up gesture returning to the top (`wirePull`) |
 
 ---
 
 ## The palette system (implement this first)
 
-Everything visual derives from the current section's sky colour. Two layers:
+All colour derives from the current section's sky. Methods named here exist verbatim in the source.
 
-### 1. `skinFromSky(sky)` → the section's UI skin
+### 1. `skinFromSky(sky)` → UI skin
 
-Returns an opaque set of UI tones. `dark = luminance(sky) < 0.2`.
+`dark = luminance(sky) < 0.2`. Returns:
 
 | Token | Light sky | Dark sky |
 |---|---|---|
-| `paper` | `mix(sky, white, 0.82)` | `mix(sky, white, 0.11)` |
+| `paper` | `mix(sky, white, .82)` | `mix(sky, white, .11)` |
 | `ink` | `#1d1822` | `#ffffff` |
-| `body` | `mix(sky, #1d1822, 0.94)` | `mix(sky, white, 0.88)` |
-| `mute` | `mix(sky, #1d1822, m)` where `m` = 0.9 / 0.8 / 0.7 as luminance < 0.36 / < 0.5 / else | `mix(sky, white, 0.72)` |
-| `tile` | `mix(sky, white, 0.58)` | `mix(sky, white, 0.16)` |
-| `tileMuted` | `mix(sky, white, 0.40)` | `mix(sky, white, 0.09)` |
-| `tileOpen` | `mix(sky, white, 0.84)` | `mix(sky, white, 0.26)` |
+| `body` | `mix(sky, #1d1822, .94)` | `mix(sky, white, .88)` |
+| `mute` | `mix(sky, #1d1822, m)`, m = .9/.8/.7 by sky luminance < .36/< .5/else | `mix(sky, white, .72)` |
+| `tile` | `mix(sky, white, .58)` | `mix(sky, white, .16)` |
+| `tileMuted` | `mix(sky, white, .40)` | `mix(sky, white, .09)` |
+| `tileOpen` | `mix(sky, white, .84)` | `mix(sky, white, .26)` |
 | `rule` | `rgba(29,24,34,.24)` | `rgba(255,255,255,.26)` |
-| `dataRGB` | `tone(sky, 0.12)` | `tone(sky, 0.30)` |
-| `hiRGB` | `tone(invert(sky), 0.18)` | same |
+| `dataRGB` | `tone(sky, .12)` | `tone(sky, .30)` |
+| `hiRGB` | `tone(invert(sky), .18)` | same |
 
-`mix(a,b,t)` is per-channel lerp; `tone(c,l)` pushes a colour to a target lightness keeping hue.
+`mix` = per-channel lerp; `tone(c, l)` pushes to a target lightness keeping hue.
 
-### 2. `schemes(el, vivid, anchor)` → the section's colour harmonies
+### 2. `schemes(el, vivid, anchor)` → colour harmonies
 
-From the section's sky hue (or from `anchor`, an explicit colour), generate **all** classical harmonies at once:
+From the sky hue (or `anchor`) generate **all** classical harmonies at once: `base`, `complementary` [0,180], `splitComplementary` [0,150,210], `triadic` [0,120,240], `tetradic` [0,90,180,270], `analogous` [0,30,−30,60,−60], and `mono(n)` (lightness ramp at constant hue: dark sky .34→.84, light .72→.22).
 
-```
-base              hue + 0
-complementary     [0, 180]
-splitComplementary[0, 150, 210]
-triadic           [0, 120, 240]
-tetradic          [0, 90, 180, 270]
-analogous         [0, 30, -30, 60, -60]
-mono(n)           n steps of lightness at constant hue
-```
+- Saturation: `vivid ? .94 : clamp(skySat + .2, .4, .82)`
+- Lightness: `vivid ? .5 − i·.04 : dark ? .62 + i·.07 : .46 − i·.07`
+- Cached per sky; invalidated on sky change.
 
-- Saturation: `vivid ? 0.94 : clamp(skySat + 0.2, 0.4, 0.82)`
-- Lightness: `vivid ? 0.5 - i*0.04 : dark ? 0.62 + i*0.07 : 0.46 - i*0.07`
-- `mono(n)` lightness ramp: dark sky `0.34 → 0.84`, light sky `0.72 → 0.22`
-- Cache per sky; invalidate when the sky changes.
+`harmony(n, el, vivid)` picks by count: 1 base, 2 complementary, 3 split-comp, 4 tetradic, ≤6 analogous+complement, else mono.
 
-`harmony(n, el, vivid)` is the convenience picker: n=1 base, 2 complementary, 3 split-complementary, 4 tetradic, ≤6 analogous + complement, else `mono(n)`.
+### 3. `marks(cols, el)` / `contrastFix(col, bg, min)` — legibility pass for data ink
 
-### 3. `marks(cols, el)` — legibility pass for data ink
+Chart canvases are **transparent**; marks composite over the sky itself. Every colour used for dots, rings, hairlines or chart lines goes through `contrastFix`: step HSL lightness away from the sky (−.03 if sky luminance > .4, else +.03, ≤26 steps) until WCAG contrast against the sky ≥ **3:1**. Large solid fills (the proxy strips) skip this — the vivid tier is the point. `proxyMarks(idx, n, el)` = `marks(proxyHarmony(idx, n, el))`.
 
-Chart canvases are **transparent**, so marks composite over the sky itself. Any colour used for dots, rings or hairlines must be pushed through `contrastFix`: convert to HSL and step lightness away from the sky (−0.03 if sky luminance > 0.4, else +0.03, max 26 steps) until WCAG contrast against the sky reaches **3:1**. Large solid fills (the proxy strips) skip this — they are already legible and the vivid tier is the point.
+### 4. Figure re-skinning — `mapColor(str, P)`
 
-### 4. Figure re-skinning
+Every figure is authored in literal colours and re-expressed at draw time:
 
-Every figure is authored with literal colours and re-expressed in the section palette at draw time. `mapColor(str, P)`:
+- Parse to RGB + alpha; compute saturation and relative luminance `L`.
+- **Greys** (saturation < 26): map onto the paper→ink axis by `t = clamp((.76 − L)/.7, 0, 1)`.
+- **Warm/red family** (`r ≥ b`): map onto `hiRGB` (sky's complement).
+- **Blue family**: map onto `dataRGB` (sky's own dark tone).
+- Relative lightness is preserved, so ramps stay ramps.
 
-- Parse to RGB + alpha. Compute saturation and relative luminance `L`.
-- **Greys** (`saturation < 26`): map onto the paper→ink axis by `t = clamp((0.76 − L) / 0.7, 0, 1)`.
-- **Warm/red family** (`r >= b`): map onto `hiRGB` (the sky's complement).
-- **Blue family**: map onto `dataRGB` (the sky's own dark tone).
-- Relative lightness is preserved, so ramps stay ramps and highlights stay highlights.
+`skinCtx` wraps each canvas context in a Proxy that runs every `fillStyle`/`strokeStyle`/gradient stop through `mapColor`. DOM figures use `mapInline`, which restores the element's **original** inline style before remapping so repeated sky changes can't drift. `applyInk`/`stylePanels` re-ink text and panels per section.
 
-The canvas context is wrapped in a proxy that runs every `fillStyle` / `strokeStyle` / gradient stop through `mapColor`. DOM figures get the same treatment via `mapInline`, which restores each element's original inline style before remapping so repeated theme changes can't drift.
+**Port note:** if the target codebase prefers tokens, emit the palette as CSS custom properties per section; the canvas Proxy is only needed for canvas figures.
 
-**Port note:** if the target codebase prefers explicit tokens, generate the palette once per section into CSS custom properties on the section element and let components read them. The runtime canvas proxy is only needed for the canvas figures.
+### 5. Proxy identity colours — `proxyCols(el)`
+
+The five ranking strips wear `schemes(section, vivid).analogous`, **keyed to `data-proxy` index, never DOM position** — reordering never repaints. Strip text colour: fill luminance > .55 → `skin.ink`, else white.
 
 ---
 
 ## Screen: the proxy ranking card (the most complex interaction)
 
-Lives in the **When — seasonality** section. Three states: **stack**, **modal**, **result**.
+Lives in **When - seasonality**. Three states: **stack → modal → result**. Methods: `stackProxies`, `openProxyModal`, `modalStrips`, `shuffleHint`, `wireProxyDrag`, `moveProxy`, `saveProxyGuess`, `paintProxyNotes`, `rankProxies`, `closeProxyModal`.
 
 ### State 1 — the sticky stack
 
-Markup:
-
 ```
-#proxy-stack        position:relative, explicit height set in JS = round(vh*0.55*5 + vh*0.22)
-  #proxy-card       position:sticky; top:12px; padding:14px 13px 15px; border-radius:18px
-                    background = skin.tileOpen, color = skin.body
-    #proxy-title    "Potential seasonality proxies" — flex centred, min-height 38px,
-                    Bebas Neue 23px, color skin.ink
-    #proxy-best     "BEST PREDICTOR" + rule — 700 8.5px Public Sans, .09em, uppercase,
-                    skin.mute at 60%, opacity 0 until all boxes are folded
-    #proxy-boxes    the five boxes
-    #proxy-foot
-      #proxy-worst  rule + "WORST", same treatment
-      #proxy-reorder  hidden until the modal has been dismissed once
+#proxy-stack     position:relative; height set in JS = round(vh·0.55·5 + vh·0.22)
+  #proxy-card    position:sticky; top:12px; padding:14px 13px 15px; radius:18px
+                 background skin.tileOpen; colour skin.body — NOT height-capped;
+                 it hugs its boxes and shrinks as they fold
+    #proxy-title "Potential seasonality proxies" — flex-centred, min-height 38px, Bebas 23px, skin.ink
+    #proxy-best  "BEST PREDICTOR" + rule — 700 8.5px Public Sans, .09em, uppercase,
+                 60% mute, opacity 0 until all folded
+    #proxy-boxes the five strips
+    #proxy-foot  rule + "WORST" (same treatment) and a "Reorder the proxies" button
+                 (hidden until the modal has been dismissed once; 36px, radius 11,
+                 skin.tile / skin.ink)
 ```
 
-Each box (`[data-proxy="0..4"]`):
+Each strip `[data-proxy="0..4"]`: `border-radius:16px; padding:16px 16px 17px; margin-top:12px` (first 0); flex row (`gap:9px`) of rank number (Bebas 21px, opacity .62), title `h3` (Bebas 24px, `flex:1`), and `[data-proxy-ctl]` (opacity 0 until folded) holding the ⓘ button and two visually-hidden Move up/Move down buttons; below, the explanation paragraph (Public Sans 14.5px/1.6).
 
-- `box-sizing:border-box; overflow:hidden; border-radius:16px; padding:16px 16px 17px; margin-top:12px` (0 for the first)
-- Background = `schemes(section, vivid=true).analogous[i]` — **keyed to the `data-proxy` index, never to DOM position**, so reordering never repaints.
-- Text colour chosen by fill luminance: `luminance > 0.55 ? skin.ink : #ffffff`.
-- Contents: a flex row (`align-items:center; gap:9px`) holding the rank number (Bebas 21px, opacity .62, min-width 15px), the title `h3` (Bebas 24px, `flex:1; min-width:0`), and a controls group (`[data-proxy-ctl]`, opacity 0 until folded) with an ⓘ button and two screen-reader-only "Move up" / "Move down" buttons; below the row, the explanatory paragraph (Public Sans 14.5px / 1.6).
-
-**The fold.** Progress is derived from the sticky card's travel:
+**The fold** (scroll-driven, no CSS transitions):
 
 ```
-travel = stackHeight − vh*0.5
+travel = stackHeight − vh·0.5
 raw    = clamp((containerTop + 12 − stackTop) / travel, 0, 1)
-P      = raw × (5 + 0.25)
+P      = raw × 5.25
+per strip at DOM position i (not attribute index):
+  k = clamp(P − i, 0, 1);  e = smoothstep(k)
+  height        = 46 + (natural − 46)(1 − e)      // 46px min strip
+  paddingTop    = 10 + 6(1 − e)
+  paddingBottom = 10 + 7(1 − e)
+  marginTop     = i ? 6 + 6(1 − e) : 0
+  paragraph opacity = 1 − min(1, e/.55)
 ```
 
-For each box at **DOM position** `i` (not its attribute index — a reordered list must still fold top-down):
-
-```
-k = clamp(P − i, 0, 1);  e = k*k*(3 − 2k)       // smoothstep
-height        = 46 + (naturalHeight − 46) × (1 − e)
-paddingTop    = 10 + 6 × (1 − e)
-paddingBottom = 10 + 7 × (1 − e)
-marginTop     = i ? 6 + 6 × (1 − e) : 0
-paragraph opacity = 1 − min(1, e / 0.55)
-```
-
-Once `e > 0.55` the paragraph is set to `display:none` and the box becomes `display:flex; flex-direction:column; justify-content:center`, so the title sits exactly mid-strip; the title also gets `white-space:nowrap; overflow:hidden; text-overflow:ellipsis` so long labels ride one line. Natural heights are measured once per width (temporarily setting `height:auto` with full padding) and cached.
-
-No CSS transitions on these properties — scroll drives them raw. The card is **not** height-capped; it hugs its boxes and shrinks as they fold.
+Past `e > .55` the paragraph is `display:none` and the strip becomes a centred flex column, title `nowrap/ellipsis`. Natural heights are measured once per width and cached. Folding is suspended while dragging or while the modal is open.
 
 ### State 2 — the modal
 
-When the last box reaches `e > 0.995`, the card is promoted into a full-screen modal (once per session).
+When the last strip passes `e > .995`, the card is promoted to a full-screen modal — **auto-opens once per session**; afterwards only the "Reorder the proxies" button reopens it.
 
-- Scrim: `position:fixed; inset:0; background:rgba(8,10,16,.55); backdrop-filter:blur(3px)`, fades in over 350ms.
-- Modal: `position:fixed; inset:0; display:flex; flex-direction:column; justify-content:center; padding:52px 20px 26px`, background `skin.paper`, `opacity 0 → 1` and `scale(1.02) → scale(1)` over 340/380ms `cubic-bezier(.22,1,.36,1)`.
-- The card element is **moved into** the modal (`position:static`, transparent background) and moved back on close. Its own title is hidden while in the modal.
-- Body scroll is locked while open.
+- Scrim `rgba(8,10,16,.55)` + `blur(3px)`, 350ms fade. Clicking it closes.
+- Modal `position:fixed; inset:0; flex column; justify-content:center; padding:52px 20px 26px`, background `skin.paper`, opacity 0→1 + `scale(1.02)→1`, 340/380ms `cubic-bezier(.22,1,.36,1)`. Body scroll locked.
+- The card node is **moved into** the modal slot (`position:static`, transparent) and moved back on close; its own title hides while inside.
 
-Content order:
+Content order: eyebrow "Before we look at the data" (700 10px, .13em, uppercase, accent = `mapColor('#2f4bff')`); `h3` "Which of these tracks seasonality?" (Bebas 38px/.98, skin.ink); instruction paragraph ("Order the five candidates… drag a row to move it; tap **i** to reread the case for each", 500 13px/1.55, skin.mute); the list (strips grow: 62px height, padding 14px, margin 9px, title 27px — 22px past 22 chars — rank 24px, `cursor:grab`); closing paragraph ("Then we'll put each one against the countries that do report monthly deaths…"); button row (`gap:9px`, 46px, radius 13, 600 13px): **Skip** (`flex:1`, skin.tile/skin.body) and **Submit my ranking** (`flex:1.5`, skin.ink/skin.paper).
 
-1. Eyebrow — "Before we look at the data", 700 10px Public Sans, .13em tracking, uppercase, accent colour (`mapColor("#2f4bff", skin)`).
-2. `h3` — "Which of these tracks seasonality?", Bebas Neue 38px / .98, `skin.ink`.
-3. Paragraph — "Order the five candidates from the strongest predictor of a country's seasonal swing down to the weakest. Drag a row to move it; tap **i** to reread the case for each.", 500 13px / 1.55, `skin.mute`.
-4. The list (scrollable if needed). In the modal the strips grow: height 62px, padding 14px, margin-top 9px, title 27px (22px if the label is longer than 22 characters), rank 24px, ⓘ 24px, `cursor:grab`.
-5. Paragraph — "Then we'll put each one against the countries that do report monthly deaths, and see which holds up."
-6. Buttons row, `gap:9px`, height 46px, radius 13px, 600 13px Public Sans: **Skip** (`flex:1`, background `skin.tile`, colour `skin.body`) and **Submit my ranking** (`flex:1.5`, background `skin.ink`, colour `skin.paper`).
+**Shuffle hint** — 700ms after open, one visible shuffle and back: `transform .54s cubic-bezier(.22,1,.36,1)`, offsets `[+1,−1,0,+1,−1] × rowPitch`; return at 790ms; transitions cleared at 1430ms.
 
-**Shuffle hint.** 700ms after the modal opens, the strips animate a single visible shuffle and return, so the affordance is obvious:
+**Reordering** (modal only):
 
-- `transition: transform .54s cubic-bezier(.22,1,.36,1)`
-- offsets `[+1, −1, 0, +1, −1] × rowHeight` (rowHeight = the measured pitch between strips)
-- at 790ms all return to `translateY(0)`; at 1430ms transitions and transforms are cleared.
+- *Drag*: `pointerdown` (ignoring ⓘ/a11y buttons) lifts the strip (`scale(1.03)`, shadow `0 10px 24px rgba(20,16,26,.32)`, z-index 3, 180ms). On `pointermove` the strip whose bounds contain pointer-Y becomes the target; re-insert, displaced siblings FLIP (`transform .26s cubic-bezier(.22,1,.36,1)`). Drop springs back `.42s cubic-bezier(.34,1.56,.64,1)`.
+- *Buttons*: Move up/down swap with the neighbour via the same FLIP (`moveProxy`).
+- Rank numbers renumber by DOM position after every move (`rankProxies`).
 
-**Reordering** (modal only — the strips are inert in the page):
+**ⓘ tooltip** — each ⓘ carries its strip's paragraph as `data-tip`; tap toggles a tooltip (max-width `min(240px, w−28)`, padding 9 11, radius 10, skin.tileOpen / skin.body, 1px skin.rule, above the icon or below if clipping).
 
-- *Drag*: `pointerdown` on a strip (ignoring the ⓘ and the a11y buttons) lifts it (`scale(1.03)`, `0 10px 24px rgba(20,16,26,.32)`, `z-index:3`). On `pointermove`, whichever strip's bounds contain the pointer's Y becomes the target index; the dragged node is re-inserted and displaced siblings animate with FLIP (`transform .26s cubic-bezier(.22,1,.36,1)` from their recorded offset). Drop springs back with `transform .42s cubic-bezier(.34,1.56,.64,1)`.
-- *Arrows*: the two screen-reader-only buttons swap the strip with its neighbour, animated with the same FLIP.
-- Scroll-driven folding is suspended while dragging and while the modal is open.
-- Rank numbers renumber by DOM position after every move.
-
-**ⓘ tooltip.** Each strip's ⓘ carries that proxy's paragraph text as `data-tip`. Tap toggles a tooltip: `max-width min(240px, containerWidth − 28)`, `padding 9px 11px`, `border-radius 10px`, background `skin.tileOpen`, colour `skin.body`, `1px solid skin.rule`, positioned above the icon or below if it would clip.
-
-**Close** — Submit, Skip or the scrim. On Submit only, the DOM order is stored as the reader's ranking. Either way the modal never auto-opens again; a **"Reorder the proxies"** button appears in the card foot (height 36px, radius 11px, background `skin.tile`, colour `skin.ink`) to reopen it.
+**Close** — Submit, Skip, or the scrim. Submit stores the DOM order as `proxyGuess` (`saveProxyGuess`); either close sets `_proxyDone` so it never auto-opens again.
 
 ### State 3 — the result echo
 
-If the reader submitted, each correlation chart heading downstream gains an inline note reading **"Your #N"** — 700 9.5px Public Sans, .08em, uppercase, `skin.mute`, `margin-left:9px`, vertically centred. Headings are tagged `data-proxy-for="<proxy index>"`:
+If submitted, each downstream chart heading tagged `data-proxy-for="<idx>"` gains an inline **"Your #N"** note (700 9.5px, .08em, uppercase, skin.mute, margin-left 9px, vertically centred), re-inked on sky change (`paintProxyNotes`).
 
 | Heading | Proxy |
 |---|---|
@@ -216,48 +184,51 @@ If the reader submitted, each correlation chart heading downstream gains an inli
 | Amplitude vs. GDP per capita | 0 |
 | Amplitude vs. neighbouring countries | 1 |
 
-The five proxies, in `data-proxy` order: **0** GDP per capita, **1** Neighbouring countries, **2** Climatic zone, **3** Latitude, **4** Share of population over 65.
+`data-proxy` order: **0** GDP per capita, **1** Neighbouring countries, **2** Climatic zone, **3** Latitude, **4** Share of population over 65.
 
 ---
 
 ## Charts
 
-All charts are `<canvas>` with `aspect-ratio` set in CSS, `background:transparent`, `border-radius:10px`. Sized at draw time to `clientWidth/Height × devicePixelRatio` (capped at 2). Each redraws when the section palette changes.
+All charts are `<canvas>` with CSS `aspect-ratio`, transparent background, radius 10px, sized at draw time to `clientWidth × devicePixelRatio` (capped at 2), redrawn on every palette change via `repaintFigures`. Shared scaffolding: `setup` (sizing), `frame`/`ticks` (axes), `legend`.
 
-Each proxy chart takes its palette from **its own proxy's colour**: `schemes(el, vivid=true, anchor=proxyColour[i])`, then the scheme matching the number of series, then `marks()` for legibility.
+Each proxy chart anchors its palette to **its own proxy colour**: `schemes(el, vivid, anchor = proxyCols[i])`, scheme by series count, then `marks()`.
 
-### Latitude correlation (`data-chart="latitude"`, proxy 3, complementary)
+### Latitude correlation — `latScatter` (proxy 3, complementary)
 
-Two series against absolute latitude, each toggleable by a checkbox above the canvas (17px square, radius 5px, filled with the series colour and a white ✓ when on, `inset 0 0 0 1.6px skin.rule` when off; label `skin.ink` / `skin.mute`). The last active series cannot be switched off.
+Two series vs absolute latitude, toggleable via checkboxes (`latChips`: 17px, radius 5, filled with series colour + white ✓ when on, `inset 0 0 0 1.6px skin.rule` off; the last active series can't be switched off; state `latShow`).
 
-- x: 0–70°, ticks every 10° labelled `n°`, axis caption "absolute latitude".
-- y: amplitude as a percentage `(amplitude − 1) × 100`, grid every 10% (5% when the max is ≤ 25), labelled `n%`.
-- **Countries**: filled dots, r = 3.1, series colour.
-- **Regions**: hollow rings, r = 3.1, 1.2px stroke, complement colour at 60% alpha, drawn behind.
-- Dotted vertical guides at **23.44°** ("Tropic") and **66.56°** ("Polar Circle"), `setLineDash([2,3])`, `skin.rule`, labels above the plot in `skin.mute`.
-- Italic annotation at the top left, 9.5px: `countries R² = 0.63 · regions R² = 0.53` — computed live from whichever series are visible.
+- x 0–70°, ticks every 10°, caption "absolute latitude"; y = `(amplitude − 1) × 100` in %, grid every 10% (5% when max ≤ 25).
+- Countries: filled dots r 3.1; Regions: hollow rings r 3.1, 1.2px, complement at 60% alpha, behind.
+- Dashed guides (`[2,3]`) at **23.44°** "Tropic" and **66.56°** "Polar Circle", labels above the plot.
+- Live italic annotation top-left: `countries R² = … · regions R² = …` (`fitR2`, computed from visible series).
+- Margins `{l:36, r:14, t:46, b:30}`.
 
-Margins `{l:36, r:14, t:46, b:30}`.
+### Amplitude by climate zone — `strips` (proxy 2, split-complementary)
 
-### Amplitude by climate zone (`data-chart="koppen"`, proxy 2, split-complementary)
+One column per Köppen code `Af Aw BWh BSk Csa Cfa Cfb Dfb Dfc`. The story is packing: a tight column ⇒ good proxy.
 
-One column per Köppen zone: `Af Aw BWh BSk Csa Cfa Cfb Dfb Dfc`. The point of the chart is packing — a tight column means climate is a good proxy.
+- Behind each column a rounded band (radius 6) spanning the 10th–90th percentile, accent at 10% alpha, 68% column width.
+- Regions: rings r 2.5, 1.1px, second colour at 42% alpha, deterministic jitter ±24%; countries: dots r 2.7, accent, jitter ±20%; mean: 1.8px line across 68%, third colour.
+- y in % with 10% grid; codes below 600 9.5px; caption "Köppen-Geiger zone". Margins `{l:36, r:10, t:20, b:42}`.
 
-- Behind each column, a rounded band (radius 6px) spanning the 10th–90th percentile of that bucket, accent colour at 10% alpha, width 68% of the column.
-- Regions: hollow rings r = 2.5, 1.1px, second scheme colour at 42% alpha, deterministic x-jitter ±24% of column width.
-- Countries: filled dots r = 2.7, accent, jitter ±20%.
-- Mean: 1.8px horizontal line across 68% of the column, third scheme colour.
-- y in percent with 10% grid; zone codes below in 600 9.5px; caption "Köppen-Geiger zone".
+### Amplitude scatters — `ampScatter` (proxies 4, 0, 1, tetradic)
 
-Margins `{l:36, r:10, t:20, b:42}`.
+Amplitude (y, %, grid 0/10/20/30) vs proxy value (x). Filled dots, alpha encodes income; dashed regression (1.5px, `[5,4]`, second colour); `r = …` label top-right.
 
-### Amplitude scatters (`amp65`, `ampGdp`, `ampNeighbour` — proxies 4, 0, 1, tetradic)
+### Seasonality curves — `curveMulti` + `seasChips`
 
-Amplitude (y, percent, gridlines at 0/10/20/30%) against the proxy value (x). Filled dots whose alpha encodes income; a dashed regression line (1.5px, `setLineDash([5,4])`, second scheme colour) and an `r = 0.39` label in the top-right corner.
+Monthly mortality curves for user-picked countries (state `seasPick`, default Switzerland, chips toggle). Line colours: `marks(harmony(n))`.
 
-### Other figures
+### Maps — `conicMap`, `randomMap`, `centroidMap`, `fourColour`, `closeup`, `gridFlashes`, `japanMap`, `subnational`, `conflictMap`, `hexMap`, `stippleMap`, `bokehMap`, `contourMap`
 
-Maps (globe, hex, stipple/density, close-ups, Japan polar, amplitude choropleth, conflict) all follow the same rule: authored in literal colours, re-expressed through `mapColor` at draw time. The Asia density map has a **log/linear toggle** overlaid on the map itself: a 20%-wide square inset 10px from the top-left, radius 9px, split by its anti-diagonal — "Logarithmic" set on a logarithmic SVG `textPath` in the top-left half, "Linear" on a diagonal path in the bottom-right. The active half is filled solid with the palette complement and its label is `skin.paper`; the inactive half is a 14%-tint of the same hue with the label in the complement. Clicking anywhere toggles.
+All share one dispatcher (~line 2385) that builds a d3-geo projection per `kind` (orthographic closeups, conic equal-area for South America/Asia, azimuthal for Japan/Europe, Natural Earth for world) plus a rasterised land-mask (`mask`) for point-in-land tests. All draw through `skinCtx`, so they re-skin automatically.
+
+The Asia density map (`stipple`) carries the **log/linear toggle** (`paintDensToggle`, state `stipLog`): a 20%-wide square inset 10px top-left, radius 9, split on the anti-diagonal — "Logarithmic" on a curved SVG `textPath` in the upper-left half, "Linear" diagonal in the lower-right. Active half: solid palette complement, label `skin.paper`; inactive: 14% tint, label in the complement. Clicking anywhere on it toggles.
+
+### The dart tally (Where - global rate)
+
+`bumpCount` classifies random globe points as ocean / sparse / dense (`settled` = within ~245km of a HOTSPOTS centre); tally resets every 500 draws; `limits` Monte-Carlo-samples the convergence shares shown alongside.
 
 ---
 
@@ -265,88 +236,86 @@ Maps (globe, hex, stipple/density, close-ups, Japan polar, amplitude choropleth,
 
 | Interaction | Behaviour | Timing |
 |---|---|---|
-| Globe exit | scale/translate/fade driven by scroll phase | continuous, smoothstep |
-| Sky transition | interpolate between adjacent sections' `data-sky`; regenerate palette; repaint figures | continuous |
-| Reveal | `[data-rv]` fades and slides in on enter, once | ~0.5s ease |
-| Proxy fold | height/padding/margin/paragraph-opacity from scroll | continuous, no CSS transition |
-| Modal open | scrim fade + modal fade/scale | 340ms / 380ms `cubic-bezier(.22,1,.36,1)` |
-| Shuffle hint | out then back | starts 700ms after open; 540ms per leg; returns at 790ms; cleared at 1430ms |
-| Drag reorder | lift, FLIP displacement, spring drop | 180 / 260 / 420ms |
-| ⓘ tooltip | toggle on tap | 160ms |
-| Density toggle | half fills swap | 180ms ease |
-| Pull-up ending | upward drag fills a progress bar; release scrolls back to the top | bar tracks the gesture |
+| Globe exit | scale/translate/fade from scroll phase | continuous, smoothstep |
+| Sky transition | lerp adjacent `data-sky`; regen palette; repaint figures | continuous |
+| Reveal | `[data-rv]` fade/slide once on enter | ~.5s ease |
+| Typewriter | chat bubbles type on | `runType` |
+| Proxy fold | height/padding/opacity from scroll | continuous, raw |
+| Modal open | scrim fade + fade/scale | 340/380ms `cubic-bezier(.22,1,.36,1)` |
+| Shuffle hint | one shuffle out and back | +700ms; .54s legs; return 790ms; clear 1430ms |
+| Drag reorder | lift, FLIP, spring drop | 180/260/420ms |
+| ⓘ tooltip | tap toggle | 160ms |
+| Density toggle | halves swap fills | 180ms |
+| Pull-up ending | upward drag fills a bar; release scrolls to top | tracks gesture; snap-back 320ms |
 
 ## State
 
 | State | Type | Notes |
 |---|---|---|
-| `phase` | number 0–1 | globe exit / hero |
+| `phase` | 0–1 | globe exit / hero |
 | `theme` | palette object | regenerated on sky change |
-| `stipLog` | boolean | density map scale, default true |
-| `latShow` | `{countries, regions}` | latitude series toggles, both true |
-| `seasPick` | Set of country names | curve chart selection, defaults to Switzerland |
-| `proxyDragging` / `_proxyModal` / `_proxyDone` | booleans | suppress scroll writes, modal open, modal already seen |
-| `proxyGuess` | array of proxy indices | saved on Submit only; drives the "Your #N" notes |
+| `stipLog` | bool | density scale, default true |
+| `latShow` | `{countries, regions}` | both true |
+| `seasPick` | Set<string> | default `{"Switzerland"}` |
+| `_proxyDragging` / `_proxyModal` / `_proxyDone` | bool | suppress fold; modal open; auto-open spent |
+| `proxyGuess` | number[] | set on Submit only; drives "Your #N" |
+| `counts` / `_lim` | tallies | dart demo |
 
-All figure data is embedded as constant arrays in the prototype (`C` country table, `SEAS` seasonality table, `HOTSPOTS`, `TILES`, `DEFS`). In production these should come from the real data layer; the shapes are documented inline in the source.
+## Data
+
+All figure data is embedded as constants in the source — `HOTSPOTS` (populated centres), `C` (country table: name, lat, amplitude, GDP, 65+, region…), `SEAS` (monthly seasonality), `DEFS` (proxy definitions/copy), `TILES`. Geography (land, countries, 50m outlines) is fetched at runtime via d3-geo from Natural Earth. In production, wire these to the real data layer; shapes are documented inline.
 
 ## Design tokens
 
-**Typography**
+**Typography** — Bebas Neue (display), Libre Baskerville (body), Public Sans (UI), Google Fonts.
 
-| Role | Font | Size / line-height | Weight |
+| Role | Font | Size / lh | Weight |
 |---|---|---|---|
-| Hero | Bebas Neue | 86px / 0.86 | 400 |
-| Chapter title | Bebas Neue | 148–164px / 0.84 | 400 |
+| Hero | Bebas Neue | 86px / .86 | 400 |
+| Chapter title | Bebas Neue | 148–164px / .84 | 400 |
 | Section heading | Bebas Neue | 36px / 1.02 | 400 |
 | Sub-heading | Bebas Neue | 26px / 1.05 | 400 |
-| Card title | Bebas Neue | 23–24px | 400 |
-| Modal heading | Bebas Neue | 38px / 0.98 | 400 |
+| Card/strip title | Bebas Neue | 23–27px | 400 |
+| Modal heading | Bebas Neue | 38px / .98 | 400 |
 | Body | Libre Baskerville | 15px / 1.68 | 400 |
 | Card body | Public Sans | 14.5px / 1.6 | 400 |
 | Note / caption | Public Sans | 12.5–13px / 1.5 | 500 |
 | Micro label | Public Sans | 8.5–10px, .08–.13em, uppercase | 700 |
 | Chart labels | Public Sans | 9.5px | 500–600 |
 
-**Spacing** — 6, 8, 9, 10, 12, 14, 16, 18, 20, 22, 26 px. Section padding `26px 22px`. Paragraph rhythm `margin-top: 14px`.
+Hero copy sits at `top:66%` of the first viewport, centred, white with `text-shadow 0 2px 26px rgba(0,0,17,.8)`.
 
-**Radius** — 5 (checkbox), 9–10 (chart, toggle), 11–13 (buttons), 16 (proxy box), 18 (card), 20 (sheet), 999 (chips).
+**Spacing** — 6/8/9/10/12/14/16/18/20/22/26px; section padding `26px 22px`; paragraph rhythm `margin-top:14px`.
 
-**Shadow** — drag lift `0 10px 24px rgba(20,16,26,.32)`; sheet `0 -12px 44px rgba(0,0,0,.35)`; tooltip `0 10px 26px rgba(0,0,0,.18)`.
+**Radius** — 5 checkbox · 9–10 chart/toggle · 11–13 buttons · 16 strip · 18 card · 20 sheet · 999 chips.
 
-**Accent** — `#2f4bff` mapped through `mapColor` into the current section's palette.
+**Shadow** — drag `0 10px 24px rgba(20,16,26,.32)`; sheet `0 -12px 44px rgba(0,0,0,.35)`; tooltip `0 10px 26px rgba(0,0,0,.18)`.
 
-## Assets
+**Accent** — `#2f4bff` through `mapColor` into the current palette.
 
-- **Fonts**: Bebas Neue, Public Sans, Libre Baskerville (Google Fonts).
-- **Globe**: three.js sphere with a night-lights texture; the prototype falls back to a CSS radial-gradient poster (`#globe-poster`) before the WebGL scene is ready — keep that fallback.
-- **Geography**: Natural Earth land, countries and 50m outlines fetched at runtime through d3-geo; the graticule is generated, not an asset.
-- No raster images or icon sets. The ⓘ, arrows and ✓ are text glyphs.
+## Accessibility
 
-## Accessibility notes
-
-- Reordering must stay operable without pointer drag: the visually-hidden "Move up" / "Move down" buttons on each strip are the keyboard/AT path and must survive the port.
-- The ⓘ tooltip content duplicates the strip's own paragraph — expose it as accessible text, not only as a hover/tap affordance.
-- The contrast pass (`marks`, 3:1 against the sky) applies to data ink. Body and heading tones come from `skin.body` / `skin.ink`, which are already tuned per sky.
-- Honour `prefers-reduced-motion`: skip the shuffle hint and the globe animation, keep the scroll fold (it is positional, not decorative).
+- Reordering stays operable without drag: the visually-hidden Move up / Move down buttons are the keyboard/AT path — they must survive the port.
+- ⓘ tooltip content duplicates the strip's paragraph — expose as accessible text.
+- Data ink passes `marks` (3:1 vs sky); text tones come from `skin.body`/`skin.ink`.
+- Honour `prefers-reduced-motion`: skip the shuffle hint and globe animation; keep the scroll fold (positional, not decorative).
 
 ## Screenshots
 
-`screenshots/` holds reference captures of the key states:
+`screenshots/` — reference captures (palette = capture-time values; treat as layout/behaviour reference):
 
 | File | State |
 |---|---|
 | `01-hero.png` | Opening screen — globe + hero line |
-| `02-proxy-stack-folding.png` | Sticky proxy card mid-fold (two strips collapsed, one expanded) |
+| `02-proxy-stack-folding.png` | Sticky proxy card mid-fold |
 | `03-ranking-modal.png` | Full-screen ranking modal |
-| `04-latitude-correlation.png` | Latitude chart — countries (filled) vs regions (rings) |
-| `05-climate-zone.png` | Köppen columns with spread bands and means |
-| `06-your-rank-note.png` | A correlation heading carrying the reader's "Your #N" |
-| `07-density-log-linear-toggle.png` | Diagonal log/linear toggle from the Asia density map |
-
-Colours in these captures are whatever the section palette resolved to at capture time — treat them as layout and behaviour references, and generate colour from the palette rules above.
+| `04-latitude-correlation.png` | Latitude chart — countries vs regions |
+| `05-climate-zone.png` | Köppen columns with bands and means |
+| `06-your-rank-note.png` | Heading with the reader's "Your #N" |
+| `07-density-log-linear-toggle.png` | Diagonal log/linear toggle |
 
 ## Files
 
-- `Watch People Die Live - Mobile.dc.html` — the full design. All logic lives in the `class Component` block near the bottom; markup is above it. Key methods: `skinFromSky`, `schemes`, `harmony`, `marks`, `contrastFix`, `mapColor`, `skinCtx`, `mapInline`, `applyInk`, `stackProxies`, `openProxyModal`, `shuffleHint`, `wireProxyDrag`, `latScatter`, `strips`, `ampScatter`.
+- `Watch People Die Live - Mobile.dc.html` — **the design + all code.** Markup at the top; the `class Component` block holds palette (`skinFromSky`, `schemes`, `harmony`, `marks`, `contrastFix`, `mapColor`, `skinCtx`, `mapInline`), scroll engine (`onScroll`, `applySky`, `reveal`, `stackProxies`), the proxy card/modal (`openProxyModal`, `modalStrips`, `shuffleHint`, `wireProxyDrag`, `moveProxy`, `saveProxyGuess`, `paintProxyNotes`), charts (`latScatter`, `strips`, `ampScatter`, `curveMulti`), map dispatcher + renderers, and the embedded data tables.
 - `support.js` — prototyping runtime. **Not part of the design; do not port.**
+- `screenshots/` — reference captures.

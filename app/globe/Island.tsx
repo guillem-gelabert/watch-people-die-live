@@ -5,7 +5,6 @@ import {
   getHeroActive,
   getLatestDeath,
   getServerDeath,
-  getServerHeroActive,
   subscribeToDeaths,
   subscribeToHero,
 } from "./stageState";
@@ -23,7 +22,6 @@ interface IslandProps {
 // its own controls, and a button cannot contain buttons.
 export default function Island({ onPausedChange }: IslandProps) {
   const death = useSyncExternalStore(subscribeToDeaths, getLatestDeath, getServerDeath);
-  const heroActive = useSyncExternalStore(subscribeToHero, getHeroActive, getServerHeroActive);
   const [open, setOpen] = useState(false);
   // Whether the reader hit Resume while keeping the card open. Pause is derived from this
   // rather than stored, so the sim can never be left stopped behind a closed island.
@@ -76,8 +74,10 @@ export default function Island({ onPausedChange }: IslandProps) {
       `${Math.abs(death.lon).toFixed(1)}° ${death.lon < 0 ? "west" : "east"}`
     : "—";
 
+  // #island-wrap's opacity is written by the story's scroll handler, so the pill fades out
+  // with the globe instead of switching off at a threshold.
   return (
-    <div id="island-wrap" style={{ opacity: heroActive ? 1 : 0 }}>
+    <div id="island-wrap">
       <div
         id="island"
         role="button"

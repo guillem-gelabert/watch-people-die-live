@@ -1,18 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
-import {
-  KG_FAMILY_KEYS,
-  correlationRatio,
-  fmtPlainPct,
-  kgFamilies,
-  strength,
-  styleAxis,
-} from "../chartHelpers";
+import { KG_FAMILY_KEYS, correlationRatio, fmtPlainPct, strength } from "../chartHelpers";
+import { figureHeight, useFigureWidth } from "./useFigureSize";
 import { useSkin } from "../SkinContext";
 import { showTooltip, hideTooltip } from "../tooltip";
-import LayerToggle from "./LayerToggle";
+import SeriesChips from "./SeriesChips";
+import {
+  MARGINS,
+  PROXY,
+  appendAxisTitle,
+  appendBaseline,
+  hashJitter,
+  niceMaxPercent,
+  percentGridValues,
+  quantileByRank,
+} from "./chartFrame";
+import { proxyMarks } from "../palette";
 import type {
   CountryFeature,
   SeasonalityData,
@@ -33,10 +38,9 @@ interface KoppenGeigerScatterProps {
   regions: SubnationalSeasonalityRegion[] | null;
 }
 
-// A deterministic horizontal jitter within a band, so overlapping dots spread out without moving
-// between runs (Math.random is avoided elsewhere in the pipeline too).
-const jitterAt = (i: number, bandwidth: number) =>
-  (((i * 0.61803398875) % 1) - 0.5) * bandwidth * 0.82;
+// Bounded aspect rather than a fixed size, so the column can be fluid without the labels
+// scaling with it.
+const SHAPE = { aspect: 0.71, min: 250, max: 330 };
 
 const etaByFamily = (rows: Row[]) => {
   const groups = new Map<string, number[]>();
@@ -57,16 +61,23 @@ export default function KoppenGeigerScatter({
   features,
   regions,
 }: KoppenGeigerScatterProps) {
-  const { sky, skin } = useSkin();
+  const { sky } = useSkin();
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const legendRef = useRef<HTMLDivElement | null>(null);
+  const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
+  const HEIGHT = figureHeight(WIDTH, SHAPE);
   const [showCountries, setShowCountries] = useState(true);
   const [showRegions, setShowRegions] = useState(true);
 
+  // Climate is proxy 2, so three colours from its own split-complementary. Colour now encodes the
+  // *layer* — countries, regions, mean — not the family: the families are already named along the
+  // axis, and spending five hues on them left nothing to separate the two layers with.
+  const pal = useMemo(() => proxyMarks(PROXY.climate, 3, sky), [sky]);
+  const countryColor = pal[0] as string;
+  const regionColor = pal[1] as string;
+  const meanColor = pal[2] as string;
+
   useEffect(() => {
     if (!unified || !proxies || !features || !svgRef.current) return;
-    const families = kgFamilies(sky);
-    const mute = skin.mute;
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
@@ -93,60 +104,73 @@ export default function KoppenGeigerScatter({
         amplitude: strength(r.curve),
       }));
 
-    const width = 420;
-    const height = 260;
-    const margin = { top: 16, right: 18, bottom: 42, left: 52 };
-    const innerW = width - margin.left - margin.right;
-    const innerH = height - margin.top - margin.bottom;
+    const m = MARGINS.koppen;
+    const innerW = WIDTH - m.left - m.right;
+    const innerH = HEIGHT - m.top - m.bottom;
+    const pct = (amplitude: number) => amplitude * 100;
+    const yMax = niceMaxPercent(
+      Math.max(
+        d3.max(countryRows, (d) => pct(d.amplitude)) ?? 10,
+        showRegions ? (d3.max(regionRows, (d) => pct(d.amplitude)) ?? 10) : 10,
+      ),
+    );
 
     const x = d3
       .scaleBand<string>()
       .domain(KG_FAMILY_KEYS.map((f) => f.key))
       .range([0, innerW])
       .padding(0.35);
-    const y = d3
-      .scaleLinear()
-      .domain([
-        0,
-        Math.max(
-          0.18,
-          d3.max(countryRows, (d) => d.amplitude) || 0.18,
-          d3.max(regionRows, (d) => d.amplitude) || 0.18,
-        ),
-      ])
-      .nice()
-      .range([innerH, 0]);
-    const colorByFamily = new Map(families.map((f) => [f.key, f.color]));
-    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    const y = d3.scaleLinear().domain([0, yMax]).range([innerH, 0]);
+    const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`);
     const bw = x.bandwidth();
 
-    // Mean amplitude per family with ±1 SD error band and mean line — tied to the country
-    // distribution (the primary signal), so it only shows while countries are visible.
-    if (showCountries) {
-      for (const f of families) {
-        const group = countryRows.filter((r) => r.family === f.key);
-        if (!group.length) continue;
-        const mean = d3.mean(group, (d) => d.amplitude) ?? 0;
-        const sd = Math.sqrt(d3.mean(group, (d) => (d.amplitude - mean) ** 2) ?? 0) || 0;
-        const cx = (x(f.key) ?? 0) + bw / 2;
-        const yMax = (y.domain() as [number, number])[1];
-        const bandTop = Math.max(0, mean - sd);
-        const bandBottom = Math.min(yMax, mean + sd);
-        g.append("rect")
-          .attr("class", "chart-band")
-          .attr("x", cx - (bw / 2) * 0.7)
-          .attr("width", bw * 0.7)
-          .attr("y", y(bandBottom))
-          .attr("height", y(bandTop) - y(bandBottom));
-        g.append("line")
-          .attr("x1", cx - bw / 2)
-          .attr("x2", cx + bw / 2)
-          .attr("y1", y(mean))
-          .attr("y2", y(mean))
-          .attr("stroke", f.color)
-          .attr("stroke-width", 2)
-          .attr("stroke-opacity", 0.9);
-      }
+    for (const v of percentGridValues(yMax)) {
+      g.append("line")
+        .attr("class", "chart-gridline")
+        .attr("x1", 0)
+        .attr("x2", innerW)
+        .attr("y1", y(v))
+        .attr("y2", y(v))
+        .attr("opacity", 0.32);
+      g.append("text")
+        .attr("class", "chart-tick")
+        .attr("x", -6)
+        .attr("y", y(v) + 3)
+        .attr("text-anchor", "end")
+        .text(`${v}%`);
+    }
+
+    // The spread behind each column is the whole argument of the figure: a tight column means the
+    // climate family predicts amplitude, a tall one means it does not. A 10th-90th percentile band
+    // says that better than a standard deviation, because these distributions are not symmetric —
+    // and it is drawn from whichever layers are on, so the reader is never shown a spread for a
+    // series they have hidden.
+    for (const family of KG_FAMILY_KEYS) {
+      const group = [
+        ...(showCountries ? countryRows : []),
+        ...(showRegions ? regionRows : []),
+      ].filter((r) => r.family === family.key);
+      if (group.length < 3) continue;
+      const sorted = group.map((r) => pct(r.amplitude)).sort(d3.ascending);
+      const lo = quantileByRank(sorted, 0.1);
+      const hi = quantileByRank(sorted, 0.9);
+      const cx = (x(family.key) ?? 0) + bw / 2;
+      g.append("rect")
+        .attr("class", "chart-band")
+        .attr("x", cx - bw * 0.34)
+        .attr("width", bw * 0.68)
+        .attr("y", y(hi))
+        .attr("height", Math.max(3, y(lo) - y(hi)))
+        .attr("rx", 6)
+        .attr("fill", countryColor);
+      const mean = d3.mean(sorted) ?? 0;
+      g.append("line")
+        .attr("x1", cx - bw * 0.34)
+        .attr("x2", cx + bw * 0.34)
+        .attr("y1", y(mean))
+        .attr("y2", y(mean))
+        .attr("stroke", meanColor)
+        .attr("stroke-width", 1.8);
     }
 
     if (showRegions) {
@@ -154,13 +178,13 @@ export default function KoppenGeigerScatter({
         .data(regionRows)
         .join("circle")
         .attr("class", "region-pt")
-        .attr("cx", (d, i) => (x(d.family) ?? 0) + bw / 2 + jitterAt(i, bw))
-        .attr("cy", (d) => y(d.amplitude))
-        .attr("r", 3)
+        .attr("cx", (d, i) => (x(d.family) ?? 0) + bw / 2 + hashJitter(i + 1, 7.13) * bw * 0.24)
+        .attr("cy", (d) => y(pct(d.amplitude)))
+        .attr("r", 2.5)
         .attr("fill", "none")
-        .attr("stroke", (d) => colorByFamily.get(d.family) ?? mute)
-        .attr("stroke-width", 0.9)
-        .attr("opacity", 0.75)
+        .attr("stroke", regionColor)
+        .attr("stroke-width", 1.1)
+        .attr("opacity", 0.42)
         .style("cursor", "pointer")
         .on("pointermove", (event, d) =>
           showTooltip(`${d.name}: ${fmtPlainPct(d.amplitude)}`, event.clientX, event.clientY),
@@ -172,11 +196,11 @@ export default function KoppenGeigerScatter({
       g.selectAll("circle.country-pt")
         .data(countryRows)
         .join("circle")
-        .attr("class", "country-pt chart-point")
-        .attr("cx", (d, i) => (x(d.family) ?? 0) + bw / 2 + jitterAt(i, bw))
-        .attr("cy", (d) => y(d.amplitude))
-        .attr("r", 3.6)
-        .style("fill", (d) => colorByFamily.get(d.family) ?? mute)
+        .attr("class", "country-pt")
+        .attr("cx", (d, i) => (x(d.family) ?? 0) + bw / 2 + hashJitter(i + 1, 4.91) * bw * 0.2)
+        .attr("cy", (d) => y(pct(d.amplitude)))
+        .attr("r", 2.7)
+        .attr("fill", countryColor)
         .style("cursor", "pointer")
         .on("pointermove", (event, d) =>
           showTooltip(`${d.name}: ${fmtPlainPct(d.amplitude)}`, event.clientX, event.clientY),
@@ -193,58 +217,57 @@ export default function KoppenGeigerScatter({
       noteParts.push(`countries η = ${etaCountry.toFixed(2)}`);
     if (showRegions && etaRegion != null) noteParts.push(`regions η = ${etaRegion.toFixed(2)}`);
     if (noteParts.length) {
-      g.append("text")
+      svg
+        .append("text")
         .attr("class", "chart-note")
-        .attr("x", 0)
-        .attr("y", 10)
+        .attr("x", m.left + 2)
+        .attr("y", 13)
         .text(noteParts.join("  ·  "));
     }
 
-    g.append("g")
-      .attr("transform", `translate(0,${innerH})`)
-      .call(d3.axisBottom(x).tickFormat((k) => KG_FAMILY_KEYS.find((f) => f.key === k)?.name ?? k))
-      .call(styleAxis);
-    g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(fmtPlainPct)).call(styleAxis);
-
-    // Shape legend (colour carries the family, so the swatches are neutral and only mark
-    // the country-dot vs region-ring convention shared across the seasonality scatters).
-    const legend = d3.select(legendRef.current);
-    legend.selectAll("span").remove();
-    if (showCountries) {
-      legend
-        .append("span")
-        .html(`<span class="swatch-dot" style="background:${mute}"></span>each country`);
+    appendBaseline(g, 0, innerW, innerH);
+    for (const family of KG_FAMILY_KEYS) {
+      g.append("text")
+        .attr("class", "chart-zone")
+        .attr("x", (x(family.key) ?? 0) + bw / 2)
+        .attr("y", innerH + 15)
+        .attr("text-anchor", "middle")
+        .text(family.name);
     }
-    if (showRegions) {
-      legend
-        .append("span")
-        .html(
-          `<span class="swatch-dot" style="background:none;border:1.5px solid ${mute}"></span>each region`,
-        );
-    }
-  }, [unified, proxies, features, regions, showCountries, showRegions, sky, skin.mute]);
+    appendAxisTitle(g, { x: innerW / 2, y: innerH + 33, text: "Köppen-Geiger zone" });
+  }, [
+    unified,
+    proxies,
+    features,
+    regions,
+    showCountries,
+    showRegions,
+    countryColor,
+    regionColor,
+    meanColor,
+    WIDTH,
+    HEIGHT,
+  ]);
 
   return (
     <>
-      <LayerToggle
-        showCountries={showCountries}
-        showRegions={showRegions}
-        onShowCountries={setShowCountries}
-        onShowRegions={setShowRegions}
+      <SeriesChips
+        series={[
+          { key: "countries", label: "each country", color: countryColor, on: showCountries },
+          { key: "regions", label: "each region", color: regionColor, on: showRegions },
+        ]}
+        onToggle={(key, on) => (key === "countries" ? setShowCountries(on) : setShowRegions(on))}
       />
       <svg
-        ref={svgRef}
+        ref={(node) => {
+          svgRef.current = node;
+          sizeRef(node);
+        }}
         id="koppen-geiger-scatter-chart"
-        className="seasonality-chart"
-        viewBox="0 0 420 260"
+        className="story-figure"
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
-        aria-label="Strip scatter plot of seasonal mortality amplitude grouped by dominant Köppen–Geiger climate family, with each country as a solid dot and each measured region as a hollow dot"
-      />
-      <div
-        className="chart-legend"
-        ref={legendRef}
-        id="koppen-geiger-scatter-legend"
-        aria-hidden="true"
+        aria-label="Strip scatter plot of seasonal mortality amplitude grouped by dominant Köppen–Geiger climate family, with each country as a filled dot and each measured region as a ring"
       />
     </>
   );

@@ -39,6 +39,10 @@ export function getServerDeath(): Death | null {
 // Whether the hero still owns the screen. The scroll handler updates the underlying phase
 // every frame, but subscribers here are only notified when the boolean flips, so scrolling
 // past the hero costs exactly one render rather than one per frame.
+//
+// This is the threshold half of the hero's exit — what latches (an open card closes and stays
+// closed). The island's opacity is the continuous half, and the scroll handler writes that
+// straight to the element rather than through here.
 let heroActive = true;
 const heroListeners = new Set<() => void>();
 
@@ -57,8 +61,4 @@ export function subscribeToHero(listener: () => void): () => void {
 
 export function getHeroActive(): boolean {
   return heroActive;
-}
-
-export function getServerHeroActive(): boolean {
-  return true;
 }

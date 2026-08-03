@@ -2,9 +2,17 @@
 
 import { useMemo } from "react";
 import type { ReactNode } from "react";
+import PullToGlobe from "./PullToGlobe";
+import ProxyFigure from "./proxy/ProxyFigure";
+import ProxyRankingCard from "./proxy/ProxyRankingCard";
+import AgeMix from "./charts/AgeMix";
 import AmplitudeMap from "./charts/AmplitudeMap";
+import BeatStrip from "./charts/BeatStrip";
 import BorderRasterCloseup from "./charts/BorderRasterCloseup";
+import DartTally from "./charts/DartTally";
+import NationalVsRegionalBars from "./charts/NationalVsRegionalBars";
 import ConflictEwmaWidget from "./charts/ConflictEwmaWidget";
+import ConflictMap from "./charts/ConflictMap";
 import CountryCentroidMap from "./charts/CountryCentroidMap";
 import CountryCurves from "./charts/CountryCurves";
 import DensityMap from "./charts/DensityMap";
@@ -13,23 +21,24 @@ import GlobalRandomMap from "./charts/GlobalRandomMap";
 import KoppenGeigerScatter from "./charts/KoppenGeigerScatter";
 import LatitudeScatter from "./charts/LatitudeScatter";
 import NeighbourScatter from "./charts/NeighbourScatter";
+import PersonaDemo from "./charts/PersonaDemo";
 import Pop65Scatter from "./charts/Pop65Scatter";
-import PoissonPulse from "./charts/PoissonPulse";
-import PoissonTiming from "./charts/PoissonTiming";
 import PredictionComparison from "./charts/PredictionComparison";
-import PulseComparison from "./charts/PulseComparison";
 import RegionNeighbourScatter from "./charts/RegionNeighbourScatter";
 import RegionPredictionComparison from "./charts/RegionPredictionComparison";
 import SubnationalChoroplethMap from "./charts/SubnationalChoroplethMap";
+import { PROXY } from "./charts/chartFrame";
 import { useRoadmapData } from "./useRoadmapData";
 
+// The two crops the design uses: West Africa, where the borders are straight lines a grid can
+// almost follow, and the Low Countries, where they are not.
 const WEST_AFRICA_BBOX: [[number, number], [number, number]] = [
-  [-4, 4],
-  [15, 14],
+  [-6, 4],
+  [6, 14],
 ];
 const BENELUX_BBOX: [[number, number], [number, number]] = [
-  [0, 44],
-  [15, 54],
+  [-3, 43.5],
+  [16, 53],
 ];
 
 type SlotsBySection = Record<string, Record<string, ReactNode>>;
@@ -56,12 +65,13 @@ export function useStorySlots(): SlotsBySection {
     ratePer100kByCountry,
     nutsCountries,
     nutsIso2ToIso3,
+    subnational,
     subnationalSeasonality,
-    subnationalLoo,
     regionNeighbors,
     proxies,
-    looValidation,
     conflicts,
+    looValidation,
+    subnationalLoo,
   } = useRoadmapData();
 
   const activeSeasonality = unified || seasonality;
@@ -70,33 +80,17 @@ export function useStorySlots(): SlotsBySection {
   return useMemo<SlotsBySection>(
     () => ({
       "first-light": {
-        "[blinking dot every 500ms]": (
-          <div className="chart-grid" aria-label="Blinking dot every 500 milliseconds">
-            <PulseComparison />
-          </div>
-        ),
-        "[chart showing 365 sampled one-second intervals]": (
-          <div className="chart-grid" aria-label="Poisson-distributed deaths across a year">
-            <PoissonTiming />
-          </div>
-        ),
-        "[blinking dot randomly blinking]": (
-          <div className="chart-grid" aria-label="Poisson-timed blinking dot">
-            <PoissonPulse />
-          </div>
-        ),
+        "[blinking dot every 500ms]": <BeatStrip mode="metronome" />,
+        "[blinking dot randomly blinking]": <BeatStrip mode="poisson" />,
       },
 
       "where-global": {
         "[map with random dots at random places]": (
-          <div className="chart-grid" aria-label="Global random mortality simulation map">
-            <GlobalRandomMap features={features} />
-          </div>
+          <GlobalRandomMap features={features} grid={grid} />
         ),
+        "[ocean uninhabited inhabited tally]": <DartTally />,
         "[chart cdr per country]": (
-          <div className="chart-grid" aria-label="Country-level death rate map">
-            <CountryCentroidMap features={features} deathsPerYearById={deathsPerYearById} />
-          </div>
+          <CountryCentroidMap features={features} deathsPerYearById={deathsPerYearById} />
         ),
       },
 
@@ -113,6 +107,7 @@ export function useStorySlots(): SlotsBySection {
               title="West Africa"
               id="border-raster-closeup-west-africa"
               colorBy="country"
+              neighborsByM49={neighborsByM49}
             />
             <BorderRasterCloseup
               features={features}
@@ -124,76 +119,83 @@ export function useStorySlots(): SlotsBySection {
             />
           </div>
         ),
-        "[density map with dots in log]": (
-          <div className="chart-grid density-cluster" aria-label="Population density map">
-            <DensityMap grid={grid} features={features} deathsPerYearById={deathsPerYearById} />
-          </div>
+        "[density map asia]": (
+          <DensityMap grid={grid} features={features} deathsPerYearById={deathsPerYearById} />
         ),
       },
 
       "where-region": {
-        "[subnational choropleth map]": (
-          <div className="chart-grid" aria-label="Subnational death rate map">
-            <SubnationalChoroplethMap
-              admin1Features={admin1Features}
-              nuts2Features={nuts2Features}
-              ratePer100kByKey={ratePer100kByKey}
-              ratePer100kByCountry={ratePer100kByCountry}
-              nutsCountries={nutsCountries}
-              nutsIso2ToIso3={nutsIso2ToIso3}
-            />
-          </div>
+        "[subnational choropleth]": (
+          <SubnationalChoroplethMap
+            admin1Features={admin1Features}
+            nuts2Features={nuts2Features}
+            ratePer100kByKey={ratePer100kByKey}
+            ratePer100kByCountry={ratePer100kByCountry}
+            nutsCountries={nutsCountries}
+            nutsIso2ToIso3={nutsIso2ToIso3}
+          />
         ),
       },
 
+      "borders-wrong-unit": {
+        "[national vs regional bars]": <NationalVsRegionalBars subnational={subnational} />,
+      },
+
       "when-seasonality": {
-        "[similar curves chart]": (
-          <div className="chart-grid" aria-label="Similar seasonal mortality curves">
-            <CountryCurves seasonality={activeSeasonality} features={features} proxies={proxies} />
-          </div>
+        "[seasonality curves]": (
+          <CountryCurves seasonality={activeSeasonality} features={features} proxies={proxies} />
         ),
-        "[latitude scatter chart]": (
-          <LatitudeScatter
-            unified={unified}
-            features={features}
-            regions={regions}
-            admin1Features={admin1Features}
-          />
-        ),
-        "[amplitude by climate zone scatter]": (
-          <KoppenGeigerScatter
-            unified={unified}
-            proxies={proxies}
-            features={features}
-            regions={regions}
-          />
-        ),
-        "[amplitude by age over 65 scatter]": (
-          <Pop65Scatter unified={unified} proxies={proxies} features={features} />
-        ),
-        "[amplitude by gdp pc scatter]": (
-          <GdpScatter unified={unified} proxies={proxies} features={features} />
-        ),
-        "[amplitude by neighbouring countries scatter]": (
-          <NeighbourScatter
-            unified={unified}
-            features={features}
-            neighborsByM49={neighborsByM49}
-            regions={regions}
-            regionNeighbors={regionNeighbors}
-          />
-        ),
-        "[prediction comparison chart]": (
-          <div className="chart-grid" aria-label="Predictions versus measured seasonal curve">
-            <PredictionComparison
-              looValidation={looValidation}
-              proxies={proxies}
-              neighborsByM49={neighborsByM49}
+        "[proxy ranking card]": <ProxyRankingCard />,
+        "[latitude scatter]": (
+          <ProxyFigure proxyIndex={PROXY.latitude} title="Latitude correlation">
+            <LatitudeScatter
+              unified={unified}
               features={features}
+              regions={regions}
+              admin1Features={admin1Features}
             />
-          </div>
+          </ProxyFigure>
         ),
-        "[region amplitude by neighbouring regions scatter]": (
+        "[koppen scatter]": (
+          <ProxyFigure proxyIndex={PROXY.climate} title="Amplitude by climate zone">
+            <KoppenGeigerScatter
+              unified={unified}
+              proxies={proxies}
+              features={features}
+              regions={regions}
+            />
+          </ProxyFigure>
+        ),
+        "[pop65 scatter]": (
+          <ProxyFigure proxyIndex={PROXY.pop65} title="Amplitude vs. population 65+">
+            <Pop65Scatter unified={unified} proxies={proxies} features={features} />
+          </ProxyFigure>
+        ),
+        "[gdp scatter]": (
+          <ProxyFigure proxyIndex={PROXY.gdp} title="Amplitude vs. GDP per capita">
+            <GdpScatter unified={unified} proxies={proxies} features={features} />
+          </ProxyFigure>
+        ),
+        "[neighbour scatter]": (
+          <ProxyFigure proxyIndex={PROXY.neighbour} title="Amplitude vs. neighbouring countries">
+            <NeighbourScatter
+              unified={unified}
+              features={features}
+              neighborsByM49={neighborsByM49}
+              regions={regions}
+              regionNeighbors={regionNeighbors}
+            />
+          </ProxyFigure>
+        ),
+        "[prediction comparison]": (
+          <PredictionComparison
+            looValidation={looValidation}
+            proxies={proxies}
+            neighborsByM49={neighborsByM49}
+            features={features}
+          />
+        ),
+        "[region neighbour scatter]": (
           <RegionNeighbourScatter
             regions={regions}
             regionNeighbors={regionNeighbors}
@@ -202,40 +204,46 @@ export function useStorySlots(): SlotsBySection {
             neighborsByM49={neighborsByM49}
           />
         ),
-        "[region prediction comparison chart]": (
-          <div
-            className="chart-grid"
-            aria-label="Predictions versus measured seasonal curve, region level"
-          >
-            <RegionPredictionComparison
-              subnationalLoo={subnationalLoo}
-              regionCount={
-                regions?.filter((r) => r.geo === "adm1" && r.measurement !== "climate-modeled")
-                  .length ?? 0
-              }
-            />
-          </div>
+        "[region prediction comparison]": (
+          <RegionPredictionComparison
+            subnationalLoo={subnationalLoo}
+            regionCount={regions?.length ?? 0}
+          />
         ),
         "[amplitude map]": (
-          <div className="chart-grid" aria-label="Seasonal mortality amplitude map">
-            <section className="chart-panel wide no-card">
-              <h4 className="chart-title">Amplitude By Country And Region</h4>
+          <AmplitudeMap
+            seasonality={activeSeasonality}
+            features={features}
+            neighborsByM49={neighborsByM49}
+            regions={regions}
+            admin1Features={admin1Features}
+            appliedFallbacks={appliedFallbacks}
+          />
+        ),
+      },
+
+      who: {
+        "[sampling order]": (
+          <section className="chart-panel">
+            <h4 className="chart-title">Sampling order</h4>
+            <PersonaDemo />
+          </section>
+        ),
+        "[deaths by age and cause]": (
+          <div className="chart-grid" aria-label="Deaths by age band and cause">
+            <section className="chart-panel wide">
+              <h4 className="chart-title">Deaths by age, and what they die of</h4>
               <p className="chart-copy">
-                Every rendered country and region is colored by seasonal amplitude. Observations use
-                their measured curves; targets without observations use the assigned climate,
-                neighbour, or latitude proxy.
+                Share of deaths in each age band, and the cause mix within it.
               </p>
-              <AmplitudeMap
-                seasonality={activeSeasonality}
-                features={features}
-                neighborsByM49={neighborsByM49}
-                regions={regions}
-                admin1Features={admin1Features}
-                appliedFallbacks={appliedFallbacks}
-              />
+              <AgeMix />
             </section>
           </div>
         ),
+      },
+
+      "back-to-the-globe": {
+        "[pull up for the globe]": <PullToGlobe />,
       },
 
       conflicts: {
@@ -245,8 +253,22 @@ export function useStorySlots(): SlotsBySection {
             aria-label="Robust exponentially-weighted moving average of conflict fatalities"
           >
             <section className="chart-panel wide">
-              <h4 className="chart-title">Robust EWMA — today&apos;s conflict deaths</h4>
+              <h4 className="chart-title">
+                Monthly fatalities, and the weighted mean the globe uses
+              </h4>
+              <p className="chart-copy">
+                Bars are reported fatalities; the line is the exponentially weighted mean.
+              </p>
               <ConflictEwmaWidget dailyStack={conflicts?.dailyStack} />
+            </section>
+          </div>
+        ),
+        "[map of conflict fatalities]": (
+          <div className="chart-grid" aria-label="Conflict fatalities on the sampling grid">
+            <section className="chart-panel wide">
+              <h4 className="chart-title">Where the trailing year&apos;s fatalities are</h4>
+              <p className="chart-copy">ACLED fatal events aggregated onto the sampling grid.</p>
+              <ConflictMap conflicts={conflicts} features={features} />
             </section>
           </div>
         ),
@@ -267,11 +289,12 @@ export function useStorySlots(): SlotsBySection {
       nutsCountries,
       nutsIso2ToIso3,
       regions,
-      subnationalLoo,
+      subnational,
       regionNeighbors,
       proxies,
-      looValidation,
       conflicts,
+      looValidation,
+      subnationalLoo,
     ],
   );
 }

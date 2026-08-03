@@ -10,7 +10,10 @@ import {
 } from "@/lib/spatial-seasonality";
 import { fmtPlainPct, strength } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
-import { appendGrayEarthBasemap, fitRegionProjection, useIsMobileMap, type Bbox } from "./basemap";
+import { useFigureWidth } from "./useFigureSize";
+import { useSkin } from "../SkinContext";
+import { harmony } from "../palette";
+import { appendGrayEarthBasemap, fitRegionProjection, type Bbox } from "./basemap";
 import type {
   Admin1Feature,
   CountryFeature,
@@ -24,6 +27,9 @@ interface CountryRow {
   estimate: SpatialSeasonalityEstimate;
   amplitude: number;
 }
+
+// Seven shades of the section's hue: the same ramp depth the two rate maps upstream use.
+const RAMP_STEPS = 7;
 
 interface RegionRow {
   feature: Admin1Feature;
@@ -46,15 +52,9 @@ interface AmpLegend {
   gradient: string;
 }
 
-// Africa.
+// Africa, cropped square around the same centre — the panel is square at every width now, so
+// there is only one crop to keep.
 const BBOX: Bbox = [
-  [-20, -35],
-  [52, 38],
-];
-const MOBILE_SIZE = 430;
-
-// Same center as BBOX, cropped to a square and zoomed in for the 1:1 mobile panel.
-const MOBILE_BBOX: Bbox = [
   [-11, -25.5],
   [43, 28.5],
 ];
@@ -71,18 +71,20 @@ export default function AmplitudeMap({
   appliedFallbacks,
 }: AmplitudeMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
+  const { sky } = useSkin();
   const [legend, setLegend] = useState<AmpLegend | null>(null);
-  const isMobile = useIsMobileMap();
-  const width = isMobile ? MOBILE_SIZE : 860;
-  const height = isMobile ? MOBILE_SIZE : 430;
-  const bbox = isMobile ? MOBILE_BBOX : BBOX;
+  const [sizeRef, measured] = useFigureWidth<SVGSVGElement>();
+  // Square, at exactly the width the column gave it: the column's own max-width is the bound, so
+  // the viewBox always equals the rendered size and nothing is scaled.
+  const width = measured;
+  const height = width;
 
   useEffect(() => {
     if (!seasonality || !features || !neighborsByM49 || !ref.current) return;
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
 
-    const projection = fitRegionProjection(bbox, width, height);
+    const projection = fitRegionProjection(BBOX, width, height);
     const path = d3.geoPath(projection);
     const content = appendGrayEarthBasemap(svg, projection, width, height, "amplitude-map");
 
@@ -129,10 +131,13 @@ export default function AmplitudeMap({
         d3.max(countryRows, (d) => d.amplitude) ?? 0,
         d3.max(regionRows, (d) => d.amplitude) ?? 0,
       ) || 0.001;
-    const color = d3
-      .scaleSequential()
-      .domain([0, maxAmp])
-      .interpolator(d3.interpolateRgb("#233142", "#ff3b30"));
+    // Shades of the section's own hue rather than a fixed navy-to-red: this is the last map of the
+    // seasonality chapter and it has to belong to the same palette as the charts that argued for it.
+    const ramp = harmony(RAMP_STEPS, sky);
+    const color = (amplitude: number) => {
+      const t = Math.min(1, Math.max(0, amplitude / maxAmp));
+      return ramp[RAMP_STEPS - 1 - Math.round(t * (RAMP_STEPS - 1))] as string;
+    };
 
     content
       .append("g")
@@ -209,17 +214,20 @@ export default function AmplitudeMap({
     regions,
     admin1Features,
     appliedFallbacks,
-    bbox,
     width,
     height,
+    sky,
   ]);
 
   return (
     <>
       <svg
-        ref={ref}
+        ref={(node) => {
+          ref.current = node;
+          sizeRef(node);
+        }}
         id="amplitude-map-chart"
-        className="seasonality-chart map-bleed"
+        className="story-figure"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
         aria-label="Map of Africa with every country colored by observed or spatially estimated seasonal mortality amplitude, with measured Admin-1 regions colored by their own finer amplitude"

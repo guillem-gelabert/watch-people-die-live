@@ -277,6 +277,12 @@ export function proxyHarmony(idx: number, n: number, sky: Rgb): string[] {
   return harmony(n, sky, true, anchor);
 }
 
+// What every proxy chart actually draws with: that proxy's own harmony, then the 3:1
+// legibility pass, because the figures are transparent and composite over the sky.
+export function proxyMarks(idx: number, n: number, sky: Rgb): string[] {
+  return marks(proxyHarmony(idx, n, sky), sky);
+}
+
 // --- legibility ----------------------------------------------------------------------
 
 export function contrastRatio(a: number, b: number): number {
@@ -382,8 +388,15 @@ export function skinToCssVars(sky: Rgb, skin: Skin): Record<string, string> {
     "--todo": skin.mute,
     "--blue": mapColor("#2f4bff", skin),
     "--done": mapColor("#2f4bff", skin),
+    // The chat sits on its own card, a touch lighter than the section's paper — its own mix
+    // rather than a reused token, because the design pitches it between paper and tile.
+    "--chat": rgbCss(mixRgb(sky, WHITE, skin.dark ? 0.14 : 0.86)),
+    "--chat-ink": skin.dark ? skin.body : "#2b2531",
+    // The question keeps its blue almost undiluted — it is the one thing on the page quoting
+    // an interface rather than belonging to the section.
+    "--chat-bubble": rgbCss(mixRgb(sky, [47, 75, 255], 0.92)),
     "--red": mapColor("#ff3b30", skin),
-    "--accent": mapColor("#ff3b30", skin),
+    "--accent": mapColor("#2f4bff", skin),
   };
 }
 

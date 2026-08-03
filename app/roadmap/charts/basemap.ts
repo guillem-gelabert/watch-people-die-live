@@ -1,31 +1,6 @@
-import { useSyncExternalStore } from "react";
 import * as d3 from "d3";
 
 export const GRAY_EARTH_URL = "/maps/gray-earth.jpg";
-
-// Matches roadmap.css's own mobile breakpoint (`@media (width <= 680px)`) — lets a map
-// component switch to a squarer, more zoomed-in viewBox/bbox on small screens instead of
-// rendering the same wide desktop crop shrunk down.
-const MOBILE_BREAKPOINT = "(max-width: 680px)";
-
-function subscribeToBreakpoint(onChange: () => void) {
-  const mql = window.matchMedia(MOBILE_BREAKPOINT);
-  mql.addEventListener("change", onChange);
-  return () => mql.removeEventListener("change", onChange);
-}
-
-function readIsMobile() {
-  return window.matchMedia(MOBILE_BREAKPOINT).matches;
-}
-
-// SSR default: assume desktop until the client measures the real viewport.
-function readIsMobileServer() {
-  return false;
-}
-
-export function useIsMobileMap(): boolean {
-  return useSyncExternalStore(subscribeToBreakpoint, readIsMobile, readIsMobileServer);
-}
 
 let imagePromise: Promise<HTMLImageElement> | null = null;
 
@@ -51,6 +26,19 @@ export function fitRegionProjection(
   height: number,
   padding = 6,
 ): d3.GeoProjection {
+  return fitProjection(d3.geoEquirectangular(), bbox, width, height, padding);
+}
+
+// The same bbox fit for any projection, so a figure can pick the one that suits its region — a
+// conic equal-area for a continent read north-to-south, azimuthal for a country, plate carrée
+// for a raster crop — instead of stretching everything onto one.
+export function fitProjection(
+  projection: d3.GeoProjection,
+  bbox: Bbox,
+  width: number,
+  height: number,
+  padding = 6,
+): d3.GeoProjection {
   const [[lon0, lat0], [lon1, lat1]] = bbox;
   const roi: GeoJSON.Polygon = {
     type: "Polygon",
@@ -64,7 +52,7 @@ export function fitRegionProjection(
       ],
     ],
   };
-  return d3.geoEquirectangular().fitExtent(
+  return projection.fitExtent(
     [
       [padding, padding],
       [width - padding, height - padding],

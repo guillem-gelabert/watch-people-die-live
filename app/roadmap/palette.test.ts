@@ -7,6 +7,7 @@ import {
   marks,
   parseColor,
   parseSky,
+  proxyMarks,
   relativeLuminance,
   schemes,
   skinFromSky,
@@ -180,6 +181,40 @@ describe("marks", () => {
     const sky = parseSky("#eeb87d");
     const cols = schemes(sky, true).triadic;
     expect(marks(cols, sky)).toEqual(marks(cols, sky));
+  });
+});
+
+describe("proxyMarks", () => {
+  // Every proxy chart draws in its own proxy's colour, anchored away from the section hue.
+  // Those anchors are vivid by construction, so they are exactly the colours most likely to
+  // miss 3:1 — check all five against all ten skies rather than trusting contrastFix.
+  it("keeps every proxy's series legible on every section sky", () => {
+    for (const hex of SKIES) {
+      const sky = parseSky(hex);
+      const skyL = relativeLuminance(sky);
+      for (let idx = 0; idx < 5; idx += 1) {
+        for (const n of [2, 3, 4]) {
+          for (const col of proxyMarks(idx, n, sky)) {
+            expect(
+              contrastRatio(lumOf(col), skyL),
+              `proxy ${idx} n=${n} on ${hex}: ${col}`,
+            ).toBeGreaterThanOrEqual(3);
+          }
+        }
+      }
+    }
+  });
+
+  it("gives the five proxies five distinct identities on one sky", () => {
+    const sky = parseSky("#bcd8ee");
+    const firsts = [0, 1, 2, 3, 4].map((i) => proxyMarks(i, 2, sky)[0]);
+    expect(new Set(firsts).size).toBe(5);
+  });
+
+  it("keys colour to the proxy index, not to call order", () => {
+    const sky = parseSky("#bcd8ee");
+    expect(proxyMarks(3, 2, sky)).toEqual(proxyMarks(3, 2, sky));
+    expect(proxyMarks(3, 2, sky)).not.toEqual(proxyMarks(1, 2, sky));
   });
 });
 

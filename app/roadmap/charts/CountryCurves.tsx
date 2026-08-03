@@ -8,11 +8,16 @@ import {
   curveColors,
   KG_FAMILY_KEYS,
   MAX_COMPARE_COUNTRIES,
-  styleAxis,
 } from "../chartHelpers";
+import { CURVE_Y_DOMAIN, MARGINS } from "./chartFrame";
+import { figureHeight, useFigureWidth } from "./useFigureSize";
 import { useSkin } from "../SkinContext";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, SeasonalityData, SeasonalityProxies } from "../types";
+
+// Wide and shallow: twelve months across, a narrow band of deviation vertically. Bounded so a
+// wider column lengthens the year rather than inflating the labels.
+const SHAPE = { aspect: 0.636, min: 210, max: 290 };
 
 interface Series {
   id: number;
@@ -72,6 +77,8 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
   const { sky } = useSkin();
   const palette = useMemo(() => curveColors(sky, MAX_COMPARE_COUNTRIES), [sky]);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
+  const HEIGHT = figureHeight(WIDTH, SHAPE);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [selectedIds, setSelectedIds] = useState<number[]>([SWITZERLAND_ID]);
@@ -261,11 +268,9 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const width = 700;
-    const height = 280;
-    const margin = { top: 16, right: 18, bottom: 38, left: 48 };
-    const innerW = width - margin.left - margin.right;
-    const innerH = height - margin.top - margin.bottom;
+    const m = MARGINS.curve;
+    const innerW = WIDTH - m.left - m.right;
+    const innerH = HEIGHT - m.top - m.bottom;
     const series: Series[] = selectedIds
       .map((id): Series | null => {
         const curve = seasonality.countries[String(id)];
@@ -273,7 +278,7 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
         const color = slot === undefined ? undefined : palette[slot % palette.length];
         if (!curve || !color) return null;
         const shift = (signedLatById.get(id) ?? 0) < 0 ? 6 : 0;
-        const aligned = shift ? curve.map((_, m) => curve[(m + shift) % curve.length]!) : curve;
+        const aligned = shift ? curve.map((_, mo) => curve[(mo + shift) % curve.length]!) : curve;
         return { id, name: resolveName(id), color, curve: aligned, shift };
       })
       .filter((d): d is Series => d !== null);
@@ -284,31 +289,39 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
     const fmtFactor = d3.format(".2f");
 
     const x = d3.scalePoint().domain(MONTHS).range([0, innerW]).padding(0.35);
-    const y = d3
-      .scaleLinear()
-      .domain(d3.extent(series.flatMap((d) => d.curve)) as [number, number])
-      .nice()
-      .range([innerH, 0]);
+    // A fixed y-domain rather than one fitted to the selection: adding a flatter country must not
+    // rescale the ones already on screen, or the reader loses the comparison they were making.
+    const y = d3.scaleLinear().domain(CURVE_Y_DOMAIN).range([innerH, 0]);
     const line = d3
       .line<number>()
       .x((_, i) => x(MONTHS[i]!) ?? 0)
       .y((d) => y(d))
       .curve(d3.curveMonotoneX);
-    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`);
 
+    // The annual mean is the only rule on the chart: every curve is a deviation from its own
+    // average, so the one line worth drawing is the average itself.
     g.append("line")
-      .attr("class", "chart-gridline")
+      .attr("class", "chart-axis")
       .attr("x1", 0)
       .attr("x2", innerW)
       .attr("y1", y(1))
       .attr("y2", y(1));
+    g.append("text")
+      .attr("class", "chart-tick")
+      .attr("x", innerW + 5)
+      .attr("y", y(1) + 3.4)
+      .text("×1");
+
     g.selectAll("path.country-curve")
       .data(series, (d) => (d as Series).id)
       .join("path")
       .attr("class", "country-curve")
       .attr("fill", "none")
       .attr("stroke", (d) => d.color)
-      .attr("stroke-width", 2.2)
+      .attr("stroke-width", 2)
+      .attr("stroke-linejoin", "round")
+      .attr("stroke-linecap", "round")
       .attr("d", (d) => line(d.curve))
       .style("cursor", "pointer")
       .on("pointermove", (event, d) => {
@@ -332,29 +345,54 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
         );
       })
       .on("pointerleave", hideTooltip);
-    g.append("g")
-      .attr("transform", `translate(0,${innerH})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0))
-      .call(styleAxis);
-    g.append("g")
-      .call(
-        d3
-          .axisLeft(y)
-          .ticks(5)
-          .tickFormat((d) => fmtFactor(Number(d))),
-      )
-      .call(styleAxis);
+
+    // A dot at each end of every curve: with a dozen lines crossing, the ends are what let the eye
+    // pick one out and follow it.
+    for (const s of series) {
+      for (const i of [0, MONTHS.length - 1]) {
+        g.append("circle")
+          .attr("cx", x(MONTHS[i]!) ?? 0)
+          .attr("cy", y(s.curve[i]!))
+          .attr("r", 2.6)
+          .attr("fill", s.color);
+      }
+    }
+
+    // Every third month only: twelve labels do not fit across a phone, and the quarters are enough
+    // to orient a seasonal curve.
+    MONTHS.forEach((month, i) => {
+      if (i % 3 !== 0) return;
+      g.append("text")
+        .attr("class", "chart-tick")
+        .attr("x", x(month) ?? 0)
+        .attr("y", innerH + 14)
+        .attr("text-anchor", "middle")
+        .text(month);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seasonality, selectedIds, colorById, nameById, signedLatById, palette]);
+  }, [seasonality, selectedIds, colorById, nameById, signedLatById, palette, WIDTH, HEIGHT]);
 
   return (
     <section className="chart-panel wide">
-      <h4 className="chart-title">A Cluster Of Similar Curves</h4>
+      {selectedIds.length === 0 ? (
+        <p className="chart-copy">Add a country or category above to see its seasonal curve.</p>
+      ) : (
+        <svg
+          ref={(node) => {
+            svgRef.current = node;
+            sizeRef(node);
+          }}
+          id="country-curves-chart"
+          className="story-figure"
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          role="img"
+          aria-label={`Line chart comparing the seasonal mortality curves of ${selectedNames.join(", ")}`}
+        />
+      )}
 
+      {/* No panel title: the section heading in the prose already names this figure, and the
+          design carries it there rather than repeating it inside the panel. */}
       <div className="cc-combobox">
-        <label className="cc-label" htmlFor="country-compare-input">
-          Compare countries
-        </label>
         <input
           ref={inputRef}
           id="country-compare-input"
@@ -416,11 +454,11 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
 
       <div className="cc-chips" aria-label="Selected countries">
         {selectedIds.map((id, i) => (
-          <span className="cc-chip" key={id}>
-            <span
-              className="swatch"
-              style={{ color: palette[(colorById.get(id) ?? 0) % palette.length] }}
-            />
+          <span
+            className="cc-chip"
+            key={id}
+            style={{ background: palette[(colorById.get(id) ?? 0) % palette.length] }}
+          >
             {selectedNames[i]}
             <button
               type="button"
@@ -440,19 +478,6 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
       </div>
 
       {status && <p className="cc-status">{status}</p>}
-
-      {selectedIds.length === 0 ? (
-        <p className="chart-copy">Add a country or category above to see its seasonal curve.</p>
-      ) : (
-        <svg
-          ref={svgRef}
-          id="country-curves-chart"
-          className="seasonality-chart"
-          viewBox="0 0 700 280"
-          role="img"
-          aria-label={`Line chart comparing the seasonal mortality curves of ${selectedNames.join(", ")}`}
-        />
-      )}
     </section>
   );
 }

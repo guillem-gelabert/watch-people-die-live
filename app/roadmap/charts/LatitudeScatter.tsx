@@ -1,10 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
-import { fmtPlainPct, pearson, strength, styleAxis } from "../chartHelpers";
+import { fmtPlainPct, pearson, strength } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
-import LayerToggle from "./LayerToggle";
+import SeriesChips from "./SeriesChips";
+import {
+  MARGINS,
+  PROXY,
+  appendAxisTitle,
+  appendBaseline,
+  niceMaxPercent,
+  percentGridValues,
+} from "./chartFrame";
+import { figureHeight, useFigureWidth } from "./useFigureSize";
+import { useSkin } from "../SkinContext";
+import { proxyMarks } from "../palette";
 import partidoLatitudeData from "../../../data/argentina-partido-latitudes.json";
 import type {
   Admin1Feature,
@@ -33,13 +44,24 @@ interface LatitudeScatterProps {
   admin1Features: Admin1Feature[] | null;
 }
 
-const ACCENT = "#ff6b6b";
+// Aspect and bounds rather than a fixed size: the column is fluid, and a scatter that scaled would
+// print its 9.5px labels at whatever the column happened to be.
+const SHAPE = { aspect: 0.75, min: 250, max: 340 };
+// The axis is fixed to the whole inhabited range rather than to the data, so the shape of the
+// cloud is the finding — not an artefact of where this year's extremes happened to fall.
+const X_MAX = 70;
+// The two lines latitude actually draws on the planet, to the minute: the tropic and the polar
+// circle are where the seasons themselves change character.
+const GUIDES = [
+  { lat: 23.44, label: "Tropic" },
+  { lat: 66.56, label: "Polar Circle" },
+];
+
 const partidoLatitudes = partidoLatitudeData.latitudes as Record<string, number>;
 
-// Latitude vs. seasonal amplitude, country-level and region-level points in one scatter —
-// countries as solid dots, regions as hollow dots. The region dots make visible what a
-// country-only view hides: inside Russia and the US, higher-latitude regions are *less*
-// seasonal, not more, while Argentina keeps the cross-country sign.
+// Latitude against seasonal amplitude, countries and measured regions in one frame. The region
+// layer is what makes it worth plotting: inside Russia and the US the higher-latitude regions are
+// *less* seasonal, not more, so the neat cross-country slope hides a contradiction.
 export default function LatitudeScatter({
   unified,
   features,
@@ -47,9 +69,17 @@ export default function LatitudeScatter({
   admin1Features,
 }: LatitudeScatterProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const legendRef = useRef<HTMLDivElement | null>(null);
+  const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
+  const HEIGHT = figureHeight(WIDTH, SHAPE);
+  const { sky, skin } = useSkin();
   const [showCountries, setShowCountries] = useState(true);
   const [showRegions, setShowRegions] = useState(true);
+
+  // Two series, in this proxy's own colour: latitude is proxy 3, and every figure that argues
+  // about latitude wears the same hue.
+  const cols = useMemo(() => proxyMarks(PROXY.latitude, 2, sky), [sky]);
+  const countryColor = cols[0] as string;
+  const regionColor = cols[1] as string;
 
   useEffect(() => {
     if (!unified || !features || !svgRef.current) return;
@@ -86,87 +116,69 @@ export default function LatitudeScatter({
       })
       .filter((r): r is RegionRow => r !== null);
 
-    const width = 420;
-    const height = 260;
-    const margin = { top: 16, right: 18, bottom: 42, left: 52 };
-    const innerW = width - margin.left - margin.right;
-    const innerH = height - margin.top - margin.bottom;
-    const maxAbsLat = Math.max(
-      d3.max(countryRows, (d) => d.absLat) || 70,
-      d3.max(regionRows, (d) => d.absLat) || 70,
+    const m = MARGINS.latitude;
+    const innerW = WIDTH - m.left - m.right;
+    const innerH = HEIGHT - m.top - m.bottom;
+    // Amplitude reads as a percentage swing around the annual mean.
+    const pct = (amplitude: number) => amplitude * 100;
+    const yMax = niceMaxPercent(
+      Math.max(
+        d3.max(countryRows, (d) => pct(d.amplitude)) ?? 10,
+        showRegions ? (d3.max(regionRows, (d) => pct(d.amplitude)) ?? 10) : 10,
+      ),
     );
-    const x = d3
-      .scaleLinear()
-      .domain([0, Math.max(70, maxAbsLat)])
-      .range([0, innerW]);
-    const y = d3
-      .scaleLinear()
-      .domain([
-        0,
-        Math.max(
-          0.18,
-          d3.max(countryRows, (d) => d.amplitude) || 0.18,
-          d3.max(regionRows, (d) => d.amplitude) || 0.18,
-        ),
-      ])
-      .nice()
-      .range([innerH, 0]);
-    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    const x = d3.scaleLinear().domain([0, X_MAX]).range([0, innerW]);
+    const y = d3.scaleLinear().domain([0, yMax]).range([innerH, 0]);
+    const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`);
 
-    const boundaries = [
-      { lat: 23.5, label: "Tropic" },
-      { lat: 66.5, label: "Polar Circle" },
-    ];
-    boundaries.forEach((b) => {
-      if (b.lat > (x.domain() as [number, number])[1]) return;
+    // Horizontal guides only, at whole percentage points, with their labels in the left margin.
+    for (const v of percentGridValues(yMax)) {
+      g.append("line")
+        .attr("class", "chart-gridline")
+        .attr("x1", 0)
+        .attr("x2", innerW)
+        .attr("y1", y(v))
+        .attr("y2", y(v))
+        .attr("opacity", 0.35);
+      g.append("text")
+        .attr("class", "chart-tick")
+        .attr("x", -6)
+        .attr("y", y(v) + 3)
+        .attr("text-anchor", "end")
+        .text(`${v}%`);
+    }
+
+    // The two climate boundaries, captioned above the plot where they cannot collide with data.
+    for (const guide of GUIDES) {
+      const px = x(guide.lat);
       g.append("line")
         .attr("class", "climate-band-boundary")
-        .attr("x1", x(b.lat))
-        .attr("x2", x(b.lat))
+        .attr("x1", px)
+        .attr("x2", px)
         .attr("y1", 0)
         .attr("y2", innerH);
       g.append("text")
         .attr("class", "chart-label")
-        .attr("x", x(b.lat))
-        .attr("y", -4)
-        .attr("text-anchor", "middle")
-        .attr("font-size", "9px")
-        .text(b.label);
-    });
-
-    if (showCountries) {
-      g.selectAll("circle.country-pt")
-        .data(countryRows)
-        .join("circle")
-        .attr("class", "country-pt chart-point")
-        .attr("cx", (d) => x(d.absLat))
-        .attr("cy", (d) => y(d.amplitude))
-        .attr("r", 3.2)
-        .style("cursor", "pointer")
-        .on("pointermove", (event, d) =>
-          showTooltip(
-            `${d.name}: ${d.absLat.toFixed(1)}° lat, ${fmtPlainPct(d.amplitude)}`,
-            event.clientX,
-            event.clientY,
-          ),
-        )
-        .on("pointerleave", hideTooltip);
+        .attr("x", guide.lat > 60 ? px - 2 : px)
+        .attr("y", -9)
+        .attr("text-anchor", guide.lat > 60 ? "end" : "middle")
+        .text(guide.label);
     }
 
-    // Regions drawn on top as hollow rings, matching the hollow-dot weight used across the other
-    // seasonality scatters (r 3, stroke-width 0.8) so the two charts read as one family.
+    // Regions behind, as rings: there are four times as many of them, and filled dots that
+    // numerous would bury the country layer they are supposed to be compared against.
     if (showRegions) {
       g.selectAll("circle.region-pt")
         .data(regionRows)
         .join("circle")
         .attr("class", "region-pt")
-        .attr("cx", (d) => x(d.absLat))
-        .attr("cy", (d) => y(d.amplitude))
-        .attr("r", 3)
+        .attr("cx", (d) => x(Math.min(X_MAX, d.absLat)))
+        .attr("cy", (d) => y(pct(d.amplitude)))
+        .attr("r", 3.1)
         .attr("fill", "none")
-        .attr("stroke", ACCENT)
-        .attr("stroke-width", 0.8)
-        .attr("opacity", 0.7)
+        .attr("stroke", regionColor)
+        .attr("stroke-width", 1.2)
+        .attr("opacity", 0.6)
         .style("cursor", "pointer")
         .on("pointermove", (event, d) =>
           showTooltip(
@@ -178,6 +190,27 @@ export default function LatitudeScatter({
         .on("pointerleave", hideTooltip);
     }
 
+    if (showCountries) {
+      g.selectAll("circle.country-pt")
+        .data(countryRows)
+        .join("circle")
+        .attr("class", "country-pt")
+        .attr("cx", (d) => x(Math.min(X_MAX, d.absLat)))
+        .attr("cy", (d) => y(pct(d.amplitude)))
+        .attr("r", 3.1)
+        .attr("fill", countryColor)
+        .style("cursor", "pointer")
+        .on("pointermove", (event, d) =>
+          showTooltip(
+            `${d.name}: ${d.absLat.toFixed(1)}° lat, ${fmtPlainPct(d.amplitude)}`,
+            event.clientX,
+            event.clientY,
+          ),
+        )
+        .on("pointerleave", hideTooltip);
+    }
+
+    // Fit quality for whichever layers are on, sitting above the plot in the top-left corner.
     const r2 = (r: number | null) => (r != null ? (r * r).toFixed(2) : "—");
     const rCountry = pearson(
       countryRows.map((d) => d.absLat),
@@ -193,67 +226,58 @@ export default function LatitudeScatter({
     if (showCountries) noteParts.push(`countries R² = ${r2(rCountry)}`);
     if (showRegions && rRegion != null) noteParts.push(`regions R² = ${r2(rRegion)}`);
     if (noteParts.length) {
-      g.append("text")
+      svg
+        .append("text")
         .attr("class", "chart-note")
-        .attr("x", 0)
-        .attr("y", 10)
+        .attr("x", m.left + 2)
+        .attr("y", 13)
         .text(noteParts.join("  ·  "));
     }
 
-    g.append("g")
-      .attr("transform", `translate(0,${innerH})`)
-      .call(
-        d3
-          .axisBottom(x)
-          .ticks(5)
-          .tickFormat((d) => `${d}°`),
-      )
-      .call(styleAxis);
-    g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat(fmtPlainPct)).call(styleAxis);
-    g.append("text")
-      .attr("class", "chart-label")
-      .attr("x", innerW / 2)
-      .attr("y", innerH + 36)
-      .attr("text-anchor", "middle")
-      .text("absolute latitude");
-
-    const legend = d3.select(legendRef.current);
-    legend.selectAll("span").remove();
-    if (showCountries) {
-      legend
-        .append("span")
-        .html(`<span class="swatch-dot" style="background:${ACCENT}"></span>each country`);
+    // A baseline and nothing else: the gridlines already carry the vertical scale.
+    appendBaseline(g, 0, innerW, innerH);
+    for (let v = 0; v <= X_MAX; v += 10) {
+      g.append("text")
+        .attr("class", "chart-tick")
+        .attr("x", x(v))
+        .attr("y", innerH + 14)
+        .attr("text-anchor", "middle")
+        .text(`${v}°`);
     }
-    if (showRegions) {
-      legend
-        .append("span")
-        .html(
-          `<span class="swatch-dot" style="background:none;border:1.5px solid ${ACCENT}"></span>each region`,
-        );
-    }
-  }, [unified, features, regions, admin1Features, showCountries, showRegions]);
+    appendAxisTitle(g, { x: innerW / 2, y: innerH + 30, text: "absolute latitude" });
+  }, [
+    unified,
+    features,
+    regions,
+    admin1Features,
+    showCountries,
+    showRegions,
+    countryColor,
+    regionColor,
+    skin,
+    WIDTH,
+    HEIGHT,
+  ]);
 
   return (
     <>
-      <LayerToggle
-        showCountries={showCountries}
-        showRegions={showRegions}
-        onShowCountries={setShowCountries}
-        onShowRegions={setShowRegions}
+      <SeriesChips
+        series={[
+          { key: "countries", label: "each country", color: countryColor, on: showCountries },
+          { key: "regions", label: "each region", color: regionColor, on: showRegions },
+        ]}
+        onToggle={(key, on) => (key === "countries" ? setShowCountries(on) : setShowRegions(on))}
       />
       <svg
-        ref={svgRef}
+        ref={(node) => {
+          svgRef.current = node;
+          sizeRef(node);
+        }}
         id="latitude-scatter-chart"
-        className="seasonality-chart"
-        viewBox="0 0 420 260"
+        className="story-figure"
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
-        aria-label="Scatter plot of absolute latitude against seasonal mortality amplitude, with each country as a solid dot and each measured region as a hollow dot"
-      />
-      <div
-        className="chart-legend"
-        ref={legendRef}
-        id="latitude-scatter-legend"
-        aria-hidden="true"
+        aria-label="Scatter plot of absolute latitude against seasonal mortality amplitude, with each country as a filled dot and each measured region as a ring"
       />
     </>
   );
