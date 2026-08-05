@@ -10,7 +10,9 @@ import type { CountryFeature, DensityGrid, NeighborsByM49 } from "../types";
 // same height. Equirectangular maps lon/lat linearly, so cell squareness now depends on
 // the roi's aspect ratio matching the panel's — a mismatch stretches cells uniformly.
 const NOMINAL_W = 600;
-const PANEL_AR = 1.5; // width / height (3:2)
+// Square, as in the design. `fitExtent` scales uniformly, so a region wider than it is tall is
+// letterboxed against the plate rather than stretched — the cells stay square either way.
+const PANEL_AR = 1; // width / height
 const NOMINAL_H = Math.round(NOMINAL_W / PANEL_AR);
 
 type Bbox = [[number, number], [number, number]];

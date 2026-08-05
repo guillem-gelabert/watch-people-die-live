@@ -263,8 +263,8 @@ export default function LatitudeScatter({
     <>
       <SeriesChips
         series={[
-          { key: "countries", label: "each country", color: countryColor, on: showCountries },
-          { key: "regions", label: "each region", color: regionColor, on: showRegions },
+          { key: "countries", label: "Countries", color: countryColor, on: showCountries },
+          { key: "regions", label: "Regions", color: regionColor, on: showRegions },
         ]}
         onToggle={(key, on) => (key === "countries" ? setShowCountries(on) : setShowRegions(on))}
       />

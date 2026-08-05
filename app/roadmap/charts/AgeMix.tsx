@@ -18,6 +18,8 @@ const TAIL = "Everything else";
 
 const LEFT = 46;
 const RIGHT = 14;
+// Room for the "18%" printed past the end of a bar.
+const VALUE_GUTTER = 26;
 const TOP = 34;
 const BOTTOM = 26;
 const ROW_HEIGHT = 26;
@@ -120,7 +122,9 @@ export default function AgeMix() {
   }
 
   const height = TOP + model.bands.length * ROW_HEIGHT + BOTTOM;
-  const plot = WIDTH - LEFT - RIGHT;
+  // The share sits at the end of its own bar, so the widest bar has to stop short of the edge by
+  // enough to print it — otherwise the largest band is the one whose number gets clipped.
+  const plot = WIDTH - LEFT - RIGHT - VALUE_GUTTER;
   // The widest band sets the scale, so the tallest bar fills the panel rather than the figure
   // being mostly the empty right-hand side of a 0–100% axis.
   const widest = Math.max(...model.bands.map((b) => b.share)) || 1;
@@ -177,7 +181,7 @@ export default function AgeMix() {
                 x += w;
                 return segment;
               })}
-              <text className="chart-label" x={LEFT + full + 5} y={y + ROW_HEIGHT / 2 + 3}>
+              <text className="chart-value" x={LEFT + full + 5} y={y + ROW_HEIGHT / 2 + 3}>
                 {(band.share * 100).toFixed(0)}%
               </text>
             </g>

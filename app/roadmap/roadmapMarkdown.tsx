@@ -190,15 +190,22 @@ function renderLines(
       continue;
     }
 
-    // Block math: a `$$` line opens (optionally followed by a caption title on the same
-    // line), a lone `$$` line closes, KaTeX renders what's between.
+    // Block math: a `$$` line opens (optionally followed by a caption title on the same line),
+    // a `$$` line closes and may carry the caption that reads under the formula, KaTeX renders
+    // what's between. Both labels ride on the fence lines so the TeX itself stays untouched.
     const mathOpen = /^\$\$\s*(.*)$/.exec(trimmed);
     if (mathOpen) {
       flushParagraph();
       flushList();
       const title = mathOpen[1]?.trim();
       const mathLines: string[] = [];
-      while (index + 1 < lines.length && (lines[index + 1] ?? "").trim() !== "$$") {
+      let caption: string | undefined;
+      while (index + 1 < lines.length) {
+        const close = /^\$\$\s*(.*)$/.exec((lines[index + 1] ?? "").trim());
+        if (close) {
+          caption = close[1]?.trim() || undefined;
+          break;
+        }
         index += 1;
         mathLines.push(lines[index] ?? "");
       }
@@ -208,6 +215,7 @@ function renderLines(
           key={"math-" + output.length}
           tex={mathLines.join("\n").trim()}
           title={title || undefined}
+          {...(caption ? { caption: inline(caption) } : {})}
           display
         />,
       );

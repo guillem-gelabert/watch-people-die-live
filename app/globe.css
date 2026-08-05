@@ -127,7 +127,9 @@ body {
   flex: none;
   width: 6px;
   height: 6px;
-  background: var(--accent);
+
+  /* The live-recording red of a system notification, not a story accent. */
+  background: #ff3b30;
   border-radius: 50%;
   transition: opacity 0.25s ease;
 }
@@ -138,9 +140,10 @@ body {
 
 #island-text {
   overflow: hidden;
-  font:
-    500 12px/1 var(--font-public-sans),
-    sans-serif;
+  color: rgb(255 255 255 / 92%);
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -169,30 +172,30 @@ body {
   margin: 0;
 }
 
+/* The island is quoting a system notification, so it wears the platform's own UI font — the stack
+   `body` already carries — rather than the story's typefaces, and stays in sentence case. */
 #island-eyebrow {
   display: flex;
   gap: 7px;
   align-items: center;
-  font:
-    700 9.5px/1 var(--font-public-sans),
-    sans-serif;
-  color: rgb(255 255 255 / 62%);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
+  color: rgb(255 255 255 / 50%);
+  font-weight: 600;
+  font-size: 11px;
+  line-height: 1;
 }
 
 #island-big {
-  font:
-    400 26px/1.05 var(--font-bebas-neue),
-    Impact,
-    sans-serif;
+  font-weight: 500;
+  font-size: 21px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 #island-where {
-  font:
-    400 12.5px/1.45 var(--font-public-sans),
-    sans-serif;
-  color: rgb(255 255 255 / 70%);
+  color: rgb(255 255 255 / 50%);
+  font-weight: 500;
+  font-size: 12.5px;
+  line-height: 1.5;
 }
 
 #island-actions {
@@ -203,15 +206,26 @@ body {
 
 #island-actions button {
   flex: 1;
-  height: 34px;
-  font:
-    600 12px/1 var(--font-public-sans),
-    sans-serif;
-  color: #fff;
+  padding: 11px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 12.5px;
+  line-height: 1;
   cursor: pointer;
-  background: rgb(255 255 255 / 14%);
-  border: 0;
   border-radius: 10px;
+}
+
+/* Pause is the reversible one and sits back; Close ends the card and takes the solid fill. */
+#island-actions button:first-child {
+  color: #fff;
+  background: rgb(255 255 255 / 7%);
+  border: 1px solid rgb(255 255 255 / 16%);
+}
+
+#island-actions button:last-child {
+  color: #000;
+  background: #fff;
+  border: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

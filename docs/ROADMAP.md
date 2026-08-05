@@ -33,13 +33,13 @@ That 27% figure, and every block in the chart further down, comes straight out o
 
 $$ Per-second rate
 \lambda_{\text{second}} = \dfrac{61{,}600{,}000}{365.25 \times 24 \times 60 \times 60} \approx 1.95
-$$
+$$ An annual average of roughly 61.6 million deaths.
 
 $$ Poisson probability mass function
 P(X = k) = \dfrac{e^{-\lambda_{\text{second}}}\lambda_{\text{second}}^k}{k!}
-$$
+$$ Run it for each _k_ to get the share of seconds holding _k_ deaths; five or more are grouped into one last block.
 
-_e_ and _k_! aren't arbitrary — each falls out of picturing what's actually happening underneath the second. Slice that second into an enormous number of tiny instants, each with its own tiny, independent chance of holding a death. _e_^-λ is what "none of those instants got a death" collapses to once you compound that tiny miss-chance across all of them — literally the same limiting process that defines Euler's number in the first place. The λ^_k_ half counts the _k_ instants that did land a death, one factor of the rate per hit; dividing by _k_! then erases the ordering, since we only care that _k_ deaths happened somewhere in the second, not which _k_ of the countless instants they fell on. Run it for each _k_ to get the share of seconds holding _k_ deaths; five or more are grouped into one last block.
+_e_ and _k_! aren't arbitrary — each falls out of picturing what's actually happening underneath the second. Slice that second into an enormous number of tiny instants, each with its own tiny, independent chance of holding a death. _e_^-λ is what "none of those instants got a death" collapses to once you compound that tiny miss-chance across all of them — literally the same limiting process that defines Euler's number in the first place. The λ^_k_ half counts the _k_ instants that did land a death, one factor of the rate per hit; dividing by _k_! then erases the ordering, since we only care that _k_ deaths happened somewhere in the second, not which _k_ of the countless instants they fell on.
 
 :::
 
@@ -147,11 +147,15 @@ More of the same. There's no visible correlation between how rich a country is a
 
 How about neighbouring countries? That's better. There's a strong correlation here. Bordering-neighbour adjacency is the strongest proxy — the lowest median error, the highest correlation, and the only one with positive skill against both the mean-curve floor and latitude. Latitude and climate class land close together just behind, with climate edging latitude on the typical country.
 
-## How the proxies actually score
+:::accordion
+
+## How the proxies actually score · Leave-one-out scores for all five proxies
 
 Those are claims about error and skill, so here they are measured. Every country that does report a monthly curve is hidden in turn, predicted from each proxy in place of its own data, and scored against the curve we already had.
 
 [prediction comparison]
+
+:::
 
 ## Bordering regions, not just bordering countries
 
@@ -159,7 +163,13 @@ Adjacent regions inside the same country track each other even more tightly than
 
 [region neighbour scatter]
 
+:::accordion
+
+## The same test over regions · Median error across 297 Admin-1 regions
+
 [region prediction comparison]
+
+:::
 
 ## Amplitude by country and region
 
@@ -184,6 +194,8 @@ Both tables ship as JSON in the repository, so the feed needs no runtime API cal
 [sampling order]
 
 [deaths by age and cause]
+
+[what the clock got wrong]
 
 ### conflicts · A war is not a Poisson process [Conflicts] · #eeb87d
 
@@ -240,6 +252,8 @@ Then we do a weighted average using these weights. Which gives us 28.4.
 
 [map of conflict fatalities]
 
+[what the rate model assumes]
+
 ### still-missing · What is still missing [Still missing] · #cf7a68 · chapter-small
 
 :::chapter-sub
@@ -277,3 +291,4 @@ The globe is statistical, not a feed of individual records. A flash and its pers
 [pull up for the globe]
 
 :::
+$$

@@ -294,12 +294,24 @@ body {
   background: var(--ink);
 }
 
+/* Sentence case: these read as short labels above a formula ("Per-second rate"), not as the
+   micro-caps used for the ranking rails. Both label and caption keep fixed light greys rather
+   than palette tokens, because the tile they sit on is always `--ink`. */
 .roadmap-math-title {
   margin: 0 0 0.6rem;
   color: #9aa3af;
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font:
+    500 11.5px/1 var(--font-public-sans),
+    sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.roadmap-math-caption {
+  margin: 0.75rem 0 0;
+  color: rgb(255 255 255 / 72%);
+  font-size: 12.5px;
+  line-height: 1.55;
+  text-align: center;
 }
 
 .roadmap-math .katex {
@@ -307,32 +319,35 @@ body {
   color: #e8eaed;
 }
 
-/* GFM tables in roadmap copy (rendered by roadmapMarkdown). */
+/* GFM tables in roadmap copy (rendered by roadmapMarkdown).
+
+   Horizontal rules only, no card and no vertical borders — that is the design's treatment, and it
+   is also what lets the widest table (eight columns of daily fatalities) fit the 349px column
+   instead of forcing a sideways scroll. `overflow-x` stays as a safety net for wider content. */
 .roadmap-table-wrap {
   overflow-x: auto;
-  margin: 0 0 1.3rem;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--card);
+  margin: 16px 0 0;
 }
 
 .roadmap-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font:
+    400 12.5px/1.5 var(--font-libre-baskerville),
+    Georgia,
+    serif;
 }
 
 .roadmap-table th,
 .roadmap-table td {
-  padding: 0.55rem 0.8rem;
-  border: 1px solid var(--line);
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--rule);
   text-align: left;
 }
 
 .roadmap-table th {
   color: var(--ink);
-  font-weight: 700;
-  background: #fafafc;
+  font-weight: 600;
 }
 
 .roadmap-table td {
@@ -566,8 +581,8 @@ body {
 }
 
 .dart-tally-cell {
-  padding: 10px 11px 11px;
-  border-radius: 14px;
+  padding: 12px 10px 11px;
+  border-radius: 12px;
   background: var(--tile);
 }
 
@@ -611,21 +626,18 @@ body {
 
 /* The two beat strips in First light: one bar per death. The metronome holds every bar at its
    resting height; the Poisson strip lets each bar's height carry how long that gap was. Both sit
-   directly on the sky. The gap is wider than the design's 3px, so BARS in BeatStrip is lower to
-   match — the bars are flex:1 and would otherwise thin to slivers to pay for it. */
+   directly on the sky. Bar count and gap are the design's — 44 bars 3px apart — so a strip holds
+   a long enough run of beats for the uneven rhythm to be legible as a pattern. */
 .beat-strip {
   display: flex;
-  gap: 5px;
+  gap: 3px;
   align-items: flex-end;
   height: 38px;
 }
 
 .beat-bar {
   flex: 1;
-
-  /* Fully rounded rather than the design's 2px: a bar this narrow reads as a capsule, and the
-     rounded cap keeps the short Poisson bars from looking like clipped stubs. */
-  border-radius: 999px;
+  border-radius: 2px;
   transition:
     height 0.18s ease,
     background 0.18s ease;
@@ -709,6 +721,11 @@ body {
 
 .chart-panel.wide {
   grid-column: 1 / -1;
+}
+
+/* Inside a grid the gap already spaces the panels; their own top margin would double it. */
+.chart-grid > .chart-panel {
+  margin-top: 0;
 }
 
 /* Captions are centred under their figure and set in the display face, the way a plate is
@@ -1041,6 +1058,15 @@ body {
     sans-serif;
 }
 
+/* A number read off the mark it sits against, rather than a label naming one. */
+.chart-value {
+  fill: var(--muted);
+  font:
+    700 9.5px/1 var(--font-public-sans),
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
 .chart-note {
   fill: var(--mute);
   font-size: 9.5px;
@@ -1222,9 +1248,10 @@ body {
   stroke-opacity: 0.7;
 }
 
+/* A line now, not a rule: solid, because it is a measured series rather than an annotation. */
 .ewma-prediction {
-  stroke-width: 2;
-  stroke-dasharray: 6 3;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
 }
 
 .ewma-prediction-label {
@@ -1233,46 +1260,38 @@ body {
 
 .ewma-controls {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1.4rem;
-}
-
-.ewma-controls label {
-  display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  min-width: 200px;
-  color: var(--muted);
-  font-size: 0.76rem;
+  gap: 12px;
+  margin-top: 12px;
 }
 
-.ewma-widget .ewma-controls strong {
-  color: var(--ink);
-  font-weight: 700;
+/* Three presets, equal width, one of them always on. */
+.ewma-presets {
+  display: flex;
+  gap: 8px;
 }
 
-.ewma-controls input[type="range"] {
-  width: 100%;
-  accent-color: #f97316;
-}
-
-/* With the flat mean on, neither knob does anything — they are dimmed rather than removed so
-   the reader can see what the naive figure is ignoring. */
-.ewma-controls label[data-disabled="1"] {
-  opacity: 0.45;
-}
-
-.ewma-flat {
-  flex-direction: row !important;
-  min-width: 0 !important;
-  align-items: center;
-  gap: 0.45rem !important;
+.ewma-preset {
+  flex: 1;
+  padding: 10px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: none;
+  color: var(--mute);
+  font:
+    600 11.5px/1.3 var(--font-public-sans),
+    sans-serif;
   cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
-.ewma-flat input {
-  accent-color: #f97316;
+.ewma-preset[aria-pressed="true"] {
+  border-color: var(--data);
+  background: var(--tile);
+  color: var(--data);
 }
 
 .ewma-readout {
@@ -1282,7 +1301,7 @@ body {
 }
 
 .ewma-widget .ewma-readout strong {
-  color: #ea580c;
+  color: var(--data);
 }
 
 .ewma-readout-aside {
@@ -1592,6 +1611,7 @@ footer {
   letter-spacing: 0;
   text-align: center;
   text-transform: uppercase;
+  text-wrap: balance;
 }
 
 /* A three-letter chapter has to be set larger to fill the same column — 164px against 148px
@@ -1618,6 +1638,8 @@ footer {
   margin: 11px 0 0;
 }
 
+/* Balanced, like every heading in the design: a two-line heading reads as two even lines rather
+   than a full line and an orphan. The 26px in-flow subheadings are deliberately left greedy. */
 .story-heading {
   margin: 0;
   font-size: clamp(27px, 9.16vw, 40px);
@@ -1626,6 +1648,7 @@ footer {
   letter-spacing: 0;
   text-align: center;
   text-transform: uppercase;
+  text-wrap: balance;
 }
 
 /* The proxy correlation sections have their own rhythm in the design: 26px above the heading
@@ -1636,7 +1659,10 @@ footer {
   margin-top: 16px;
 }
 
-.story .story-section p {
+/* Prose only. Every figure caption, note and card body is a classed paragraph with its own
+   smaller size, and this rule outranked all of them until it was scoped: the markdown renderer
+   emits bare `<p>` for prose, so the absence of a class is what distinguishes the two. */
+.story .story-section p:where(:not([class])) {
   font-size: 15px;
   line-height: 1.68;
   text-wrap: pretty;
@@ -1868,8 +1894,9 @@ footer {
   margin-top: 3px;
   color: var(--mute);
   font:
-    400 12px/1.4 var(--font-public-sans),
-    sans-serif;
+    400 12px var(--font-libre-baskerville),
+    Georgia,
+    serif;
 }
 
 .accordion-icon {
@@ -1910,6 +1937,112 @@ footer {
   line-height: 1.65;
 }
 
+/* ---- Concept tiles: the three asides that close "Who" and the conflicts section ------------ */
+
+.concept-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.concept-tile {
+  display: flex;
+  min-height: 104px;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--tile);
+  transition:
+    min-height 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.3s ease;
+}
+
+/* An open tile takes the whole row and lets its own copy set the height; the two it displaces
+   shrink and step back so the row reads as one card being read, not three competing. */
+.concept-tile[data-open] {
+  min-height: 0;
+  grid-column: span 2;
+  background: var(--tile-open);
+}
+
+.concept-tiles[data-any-open] .concept-tile:not([data-open]) {
+  min-height: 78px;
+  background: var(--tile-muted);
+}
+
+.concept-tile-head {
+  position: relative;
+  flex: 1;
+  padding: 12px 13px 14px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.concept-tile-kind {
+  display: block;
+  color: var(--mute);
+  font:
+    600 11px/1 var(--font-public-sans),
+    sans-serif;
+}
+
+.concept-tile-title {
+  display: block;
+  margin-top: 7px;
+  color: var(--ink);
+  font:
+    400 19px/1.15 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  letter-spacing: 0;
+}
+
+.concept-tile-plus {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  color: var(--mute);
+  font:
+    600 14px/1 var(--font-public-sans),
+    sans-serif;
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.3s ease;
+}
+
+.concept-tile[data-open] .concept-tile-plus {
+  transform: rotate(45deg);
+  color: var(--ink);
+}
+
+/* Grid rows rather than the design's fixed max-height: the panel is then exactly as tall as its
+   own copy at any width, with nothing to clip and no number to keep in sync with the text. */
+.concept-tile-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.concept-tile[data-open] .concept-tile-body {
+  grid-template-rows: 1fr;
+}
+
+.concept-tile-clip {
+  overflow: hidden;
+}
+
+.story .concept-tile-copy {
+  margin: 0;
+  padding: 0 13px 14px;
+  color: var(--body);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
 /* The end of the story: pull up and the globe comes back. */
 .end-block {
   display: flex;
@@ -1929,11 +2062,13 @@ footer {
   line-height: 0.98;
 }
 
+/* Serif, like the rest of the story's prose — the closing lines are the last thing read, not UI.
+   Leaving the family to inherit is also what widens the 28ch measure to the design's ~290px,
+   since a Baskerville `ch` is wider than a Public Sans one. */
 .story .end-block p {
   max-width: 28ch;
   margin: 14px auto 0;
   color: rgb(255 255 255 / 62%);
-  font-family: var(--font-public-sans), sans-serif;
   font-size: 14.5px;
   line-height: 1.6;
 }
@@ -2150,7 +2285,7 @@ footer {
   opacity: 0.62;
 }
 
-.proxy-strip-title {
+.proxy-strip .proxy-strip-title {
   min-width: 0;
   flex: 1;
   margin: 0;
@@ -2235,7 +2370,10 @@ footer {
   height: 24px;
 }
 
-.proxy-strip-body {
+/* Both of these have to outrank `.story-section :is(h3, h4, h5)` and `:is(p, li)`, which would
+   otherwise paint them in the section's ink — dark type on a vivid fill. The strip sets its own
+   white inline, so all these need to do is inherit it. */
+.proxy-strip .proxy-strip-body {
   margin: 8px 0 0;
   font-size: 14.5px;
   line-height: 1.6;
