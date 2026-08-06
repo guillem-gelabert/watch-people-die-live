@@ -15,6 +15,14 @@ export function sunDirectionNow(out: Vector3): Vector3 {
   return out.copy(lonLatToVec3(lon, decl, 1)).normalize();
 }
 
+// Hermite ease on a 0..1 progress value. The story's scroll phase runs through this before
+// it drives anything visual, so the globe's exit starts and ends gently instead of snapping
+// into motion the instant the page moves.
+export function smoothstep(t: number): number {
+  const x = Math.min(1, Math.max(0, t));
+  return x * x * (3 - 2 * x);
+}
+
 // Exponential inter-arrival time for a Poisson process with the given mean.
 export function expGap(mean: number): number {
   return -Math.log(1 - Math.random()) * mean;

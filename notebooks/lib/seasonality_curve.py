@@ -13,9 +13,12 @@ if str(_ROOT) not in sys.path:
 
 from pipeline.curve import (  # noqa: E402,F401
     COVID_YEARS,
+    HARMONIC_ORDER,
+    MONTH_PHASES,
     country_curve,
     country_curve_records,
     cov_pct,
+    harmonic_design,
     rate_curve,
     rate_curve_records,
     winter_amp,

@@ -1,51 +1,31 @@
-import { useSyncExternalStore } from "react";
 import * as d3 from "d3";
-
-export const GRAY_EARTH_URL = "/maps/gray-earth.jpg";
-
-// Matches roadmap.css's own mobile breakpoint (`@media (width <= 680px)`) — lets a map
-// component switch to a squarer, more zoomed-in viewBox/bbox on small screens instead of
-// rendering the same wide desktop crop shrunk down.
-const MOBILE_BREAKPOINT = "(max-width: 680px)";
-
-function subscribeToBreakpoint(onChange: () => void) {
-  const mql = window.matchMedia(MOBILE_BREAKPOINT);
-  mql.addEventListener("change", onChange);
-  return () => mql.removeEventListener("change", onChange);
-}
-
-function readIsMobile() {
-  return window.matchMedia(MOBILE_BREAKPOINT).matches;
-}
-
-// SSR default: assume desktop until the client measures the real viewport.
-function readIsMobileServer() {
-  return false;
-}
-
-export function useIsMobileMap(): boolean {
-  return useSyncExternalStore(subscribeToBreakpoint, readIsMobile, readIsMobileServer);
-}
-
-let imagePromise: Promise<HTMLImageElement> | null = null;
-
-export function loadGrayEarth() {
-  imagePromise ??= new Promise((resolve, reject) => {
-    const image = new Image();
-    image.onload = () => resolve(image);
-    image.onerror = reject;
-    image.src = GRAY_EARTH_URL;
-  });
-  return imagePromise;
-}
 
 // [[west, south], [east, north]] in degrees.
 export type Bbox = [[number, number], [number, number]];
+
+// Every square map draws its graticule at this width, so the grid reads as one device across the
+// story rather than as a per-figure decision. The colour is the section's own background at full
+// opacity — `var(--sky)` for the SVG maps, the resolved sky for the canvas one — which makes the
+// graticule read as the page showing through the map instead of as ink drawn over it.
+export const GRATICULE_WIDTH = 2;
 
 // Every roadmap world map crops to one named region instead of the whole globe —
 // fits an equirectangular projection to a lon/lat bbox the same way BorderRasterCloseup
 // already fit its own closeups, via a rectangular region-of-interest polygon.
 export function fitRegionProjection(
+  bbox: Bbox,
+  width: number,
+  height: number,
+  padding = 6,
+): d3.GeoProjection {
+  return fitProjection(d3.geoEquirectangular(), bbox, width, height, padding);
+}
+
+// The same bbox fit for any projection, so a figure can pick the one that suits its region — a
+// conic equal-area for a continent read north-to-south, azimuthal for a country, plate carrée
+// for a raster crop — instead of stretching everything onto one.
+export function fitProjection(
+  projection: d3.GeoProjection,
   bbox: Bbox,
   width: number,
   height: number,
@@ -64,7 +44,7 @@ export function fitRegionProjection(
       ],
     ],
   };
-  return d3.geoEquirectangular().fitExtent(
+  return projection.fitExtent(
     [
       [padding, padding],
       [width - padding, height - padding],
@@ -84,37 +64,77 @@ export function insideViewport(
   return xy != null && xy[0] >= 0 && xy[0] <= width && xy[1] >= 0 && xy[1] <= height;
 }
 
-// Natural Earth's raster is plate carrée, as are the roadmap's map projections. Drawing
-// three wrapped copies keeps cropped views continuous at the antimeridian.
-function rasterBounds(projection: d3.GeoProjection) {
-  const origin = projection([0, 0]);
-  const oneDegreeEast = projection([1, 0]);
-  const north = projection([0, 90]);
-  if (!origin || !oneDegreeEast || !north) return null;
-
-  const pixelsPerDegree = Math.abs(oneDegreeEast[0] - origin[0]);
-  return {
-    x: origin[0] - 180 * pixelsPerDegree,
-    y: north[1],
-    width: 360 * pixelsPerDegree,
-    height: 180 * pixelsPerDegree,
-  };
+// A grid cell is a rectangle in lon/lat and a tilted quadrilateral once projected, so the maps that
+// rasterise onto the 0.5° lattice project all four of its corners rather than two. Returns them in
+// ring order, or null when any corner falls off the projection.
+export function projectCell(
+  projection: d3.GeoProjection,
+  lon: number,
+  lat: number,
+  size: number,
+): [number, number][] | null {
+  const corners: [number, number][] = [
+    [0, 0],
+    [size, 0],
+    [size, size],
+    [0, size],
+  ];
+  const ring: [number, number][] = [];
+  for (const [dLon, dLat] of corners) {
+    const p = projection([lon + dLon, lat + dLat]);
+    if (!p || !Number.isFinite(p[0]) || !Number.isFinite(p[1])) return null;
+    ring.push([p[0], p[1]]);
+  }
+  return ring;
 }
 
-// SVG: appends the wrapped basemap raster, clipped to the panel rect, and returns the
-// (already-clipped) content group the caller should draw its own fills/dots into —
-// NOT a separate clip-path of its own. `clip-path` implicitly isolates an element into
-// its own blending group (same as `isolation: isolate`), so a second, sibling clipped
-// group can only ever blend against its own transparent background, never against the
-// raster sitting in a different group next to it — any `mix-blend-mode` on content
-// added that way silently renders as if blending were off. Once a projection is fit to
-// a regional bbox rather than the whole sphere, the sphere's own projected shape is a
-// rectangle far bigger than the panel, so clipping to it (the old approach) wouldn't
-// constrain anything — the panel rect is the only clip that's still meaningful at any
-// zoom level.
-export function appendGrayEarthBasemap(
+// Cells are filled with no outline anywhere, so two neighbours sharing an edge exactly would still
+// show a hairline: each side antialiases to about half coverage and the two halves do not add back
+// up to one, so the plate reads through as a grid. Growing every cell out from its own centre makes
+// neighbours overlap instead, and the overlap is invisible because it is the same fill on both sides.
+//
+// 0.6px is measured, not guessed. Corners move radially, so a square gains only about 0.6/√2 per
+// side and two neighbours overlap by roughly 0.85px — comfortably more than the ~0.5px of coverage
+// antialiasing loses. At 0.35px the seams were still there (215 stray plate pixels on the density
+// map, 87 on the region map); at 0.9px they were gone but that is 39% of a 2.3px density cell, wide
+// enough to start bleeding one cell's colour into the next. This sits above the artefact and below
+// the bleed.
+export function inflateCell(ring: [number, number][], pixels = 0.6): [number, number][] {
+  let cx = 0;
+  let cy = 0;
+  for (const [x, y] of ring) {
+    cx += x / ring.length;
+    cy += y / ring.length;
+  }
+  return ring.map(([x, y]) => {
+    const dx = x - cx;
+    const dy = y - cy;
+    const len = Math.hypot(dx, dy) || 1;
+    return [x + (dx / len) * pixels, y + (dy / len) * pixels];
+  });
+}
+
+// An SVG path command for a closed ring, for the cell maps that draw in SVG rather than canvas.
+export function ringPath(ring: [number, number][]): string {
+  return `M${ring.map(([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`).join("L")}Z`;
+}
+
+// SVG: clips the panel and lays down its plate, returning the (already-clipped) content group the
+// caller draws its own fills into — NOT a separate clip-path of its own. `clip-path` implicitly
+// isolates an element into its own blending group (same as `isolation: isolate`), so a second,
+// sibling clipped group can only ever blend against its own transparent background, never against
+// what sits in a different group next to it — any `mix-blend-mode` on content added that way silently
+// renders as if blending were off. Once a projection is fit to a regional bbox rather than the whole
+// sphere, the sphere's own projected shape is a rectangle far bigger than the panel, so clipping to
+// it (the old approach) wouldn't constrain anything — the panel rect is the only clip that stays
+// meaningful at any zoom level.
+//
+// This used to also draw Natural Earth's shaded relief, wrapped three times across the antimeridian,
+// under the fills. The relief is gone: on a map whose whole subject is a value per country, terrain
+// is a second picture competing with the first, and it was the only thing the raster machinery here
+// existed for.
+export function appendMapPlate(
   svg: d3.Selection<SVGSVGElement, unknown, null, undefined>,
-  projection: d3.GeoProjection,
   width: number,
   height: number,
   id: string,
@@ -132,65 +152,5 @@ export function appendGrayEarthBasemap(
 
   const content = svg.append("g").attr("clip-path", `url(#${clipId})`);
   content.append("rect").attr("width", width).attr("height", height).attr("fill", "#000000");
-
-  const bounds = rasterBounds(projection);
-  if (!bounds) return content;
-
-  const raster = content.append("g").attr("opacity", 0.55).style("pointer-events", "none");
-  for (const offset of [-1, 0, 1]) {
-    raster
-      .append("image")
-      .attr("href", GRAY_EARTH_URL)
-      .attr("x", bounds.x + offset * bounds.width)
-      .attr("y", bounds.y)
-      .attr("width", bounds.width)
-      .attr("height", bounds.height)
-      .attr("preserveAspectRatio", "none");
-  }
   return content;
-}
-
-export interface RasterRect {
-  key: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-// JSX: the same three wrapped-raster rects as appendGrayEarthBasemap, as plain data —
-// for components (like BorderRasterCloseup) that render their own <image> elements
-// declaratively instead of imperatively selecting into a live d3 <svg>.
-export function grayEarthRasterRects(projection: d3.GeoProjection): RasterRect[] {
-  const bounds = rasterBounds(projection);
-  if (!bounds) return [];
-  return [-1, 0, 1].map((offset) => ({
-    key: offset,
-    x: bounds.x + offset * bounds.width,
-    y: bounds.y,
-    width: bounds.width,
-    height: bounds.height,
-  }));
-}
-
-// Canvas: same wrapped-raster placement, for DensityMap's offscreen background canvas.
-export function drawGrayEarthBasemap(
-  context: CanvasRenderingContext2D,
-  projection: d3.GeoProjection,
-  image: CanvasImageSource,
-) {
-  const bounds = rasterBounds(projection);
-  if (!bounds) return;
-  context.save();
-  context.globalAlpha = 0.55;
-  for (const offset of [-1, 0, 1]) {
-    context.drawImage(
-      image,
-      bounds.x + offset * bounds.width,
-      bounds.y,
-      bounds.width,
-      bounds.height,
-    );
-  }
-  context.restore();
 }

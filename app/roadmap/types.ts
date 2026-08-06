@@ -4,6 +4,7 @@
 // to match the real files byte for byte.
 import type { Feature, Geometry } from "geojson";
 import type { ClimateFallbackModel } from "@/lib/spatial-seasonality";
+import type { HarmonicCurve } from "@/lib/seasonal-curve";
 
 // --- Country polygons (topojson-client feature() output) --------------------------
 export interface CountryProperties {
@@ -20,7 +21,7 @@ export type NeighborsByM49 = Map<number, number[]>;
 // Runtime missing-country curves prefer measured regions and neighbouring countries;
 // these latitude parameters are used only when neither exists (lib/spatial-seasonality.ts).
 export interface SeasonalityFallback {
-  north: number[];
+  north: HarmonicCurve;
   tropicMaxAbsLat?: number;
   plateauAbsLat?: number;
   amplitudeCoef?: [number, number, number];
@@ -30,8 +31,11 @@ export interface SeasonalityFallback {
 export interface SeasonalityData {
   source: string;
   method: string;
-  months: number;
-  countries: Record<string, number[]>;
+  harmonicOrder: number;
+  continuous: true;
+  covidExcluded: number[];
+  exposureAdjustment: string;
+  countries: Record<string, HarmonicCurve>;
   quality?: Record<string, { annualDeaths?: number; nYears?: number }>;
   fallback: SeasonalityFallback;
   climate?: ClimateFallbackModel; // attached at fetch, feeds the spatial estimator's climate tier
@@ -165,7 +169,7 @@ export interface SubnationalCdr {
 }
 
 // --- data/seasonality-subnational.json (baked by the pipeline package, see pipeline/build.py) ----
-// Per-region 12-point monthly seasonal curves. `key` joins to Admin-1 `adm1_code` or the
+// Per-region continuous harmonic seasonal curves. `key` joins to Admin-1 `adm1_code` or the
 // Buenos Aires partido centroid table according to `geo`.
 export interface SubnationalSeasonalityRegion {
   country: string; // ISO3
@@ -174,7 +178,7 @@ export interface SubnationalSeasonalityRegion {
   name: string;
   isoRegion: string | null;
   interval: "week" | "month";
-  curve: number[];
+  curve: HarmonicCurve;
   nYears: number | null;
   annualDeaths: number | null;
   // "crvs": observed civil-registration deaths; "surveillance-estimate": modelled from a
@@ -192,6 +196,35 @@ export interface SubnationalSeasonality {
   regions: SubnationalSeasonalityRegion[];
 }
 
+export type SmoothingDemoModeKey = "weekly" | "monthly" | "quarterly" | "circular3" | "harmonic";
+export type SmoothingDemoHarmonicOrder = 1 | 2 | 3 | 4;
+export type SmoothingDemoPoint = [phase: number, multiplier: number];
+export interface SmoothingDemoModePayload {
+  observations: SmoothingDemoPoint[];
+  smoothed?: SmoothingDemoPoint[];
+}
+export interface SmoothingDemoCountry {
+  name: string;
+  iso3: string;
+  years: number[];
+  leapYears: number[];
+  yDomain: [number, number];
+  modes: Record<Exclude<SmoothingDemoModeKey, "harmonic">, SmoothingDemoModePayload>;
+  harmonics: Record<`${SmoothingDemoHarmonicOrder}`, HarmonicCurve>;
+}
+export interface SmoothingDemoData {
+  meta: {
+    source: string;
+    defaultCountry: string;
+    countryCount: number;
+    covidExcluded: number[];
+    normalization: string;
+    harmonicOrders: SmoothingDemoHarmonicOrder[];
+    generatedBy: string;
+  };
+  countries: Record<string, SmoothingDemoCountry>;
+}
+
 // --- data/seasonality-subnational-loo.json (baked by notebooks/seasonality.ipynb) -----------
 // Region-level leave-one-out vs the country-level LOO, for the "predictions vs measured (region)"
 // chart. `comparison` is one row per proxy (country vs region median RMSE); `examples` carry a few
@@ -206,7 +239,7 @@ export interface SubnationalLooExample {
   nbRMSE: number;
 }
 export interface SubnationalLoo {
-  meta: { source: string; metric: string; note: string };
+  meta: { source: string; metric: string; note: string; nRegions?: number };
   comparison: Array<{ proxy: string; country: number; region: number }>;
   examples: SubnationalLooExample[];
 }

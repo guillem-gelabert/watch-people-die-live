@@ -2,6 +2,13 @@
 
 import { Fragment, type ReactNode } from "react";
 import Katex from "./Katex";
+import Accordion, { type AccordionItem } from "./Accordion";
+import RandModal, { RandPill } from "./RandModal";
+
+// The running order is parsed next door; re-exported here so the composition root can keep
+// taking the whole story from one import.
+export { roadmapSections } from "./storySections";
+export type { SectionHeadingKind, StorySection } from "./storySections";
 
 interface RoadmapMarkdownProps {
   source: string;
@@ -9,19 +16,59 @@ interface RoadmapMarkdownProps {
   hiddenCodeBlockStarts?: string[];
 }
 
-export function roadmapSection(markdown: string, title: string) {
-  const escapedTitle = title.replace(/[.*+?^$()|[\]\\{}]/g, "\\$&");
-  const heading = new RegExp("^### [●○] \\d+ · " + escapedTitle + "$", "m");
-  const match = heading.exec(markdown);
-  if (!match) return "";
-  const start = match.index + match[0].length;
-  const next = markdown.slice(start).search(/^### [●○] \d+ · /m);
-  return markdown.slice(start, next === -1 ? undefined : start + next).trim();
+// Slices an `:::accordion` fence into its panels. A `## Title · Status` line opens one and
+// everything up to the next `##` is its body, rendered as ordinary markdown.
+function accordionItems(
+  lines: string[],
+  slots: Record<string, ReactNode>,
+  hiddenCodeBlockStarts: string[],
+): AccordionItem[] {
+  const items: AccordionItem[] = [];
+  let title: string | null = null;
+  let status: string | undefined;
+  let body: string[] = [];
+
+  const flush = () => {
+    if (title === null) return;
+    items.push({
+      id: title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, ""),
+      title,
+      ...(status ? { status } : {}),
+      body: <>{renderLines(body, slots, hiddenCodeBlockStarts)}</>,
+    });
+    title = null;
+    status = undefined;
+    body = [];
+  };
+
+  for (const line of lines) {
+    const head = /^##[ \t]+(.*)$/.exec(line.trim());
+    if (head) {
+      flush();
+      const [name, ...rest] = (head[1] as string).split("·");
+      title = (name as string).trim();
+      const sub = rest.join("·").trim();
+      if (sub) status = sub;
+      continue;
+    }
+    body.push(line);
+  }
+  flush();
+  return items;
 }
 
 function inline(text: string): ReactNode[] {
-  const parts = text.split(/(\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|_[^_]+_|(?<!\*)\*[^*]+\*(?!\*))/g);
+  const parts = text.split(
+    /(\{\{[^}]+\}\}|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|_[^_]+_|(?<!\*)\*[^*]+\*(?!\*))/g,
+  );
   return parts.filter(Boolean).map((part, index) => {
+    // `{{word}}` is the word that opens the section's aside — see RandModal.
+    if (part.startsWith("{{") && part.endsWith("}}")) {
+      return <RandPill key={index}>{part.slice(2, -2)}</RandPill>;
+    }
     const link = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(part);
     if (link) {
       return (
@@ -115,6 +162,26 @@ function renderLines(
         else if (nextTrimmed === ":::") depth -= 1;
         if (depth > 0) inner.push(nextLine);
       }
+      // The one fence whose contents are a component rather than a container: its `##` lines
+      // are the panels, `Title · Status`, and everything under one is its body.
+      // The Poisson aside: authored here, shown only when the pill in the prose asks for it.
+      if (className === "rand-modal") {
+        output.push(
+          <RandModal key={"rand-" + output.length}>
+            {renderLines(inner, slots, hiddenCodeBlockStarts)}
+          </RandModal>,
+        );
+        continue;
+      }
+      if (className === "accordion") {
+        output.push(
+          <Accordion
+            key={"accordion-" + output.length}
+            items={accordionItems(inner, slots, hiddenCodeBlockStarts)}
+          />,
+        );
+        continue;
+      }
       output.push(
         <div className={className} key={"div-" + output.length}>
           {renderLines(inner, slots, hiddenCodeBlockStarts)}
@@ -123,15 +190,22 @@ function renderLines(
       continue;
     }
 
-    // Block math: a `$$` line opens (optionally followed by a caption title on the same
-    // line), a lone `$$` line closes, KaTeX renders what's between.
+    // Block math: a `$$` line opens (optionally followed by a caption title on the same line),
+    // a `$$` line closes and may carry the caption that reads under the formula, KaTeX renders
+    // what's between. Both labels ride on the fence lines so the TeX itself stays untouched.
     const mathOpen = /^\$\$\s*(.*)$/.exec(trimmed);
     if (mathOpen) {
       flushParagraph();
       flushList();
       const title = mathOpen[1]?.trim();
       const mathLines: string[] = [];
-      while (index + 1 < lines.length && (lines[index + 1] ?? "").trim() !== "$$") {
+      let caption: string | undefined;
+      while (index + 1 < lines.length) {
+        const close = /^\$\$\s*(.*)$/.exec((lines[index + 1] ?? "").trim());
+        if (close) {
+          caption = close[1]?.trim() || undefined;
+          break;
+        }
         index += 1;
         mathLines.push(lines[index] ?? "");
       }
@@ -141,6 +215,7 @@ function renderLines(
           key={"math-" + output.length}
           tex={mathLines.join("\n").trim()}
           title={title || undefined}
+          {...(caption ? { caption: inline(caption) } : {})}
           display
         />,
       );
@@ -163,12 +238,21 @@ function renderLines(
       const question = code[0]?.trim();
       const answer = code[1]?.trim();
       if (code.length === 2 && question?.startsWith("Q:") && answer?.startsWith("A:")) {
+        const reply = answer.slice(2).trim();
         output.push(
           <div className="chat" key={"chat-" + output.length}>
             <div className="chat-bubble-user">{inline(question.slice(2).trim())}</div>
             <div className="chat-bubble-assistant-row">
               <span className="chat-avatar" aria-hidden="true" />
-              <div className="chat-bubble-assistant">{inline(answer.slice(2).trim())}</div>
+              {/* The answer types itself out on scroll (see storyMotion). The spacer holds the
+                  full text at zero opacity: it reserves the exact box the typed line will need,
+                  so nothing below it shifts, and it is what a screen reader reads — the node
+                  being typed into is hidden from assistive tech so it cannot announce
+                  keystrokes. */}
+              <div className="chat-bubble-assistant chat-typing">
+                <span className="chat-type-spacer">{reply}</span>
+                <span className="chat-type" data-type={reply} aria-hidden="true" />
+              </div>
             </div>
           </div>,
         );
@@ -269,6 +353,19 @@ function renderLines(
         <h4 className="roadmap-subheading" key={"heading-" + output.length}>
           {trimmed.slice(3)}
         </h4>,
+      );
+      continue;
+    }
+
+    // A single `#` is the section-heading tier — the 36px line the design uses to open a
+    // movement inside a section, above `##`'s 26px sub-heading.
+    if (trimmed.startsWith("# ")) {
+      flushParagraph();
+      flushList();
+      output.push(
+        <h3 className="story-heading story-heading-inline" key={"heading-" + output.length}>
+          {trimmed.slice(2)}
+        </h3>,
       );
       continue;
     }

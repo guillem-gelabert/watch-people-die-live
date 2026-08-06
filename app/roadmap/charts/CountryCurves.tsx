@@ -5,13 +5,21 @@ import * as d3 from "d3";
 import {
   MONTHS,
   COUNTRY_CURVE_PICKS,
-  EXTRA_CURVE_COLORS,
-  KG_FAMILIES,
+  curveColors,
+  KG_FAMILY_KEYS,
   MAX_COMPARE_COUNTRIES,
-  styleAxis,
 } from "../chartHelpers";
+import { CURVE_Y_DOMAIN, MARGINS } from "./chartFrame";
+import { figureHeight, useFigureWidth } from "./useFigureSize";
+import { useSkin } from "../SkinContext";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, SeasonalityData, SeasonalityProxies } from "../types";
+import { sampleHarmonicCurve, shiftHarmonicCurveHalfYear } from "@/lib/seasonal-curve";
+
+// Wide and shallow: twelve months across, a narrow band of deviation vertically. Bounded so a
+// wider column lengthens the year rather than inflating the labels.
+const SHAPE = { aspect: 0.636, min: 210, max: 290 };
+const CURVE_PHASES = d3.range(181).map((index) => index / 180);
 
 interface Series {
   id: number;
@@ -36,11 +44,8 @@ interface Option {
   ids: number[];
 }
 
-const COLOR_POOL = [...COUNTRY_CURVE_PICKS.map((d) => d.color), ...EXTRA_CURVE_COLORS];
 const DEFAULT_NAME_BY_ID = new Map(COUNTRY_CURVE_PICKS.map((d) => [d.id, d.name]));
 const SWITZERLAND_ID = 756;
-const SWITZERLAND_COLOR =
-  COUNTRY_CURVE_PICKS.find((d) => d.id === SWITZERLAND_ID)?.color ?? COLOR_POOL[0]!;
 
 // City-states with a measured curve but absent from the world-atlas 110m topology (folded into
 // their surrounding country at that resolution), so `nameById` can't name them — they'd otherwise
@@ -71,12 +76,18 @@ const LAT_BINS = [
 // `seasonality.countries`). Starts on Switzerland alone; categories bulk-add measured countries
 // by climate zone, GDP bin, or latitude bin, up to the colour-pool cap.
 export default function CountryCurves({ seasonality, features, proxies }: CountryCurvesProps) {
+  const { sky } = useSkin();
+  const palette = useMemo(() => curveColors(sky, MAX_COMPARE_COUNTRIES), [sky]);
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
+  const HEIGHT = figureHeight(WIDTH, SHAPE);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [selectedIds, setSelectedIds] = useState<number[]>([SWITZERLAND_ID]);
-  const [colorById, setColorById] = useState<Map<number, string>>(
-    () => new Map([[SWITZERLAND_ID, SWITZERLAND_COLOR]]),
+  // Palette slots, not literal colours: the pool is generated from the section's sky, so a
+  // stored colour would go stale the moment the sky changes.
+  const [colorById, setColorById] = useState<Map<number, number>>(
+    () => new Map([[SWITZERLAND_ID, 0]]),
   );
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -118,7 +129,7 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
     const out: Option[] = [];
 
     if (proxies) {
-      for (const fam of KG_FAMILIES) {
+      for (const fam of KG_FAMILY_KEYS) {
         const ids = curveIds.filter((id) => proxies.byM49[id]?.kgFamily === fam.key);
         if (ids.length) {
           out.push({
@@ -191,11 +202,12 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
       if (nextColors.has(id)) continue; // already selected
       requested += 1;
       if (nextSelected.length >= MAX_COMPARE_COUNTRIES) continue;
-      const color = COLOR_POOL.find((c) => !used.has(c));
-      if (!color) continue;
-      used.add(color);
+      let slot = 0;
+      while (slot < MAX_COMPARE_COUNTRIES && used.has(slot)) slot += 1;
+      if (slot >= MAX_COMPARE_COUNTRIES) continue;
+      used.add(slot);
       nextSelected.push(id);
-      nextColors.set(id, color);
+      nextColors.set(id, slot);
       added += 1;
     }
     if (added) {
@@ -258,18 +270,18 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
 
-    const width = 700;
-    const height = 280;
-    const margin = { top: 16, right: 18, bottom: 38, left: 48 };
-    const innerW = width - margin.left - margin.right;
-    const innerH = height - margin.top - margin.bottom;
+    const m = MARGINS.curve;
+    const innerW = WIDTH - m.left - m.right;
+    const innerH = HEIGHT - m.top - m.bottom;
     const series: Series[] = selectedIds
       .map((id): Series | null => {
         const curve = seasonality.countries[String(id)];
-        const color = colorById.get(id);
+        const slot = colorById.get(id);
+        const color = slot === undefined ? undefined : palette[slot % palette.length];
         if (!curve || !color) return null;
         const shift = (signedLatById.get(id) ?? 0) < 0 ? 6 : 0;
-        const aligned = shift ? curve.map((_, m) => curve[(m + shift) % curve.length]!) : curve;
+        const alignedCurve = shift ? shiftHarmonicCurveHalfYear(curve) : curve;
+        const aligned = sampleHarmonicCurve(alignedCurve, CURVE_PHASES);
         return { id, name: resolveName(id), color, curve: aligned, shift };
       })
       .filter((d): d is Series => d !== null);
@@ -279,48 +291,49 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
     // average, <1 slower. Shown as the raw factor, not a percentage deviation.
     const fmtFactor = d3.format(".2f");
 
-    const x = d3.scalePoint().domain(MONTHS).range([0, innerW]).padding(0.35);
-    const y = d3
-      .scaleLinear()
-      .domain(d3.extent(series.flatMap((d) => d.curve)) as [number, number])
-      .nice()
-      .range([innerH, 0]);
+    const x = d3.scaleLinear().domain([0, 1]).range([0, innerW]);
+    // A fixed y-domain rather than one fitted to the selection: adding a flatter country must not
+    // rescale the ones already on screen, or the reader loses the comparison they were making.
+    const y = d3.scaleLinear().domain(CURVE_Y_DOMAIN).range([innerH, 0]);
     const line = d3
       .line<number>()
-      .x((_, i) => x(MONTHS[i]!) ?? 0)
+      .x((_, i) => x(CURVE_PHASES[i] ?? 0))
       .y((d) => y(d))
       .curve(d3.curveMonotoneX);
-    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+    const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`);
 
+    // The annual mean is the only rule on the chart: every curve is a deviation from its own
+    // average, so the one line worth drawing is the average itself.
     g.append("line")
-      .attr("class", "chart-gridline")
+      .attr("class", "chart-axis")
       .attr("x1", 0)
       .attr("x2", innerW)
       .attr("y1", y(1))
       .attr("y2", y(1));
+    g.append("text")
+      .attr("class", "chart-tick")
+      .attr("x", innerW + 5)
+      .attr("y", y(1) + 3.4)
+      .text("×1");
+
     g.selectAll("path.country-curve")
       .data(series, (d) => (d as Series).id)
       .join("path")
       .attr("class", "country-curve")
       .attr("fill", "none")
       .attr("stroke", (d) => d.color)
-      .attr("stroke-width", 2.2)
+      .attr("stroke-width", 2)
+      .attr("stroke-linejoin", "round")
+      .attr("stroke-linecap", "round")
       .attr("d", (d) => line(d.curve))
       .style("cursor", "pointer")
       .on("pointermove", (event, d) => {
-        // Nearest month under the pointer for this series.
+        // Nearest phase under the pointer for this series.
         const [px] = d3.pointer(event, g.node());
-        let i = 0;
-        let best = Infinity;
-        for (let j = 0; j < MONTHS.length; j++) {
-          const dist = Math.abs((x(MONTHS[j]!) ?? 0) - px);
-          if (dist < best) {
-            best = dist;
-            i = j;
-          }
-        }
+        const phase = Math.max(0, Math.min(1, x.invert(px)));
+        const i = Math.min(CURVE_PHASES.length - 1, Math.round(phase * (CURVE_PHASES.length - 1)));
         // Report the country's true calendar month, not the aligned x position.
-        const trueMonth = MONTHS[(i + d.shift) % MONTHS.length];
+        const trueMonth = MONTHS[Math.floor(((phase + d.shift / 12) % 1) * 12) % 12];
         showTooltip(
           `${d.name}, ${trueMonth}: ${fmtFactor(d.curve[i]!)}×`,
           event.clientX,
@@ -328,29 +341,54 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
         );
       })
       .on("pointerleave", hideTooltip);
-    g.append("g")
-      .attr("transform", `translate(0,${innerH})`)
-      .call(d3.axisBottom(x).tickSizeOuter(0))
-      .call(styleAxis);
-    g.append("g")
-      .call(
-        d3
-          .axisLeft(y)
-          .ticks(5)
-          .tickFormat((d) => fmtFactor(Number(d))),
-      )
-      .call(styleAxis);
+
+    // A dot at each end of every curve: with a dozen lines crossing, the ends are what let the eye
+    // pick one out and follow it.
+    for (const s of series) {
+      for (const i of [0, CURVE_PHASES.length - 1]) {
+        g.append("circle")
+          .attr("cx", x(CURVE_PHASES[i] ?? 0))
+          .attr("cy", y(s.curve[i]!))
+          .attr("r", 2.6)
+          .attr("fill", s.color);
+      }
+    }
+
+    // Every third month only: twelve labels do not fit across a phone, and the quarters are enough
+    // to orient a seasonal curve.
+    MONTHS.forEach((month, i) => {
+      if (i % 3 !== 0) return;
+      g.append("text")
+        .attr("class", "chart-tick")
+        .attr("x", x((i + 0.5) / 12))
+        .attr("y", innerH + 14)
+        .attr("text-anchor", "middle")
+        .text(month);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seasonality, selectedIds, colorById, nameById, signedLatById]);
+  }, [seasonality, selectedIds, colorById, nameById, signedLatById, palette, WIDTH, HEIGHT]);
 
   return (
     <section className="chart-panel wide">
-      <h4 className="chart-title">A Cluster Of Similar Curves</h4>
+      {selectedIds.length === 0 ? (
+        <p className="chart-copy">Add a country or category above to see its seasonal curve.</p>
+      ) : (
+        <svg
+          ref={(node) => {
+            svgRef.current = node;
+            sizeRef(node);
+          }}
+          id="country-curves-chart"
+          className="story-figure"
+          viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+          role="img"
+          aria-label={`Line chart comparing the seasonal mortality curves of ${selectedNames.join(", ")}`}
+        />
+      )}
 
+      {/* No panel title: the section heading in the prose already names this figure, and the
+          design carries it there rather than repeating it inside the panel. */}
       <div className="cc-combobox">
-        <label className="cc-label" htmlFor="country-compare-input">
-          Compare countries
-        </label>
         <input
           ref={inputRef}
           id="country-compare-input"
@@ -412,8 +450,11 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
 
       <div className="cc-chips" aria-label="Selected countries">
         {selectedIds.map((id, i) => (
-          <span className="cc-chip" key={id}>
-            <span className="swatch" style={{ color: colorById.get(id) }} />
+          <span
+            className="cc-chip"
+            key={id}
+            style={{ background: palette[(colorById.get(id) ?? 0) % palette.length] }}
+          >
             {selectedNames[i]}
             <button
               type="button"
@@ -433,19 +474,6 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
       </div>
 
       {status && <p className="cc-status">{status}</p>}
-
-      {selectedIds.length === 0 ? (
-        <p className="chart-copy">Add a country or category above to see its seasonal curve.</p>
-      ) : (
-        <svg
-          ref={svgRef}
-          id="country-curves-chart"
-          className="seasonality-chart"
-          viewBox="0 0 700 280"
-          role="img"
-          aria-label={`Line chart comparing the seasonal mortality curves of ${selectedNames.join(", ")}`}
-        />
-      )}
     </section>
   );
 }

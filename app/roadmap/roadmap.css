@@ -1,52 +1,8 @@
-/* Scoped to .roadmap (never :root) — this stylesheet loads on the globe page too (RoadmapClient
-   is rendered inside Globe.tsx), so tokens must not leak onto the globe, which keeps its own
-   dark tokens in app/globe.css. See docs/DENSITY-MORTALITY-JOIN.md sibling note in CLAUDE.md. */
-.roadmap {
-  --paper: #f4f5f7;
-  --ink: #191a2e;
-  --card: #fff;
-  --line: #e7e8ec;
-  --line-strong: #d6d8de;
-  --blue: #2f4bff;
-  --red: #ff3b30;
-  --muted: #8a8b96;
-  --body: #2f3042;
-  --body-soft: #3a3c48;
-
-  /* Legacy variable names — the rest of this file (and every chart component's CSS classes)
-     already reference these, so remapping them here is what flips the whole page from the
-     globe's dark theme to the roadmap's bright one without touching a single selector below. */
-  --bg: var(--paper);
-  --fg: var(--ink);
-  --accent: var(--red);
-  --panel: var(--card);
-  --done: var(--blue);
-  --todo: var(--muted);
-
-  /* One color per step, used by .step-sphere. */
-  --s01: #2f4bff;
-  --s02: #6b3df0;
-  --s03: #10a08a;
-  --s04: #e8912b;
-  --s05: #ff3b30;
-  --s06: #b23ad6;
-  --s07: #b7b8c0;
-
-  min-height: 100vh;
-  overflow-x: clip;
-  background: var(--paper);
-  color: var(--body);
-  font-family:
-    var(--font-public-sans),
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    Helvetica,
-    Arial,
-    sans-serif;
-  line-height: 1.55;
-}
+/* The story's palette is generated per section at runtime and put on the scroll container
+   as custom properties (see palette.ts skinToCssVars / StoryClient). This stylesheet reads
+   those names — --paper, --ink, --body, --muted, --line, --card, --blue, --red — and never
+   declares them, so every rule below follows whichever sky is in view.
+   ------------------------------------------------------------------------------------- */
 
 * {
   box-sizing: border-box;
@@ -56,52 +12,136 @@ body {
   margin: 0;
 }
 
-.roadmap-shell {
-  max-width: 1300px;
-  margin: 0 auto;
-  padding: 6.5rem clamp(24px, 5vw, 80px) 6rem;
+/* The palette changes when the section in view does, and what is drawn from it should travel with the
+   sky rather than snapping a frame ahead of it. `.story` already cross-fades its background; these
+   rules give the ink, the boxes and their rules the same 0.55s so everything arrives together — an
+   earlier 0.35s here left the ink ahead of the sky, which read as a snap onto a stale background.
+
+   Every rule is wrapped in :where() so it carries no specificity: this is a default any component
+   below can replace with its own transition, and the beat bars, the scale toggle and the accordion
+   all do, keeping their own timings.
+
+   The list names only the surfaces that declare a palette colour of their own and are big enough to
+   read as one: the section itself (where most prose inherits its ink), its prose blocks and headings,
+   and the boxes — tiles, chat, accordion, proxy strips, captions, tables, controls.
+
+   It is a list rather than `*` because that is the honest scope, not because breadth is expensive:
+   going from ~950 animated elements to ~200 moved the cost of a sky change by nothing measurable
+   (250ms against 242ms), so whatever that stall is, it is not the number of colour animations. Do not
+   assume trimming this list further will buy anything.
+
+   Inline children — strong, em, span, code — are deliberately absent: they inherit the interpolated
+   value from the block above them for free, so listing them would pay twice for one effect. The
+   ~8,000 SVG marks inside the charts are absent for the same reason plus their own, being data rather
+   than surface; the labelling among them gets its fade by class below. `.loo-summary-table` cells are
+   out too — 222 of them, folded behind an accordion the reader is usually not looking into. */
+:where(
+  .story-section,
+  .story-section > :is(p, ul, ol),
+  .story-section :is(h1, h2, h3, h4, h5),
+  .story-section a,
+  .roadmap-table :is(th, td),
+  .story-chapter-sub,
+  .concept-tile,
+  .concept-tile-title,
+  .concept-tile-kind,
+  .concept-tile-copy,
+  .chat-bubble,
+  .chat-bubble-user,
+  .chat-avatar,
+  .accordion-item,
+  .accordion-title,
+  .accordion-status,
+  .accordion-copy,
+  .proxy-strip,
+  .proxy-strip-title,
+  .proxy-strip-body,
+  .proxy-card-title,
+  .chart-copy,
+  .chart-note-copy,
+  .chart-status,
+  .chart-tooltip,
+  .roadmap-code,
+  .note,
+  .source,
+  .lead,
+  .legend,
+  .cc-input,
+  .cc-listbox,
+  .cc-option,
+  .cc-label,
+  .cc-status,
+  .chart-toggle button,
+  .ewma-preset,
+  .ewma-readout,
+  .ewma-readout-aside,
+  .dart-tally-cell,
+  .dart-tally-count,
+  .dart-tally-label,
+  .dart-tally-share,
+  .persona-step-name,
+  .persona-draw,
+  .persona-note,
+  .amplitude-legend,
+  footer
+) {
+  transition:
+    color 0.55s ease,
+    background-color 0.55s ease,
+    border-color 0.55s ease;
 }
 
-.roadmap h1 {
+/* The parts of a figure that are type or plate rather than data: axes, ticks, labels, bar fills and
+   country outlines. Named individually so the marks carrying the data are left out. */
+:where(
+  .chart-label,
+  .chart-tick,
+  .chart-note,
+  .chart-axis,
+  .chart-gridline,
+  .bars-national,
+  .bars-region,
+  .bars-value,
+  .map-country,
+  .climate-band-boundary
+) {
+  transition:
+    fill 0.55s ease,
+    stroke 0.55s ease;
+}
+
+/* A prose block waiting for, or making, its entrance (armed by storyMotion's prepareReveals, which
+   sets only the stagger delay inline). The entrance and the palette fade have to be declared in one
+   `transition`, because it is one property: naming opacity and transform alone — as the inline style
+   used to — cancels the colour fade on every block the reader has already passed. */
+.story-section > [data-rv] {
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.55s ease,
+    background-color 0.55s ease,
+    border-color 0.55s ease;
+}
+
+/* Section titles carry their own size class (.story-chapter / .story-heading, set from the
+   section's declared treatment) — see the story shell rules at the bottom of this file. */
+
+.story-section :is(h3, h4, h5) {
   margin: 0;
-  max-width: 16ch;
-  font-family: var(--font-archivo), sans-serif;
-  font-weight: 800;
-  font-size: clamp(2.4rem, 6vw, 4.6rem);
-  line-height: 0.98;
-  letter-spacing: -0.03em;
+  font-family: var(--font-bebas-neue), Impact, sans-serif;
   color: var(--ink);
 }
 
-.roadmap h2 {
-  margin: 0;
-  font-family: var(--font-archivo), sans-serif;
-  font-weight: 800;
-  font-size: clamp(1.7rem, 3.4vw, 2.5rem);
-  line-height: 1.04;
-  letter-spacing: -0.02em;
-  color: var(--ink);
-}
-
-.roadmap h3,
-.roadmap h4,
-.roadmap h5 {
-  margin: 0 0 0.2rem;
-  font-family: var(--font-archivo), sans-serif;
-  color: var(--ink);
-}
-
-.roadmap p,
-.roadmap li {
+.story-section :is(p, li) {
   color: var(--body);
 }
 
-.roadmap a {
+.story-section a {
   color: var(--blue);
   text-decoration: none;
 }
 
-.roadmap a:hover {
+.story-section a:hover {
   color: var(--red);
   text-decoration: underline;
 }
@@ -247,10 +287,10 @@ body {
   display: block;
   margin: 0 0 0.3rem;
   color: var(--muted);
-  font-family: var(--font-archivo), sans-serif;
-  font-weight: 700;
-  font-size: 0.72rem;
-  letter-spacing: 0.14em;
+  font:
+    700 10px/1 var(--font-public-sans),
+    sans-serif;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
 }
 
@@ -268,11 +308,13 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Prose-carrying elements — scoped to direct children of the step body / explainer
-   wrappers only, so nested chart captions (inside .chart-grid / .chart-panel, further
-   down the tree) are untouched. Full width, matching the figures below them. */
-:is(.step-body, .rate-explainer, .density-explainer, .seasonality-explainer) > :is(p, ul) {
-  margin: 0 0 1.1rem;
+/* Prose-carrying elements — scoped to direct children of the section only, so nested chart
+   captions (inside .chart-grid / .chart-panel) are untouched.
+   One rhythm for the whole story: every block hangs off the one above it by its own top margin,
+   so a figure, a paragraph and a heading all space identically and nothing has to be corrected
+   for a trailing gap. */
+.story-section > :is(p, ul) {
+  margin: 14px 0 0;
   font-size: 1.05rem;
   line-height: 1.7;
   color: var(--body);
@@ -290,21 +332,27 @@ body {
   font-style: italic;
 }
 
-.roadmap-subheading {
-  margin: 2.2rem 0 0.6rem;
-  font-family: var(--font-archivo), sans-serif;
-  font-weight: 800;
-  font-size: 1.55rem;
-  letter-spacing: -0.01em;
+/* The design's sub-heading tier. Bebas ships one weight (400) — asking for 800 only got a
+   browser-synthesised smear of it, which is why this read heavier and blurrier than the
+   handoff's 26px line. */
+.story-section .roadmap-subheading {
+  margin: 26px 0 0;
+  font:
+    400 26px/1.05 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  letter-spacing: 0;
   color: var(--ink);
 }
 
+/* A micro label, not a display line: the design sets these in Public Sans, the one face here
+   that actually has a bold. */
 .roadmap-list-heading {
   margin: 0.9rem 0 0.2rem;
   color: var(--muted);
-  font-family: var(--font-archivo), sans-serif;
-  font-weight: 700;
-  font-size: 0.76rem;
+  font:
+    700 10px/1 var(--font-public-sans),
+    sans-serif;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -327,9 +375,9 @@ body {
    these span the full 1300px shell instead of being squeezed to reading width. ============ */
 .chart-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1.25rem;
-  margin: 2.75rem 0;
+  grid-template-columns: 1fr;
+  gap: 22px;
+  margin: 22px 0 0;
 }
 
 .roadmap-code {
@@ -357,12 +405,24 @@ body {
   background: var(--ink);
 }
 
+/* Sentence case: these read as short labels above a formula ("Per-second rate"), not as the
+   micro-caps used for the ranking rails. Both label and caption keep fixed light greys rather
+   than palette tokens, because the tile they sit on is always `--ink`. */
 .roadmap-math-title {
   margin: 0 0 0.6rem;
   color: #9aa3af;
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font:
+    500 11.5px/1 var(--font-public-sans),
+    sans-serif;
+  letter-spacing: 0.02em;
+}
+
+.roadmap-math-caption {
+  margin: 0.75rem 0 0;
+  color: rgb(255 255 255 / 72%);
+  font-size: 12.5px;
+  line-height: 1.55;
+  text-align: center;
 }
 
 .roadmap-math .katex {
@@ -370,32 +430,35 @@ body {
   color: #e8eaed;
 }
 
-/* GFM tables in roadmap copy (rendered by roadmapMarkdown). */
+/* GFM tables in roadmap copy (rendered by roadmapMarkdown).
+
+   Horizontal rules only, no card and no vertical borders — that is the design's treatment, and it
+   is also what lets the widest table (eight columns of daily fatalities) fit the 349px column
+   instead of forcing a sideways scroll. `overflow-x` stays as a safety net for wider content. */
 .roadmap-table-wrap {
   overflow-x: auto;
-  margin: 0 0 1.3rem;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--card);
+  margin: 16px 0 0;
 }
 
 .roadmap-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font:
+    400 12.5px/1.5 var(--font-libre-baskerville),
+    Georgia,
+    serif;
 }
 
 .roadmap-table th,
 .roadmap-table td {
-  padding: 0.55rem 0.8rem;
-  border: 1px solid var(--line);
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--rule);
   text-align: left;
 }
 
 .roadmap-table th {
   color: var(--ink);
-  font-weight: 700;
-  background: #fafafc;
+  font-weight: 600;
 }
 
 .roadmap-table td {
@@ -416,358 +479,316 @@ body {
 }
 
 /* ============ Step 1 — chat bubbles (renders the Q/A code fence; see roadmapMarkdown.tsx) ==== */
+
+/* The exchange sits on its own card, the way a transcript is quoted rather than spoken: one
+   surface holding the question as a bubble and the answer as plain text beside an avatar. */
 .chat {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-  max-width: 34rem;
-  margin: 0 0 1.3rem;
+  margin-top: 26px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--chat);
+  color: var(--chat-ink);
+  box-shadow: inset 0 0 0 1px rgb(22 18 26 / 10%);
+}
+
+.story .chat p {
+  margin: 0;
+  color: inherit;
 }
 
 .chat-bubble-user {
   align-self: flex-end;
   max-width: 82%;
-  padding: 0.7rem 1.05rem;
-  border-radius: 18px 18px 5px;
-  background: var(--blue);
+  margin-left: auto;
+  padding: 11px 14px;
+  border-radius: 16px 16px 5px;
+  background: var(--chat-bubble);
   color: #fff;
-  font-size: 0.97rem;
-  line-height: 1.45;
+  font:
+    500 14px/1.5 var(--font-public-sans),
+    sans-serif;
 }
 
 .chat-bubble-assistant-row {
   display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-  max-width: 94%;
+  gap: 10px;
+  margin-top: 16px;
 }
 
 .chat-avatar {
-  width: 1.85rem;
-  height: 1.85rem;
+  width: 23px;
+  height: 23px;
   flex: none;
-  margin-top: 0.1rem;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 26%, rgb(255 255 255 / 90%), rgb(255 255 255 / 0%) 42%),
-    radial-gradient(circle at 70% 78%, rgb(0 0 0 / 50%), rgb(0 0 0 / 0%) 62%), var(--ink);
+  background: var(--ink);
 }
 
 .chat-bubble-assistant {
-  padding: 0.7rem 1.05rem;
-  border: 1px solid var(--line);
-  border-radius: 18px 18px 18px 5px;
-  background: var(--card);
-  color: var(--ink);
-  font-size: 0.97rem;
-  line-height: 1.5;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  color: inherit;
+  font:
+    400 14.5px/1.62 var(--font-public-sans),
+    sans-serif;
 }
 
-.pulse-dot {
+/* Text for assistive technology only — the label on a control whose visible form is a shape. */
+.sr-only {
   position: absolute;
-  top: 5px;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 12px rgb(255 59 48 / 55%);
-
-  /* Matches the steady-pulse keyframes' 0%/100% state, so a dot not currently animating
-     (e.g. a Poisson dot before its first pulse) rests dim/small instead of full-bright. */
-  opacity: 0.18;
-  transform: scale(0.7);
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
-.pulse-dot.steady {
-  animation: steady-pulse 2s ease-in-out infinite;
+/* Positioning context for the switch and the graticule that sit on top of the density raster. */
+.density-map-frame {
+  position: relative;
 }
 
-.pulse-dot:nth-child(1) {
-  left: 7%;
+/* Every square map's graticule: the section's own background at full opacity, so the grid reads as
+   the page showing through the map rather than as ink drawn over it, and follows the sky for free
+   because it is the same variable the sky itself is set from. Width comes from GRATICULE_WIDTH in
+   basemap.ts, so the grid is one device across the story. */
+.map-graticule,
+.density-graticule {
+  stroke: var(--sky);
 }
 
-.pulse-dot:nth-child(2) {
-  left: 32%;
-}
-
-.pulse-dot:nth-child(3) {
-  left: 57%;
-}
-
-.pulse-dot:nth-child(4) {
-  left: 82%;
-}
-
-.pulse-dot.delayed-one {
-  animation-delay: 0.5s;
-}
-
-.pulse-dot.delayed-two {
-  animation-delay: 1s;
-}
-
-.pulse-dot.delayed-three {
-  animation-delay: 1.5s;
-}
-
-/* Same flash as .steady, but plays once instead of looping — for JS-scheduled pulses
-   (e.g. Poisson-timed gaps) that restart the animation themselves per event. */
-.pulse-dot.once {
-  animation: steady-pulse 2s ease-in-out;
-}
-
-@keyframes steady-pulse {
-  0%,
-  100% {
-    opacity: 0.18;
-    transform: scale(0.7);
-  }
-
-  18%,
-  32% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.poisson-calendar {
-  display: grid;
-  grid-template-columns: repeat(31, minmax(6px, 1fr));
-  grid-template-rows: repeat(12, minmax(6px, 1fr));
-  grid-auto-flow: column;
-  gap: 2px;
-}
-
-.poisson-day {
+/* The density map's graticule is the one that has to be an overlay: its figure is a canvas, where the
+   same line was a rasterised half-CSS-pixel stroke that could not follow the palette without redrawing
+   the whole raster. Sits over the canvas and passes every pointer event through to it, since the
+   canvas owns the hover. */
+.density-graticule {
+  position: absolute;
+  inset: 0;
   display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* The log/linear switch that sits on the density map: one square cut along its anti-diagonal. */
+.scale-diagonal {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 20%;
   aspect-ratio: 1;
-  border-radius: 1px;
-  background: #eef0ff;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
 }
 
-.poisson-day-0 {
-  background: #eef0ff;
+.scale-diagonal-half {
+  position: absolute;
+  inset: 0;
+  transition: background 0.18s ease;
 }
 
-.poisson-day-1 {
-  background: #c7d0ff;
+.scale-diagonal-half.is-log {
+  clip-path: polygon(0 0, 100% 0, 0 100%);
 }
 
-.poisson-day-2 {
-  background: #8fa0ff;
+.scale-diagonal-half.is-linear {
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
 }
 
-.poisson-day-3 {
-  background: #5570ff;
+.scale-diagonal svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-.poisson-day-4 {
-  background: #2f4bff;
+.scale-diagonal-label {
+  font:
+    600 15px/1 var(--font-public-sans),
+    sans-serif;
+  letter-spacing: 0.01em;
+  transition: fill 0.18s ease;
 }
 
-.poisson-day-5 {
-  background: #ff3b30;
+.scale-diagonal-label.is-linear {
+  font-size: 17px;
 }
 
-.poisson-legend {
+/* Every figure in the story is transparent and sits directly on the section's sky. */
+.story-figure {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  background: transparent;
+}
+
+/* Layer switches that double as the legend: the box is filled with its own series' colour. */
+.series-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
-  margin-top: 0.65rem;
-  color: var(--muted);
-  font-size: 0.72rem;
+  gap: 16px;
+  margin: 0 0 10px 2px;
 }
 
-.poisson-legend span {
+.series-chip {
   display: inline-flex;
+  gap: 7px;
   align-items: center;
-  gap: 0.28rem;
+  font:
+    600 12.5px/1 var(--font-public-sans),
+    sans-serif;
+  cursor: pointer;
 }
 
-.poisson-legend .poisson-day {
-  width: 0.7rem;
+.series-chip:has(input:disabled) {
+  cursor: default;
+}
+
+.series-chip-box {
+  display: inline-flex;
+  width: 17px;
+  height: 17px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  font:
+    700 11px/1 var(--font-public-sans),
+    sans-serif;
+}
+
+.series-chip:has(input:focus-visible) .series-chip-box {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* National-versus-regional bars: the country's name leads, its own regions hang off it. */
+.bars-country {
+  fill: var(--ink);
+  font:
+    800 12px/1 var(--font-public-sans),
+    sans-serif;
+}
+
+.bars-national,
+.bars-region {
+  fill: var(--mute);
+  font:
+    500 9.5px/1 var(--font-public-sans),
+    sans-serif;
+}
+
+.bars-region {
+  font-size: 10px;
+  text-anchor: end;
+}
+
+.bars-value {
+  fill: var(--ink);
+  font:
+    700 9.5px/1 var(--font-public-sans),
+    sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+.bars-reference {
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+
+/* The dart map's running score: three tiles, count over share over label. */
+.dart-tally {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.dart-tally-cell {
+  padding: 12px 10px 11px;
+  border-radius: 12px;
+  background: var(--tile);
+}
+
+.dart-tally-count {
+  display: block;
+  font:
+    400 30px/1 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.dart-tally-share {
+  display: block;
+  margin-top: 2px;
+  font:
+    500 11px/1 var(--font-public-sans),
+    sans-serif;
+  color: var(--body);
+  font-variant-numeric: tabular-nums;
+}
+
+.dart-tally-label {
+  display: block;
+  margin-top: 4px;
+  font:
+    400 10.5px/1.35 var(--font-libre-baskerville),
+    Georgia,
+    serif;
+  color: var(--mute);
+  text-decoration: none;
+}
+
+/* Only the two buckets that need defining carry the dotted hint. */
+.dart-tally-label[title] {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+/* The two beat strips in First light: one bar per death. The metronome holds every bar at its
+   resting height; the Poisson strip lets each bar's height carry how long that gap was. Both sit
+   directly on the sky. The gap is wider than the design's 3px, so BARS in BeatStrip is lower to
+   match — the bars are flex:1 and would otherwise thin to slivers to pay for it. */
+.beat-strip {
+  display: flex;
+  gap: 5px;
+  align-items: flex-end;
+  height: 38px;
+}
+
+.beat-bar {
+  flex: 1;
+
+  /* Fully rounded rather than the design's 2px: a bar this narrow reads as a capsule, and the
+     rounded cap keeps the short Poisson bars from looking like clipped stubs. */
+  border-radius: 999px;
+  transition:
+    height 0.18s ease,
+    background 0.18s ease;
+}
+
+/* A Poisson bar also fades as it changes, so the strip reads as a signal arriving rather than a
+   row of sliders being set. */
+.beat-strip-poisson .beat-bar {
+  transition:
+    opacity 0.25s ease,
+    height 0.25s ease,
+    background 0.25s ease;
 }
 
 /* ============ Step 5 — proxy grid ============ */
-.proxy-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  margin: 1.6rem 0;
-  max-width: 900px;
-}
-
-.proxy-card {
-  min-width: 0;
-  padding: 1.3rem 1.4rem;
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  background: var(--card);
-  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
-}
-
-.proxy-card h4 {
-  margin: 0 0 0.5rem;
-  color: var(--ink);
-  font-weight: 800;
-  font-size: 1rem;
-}
-
-.proxy-card p {
-  margin: 0;
-}
-
-.pros-cons {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-.pros-cons ul {
-  margin: 0.35rem 0 0;
-  padding-left: 1.15rem;
-}
-
-.pros-cons li {
-  margin-bottom: 0.2rem;
-  color: var(--muted);
-  font-size: 0.84rem;
-}
-
-.proxy-definition-section {
-  margin: 1rem 0;
-}
-
-.proxy-definition-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.8rem;
-}
-
-.proxy-definition {
-  min-width: 0;
-  padding: 0.85rem;
-  border: 1px dashed var(--line-strong);
-  border-radius: 10px;
-  background: var(--card);
-}
-
-.proxy-definition h4 {
-  margin: 0;
-  color: var(--ink);
-  font-size: 0.84rem;
-}
-
-.proxy-definition p {
-  margin: 0.4rem 0 0.6rem;
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.proxy-definition span {
-  color: #b45309;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.proxy-correlation-section {
-  margin: 1.15rem 0 1.5rem;
-}
-
-.proxy-results-intro {
-  display: flex;
-  align-items: baseline;
-  gap: 0.65rem;
-  margin-bottom: 0.8rem;
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.proxy-results-intro strong {
-  flex: 0 0 auto;
-  color: var(--ink);
-  font-size: 0.88rem;
-}
-
-.proxy-correlation-grid {
-  align-items: stretch;
-}
-
-.proxy-correlation-panel {
-  display: flex;
-  flex-direction: column;
-}
-
-.correlation-bars {
-  display: grid;
-  gap: 0.5rem;
-  margin-top: auto;
-  padding-top: 0.45rem;
-}
-
-.correlation-row {
-  display: grid;
-  grid-template-columns: minmax(7.5rem, 0.9fr) minmax(4rem, 1.25fr) 3.45rem;
-  align-items: center;
-  gap: 0.45rem;
-  color: var(--muted);
-  font-size: 0.7rem;
-}
-
-.correlation-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.correlation-track {
-  height: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #edeef2;
-}
-
-.correlation-fill {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: #b8b3c9;
-}
-
-.correlation-row.is-selected .correlation-fill {
-  background: var(--accent);
-}
-
-.correlation-row strong {
-  color: var(--body);
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-}
-
-.correlation-row.is-selected .correlation-name,
-.correlation-row.is-selected strong {
-  color: var(--ink);
-}
-
-.correlation-secondary {
-  display: none;
-}
-
-.correlation-direction {
-  margin: 0.55rem 0 0;
-  color: var(--muted);
-  font-size: 0.64rem;
-  letter-spacing: 0.06em;
-  text-align: right;
-  text-transform: uppercase;
-}
-
-.proxy-results-note {
-  margin: 0.75rem 0 0;
-  color: var(--muted);
-  font-size: 0.75rem;
-}
 
 .seasonality-proxy-table-wrap {
   margin: 1rem 0 1.25rem;
@@ -822,46 +843,59 @@ body {
   background: #fafafc;
 }
 
+/* Figures carry no chrome. Every canvas and svg in the story is transparent and composites
+   straight onto the section's sky, so a card around one would put a second surface between the
+   reader and the page — and the palette already tells them where the figure starts. */
 .chart-panel {
   min-width: 0;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--card);
-  padding: 1.1rem 1.2rem;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+  margin-top: 22px;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
 }
 
 .chart-panel.wide {
   grid-column: 1 / -1;
 }
 
-.chart-panel.no-card {
-  border: none;
-  background: none;
-  box-shadow: none;
-  padding: 0;
+/* Inside a grid the gap already spaces the panels; their own top margin would double it. */
+.chart-grid > .chart-panel {
+  margin-top: 0;
 }
 
-.pulse-line {
-  position: relative;
-  height: 24px;
-}
-
+/* Captions are centred under their figure and set in the display face, the way a plate is
+   captioned in print rather than the way a dashboard card is titled. */
 .chart-title {
   margin: 0 0 0.15rem;
   color: var(--ink);
-  font-family: var(--font-archivo), sans-serif;
-  font-weight: 700;
-  font-size: 0.9rem;
+  font-family: var(--font-bebas-neue), Impact, sans-serif;
+  font-weight: 400;
+  font-size: 21px;
+  line-height: 1.15;
+  letter-spacing: 0;
+  text-align: center;
   text-transform: uppercase;
-  letter-spacing: 0.02em;
 }
 
 .chart-copy,
 .chart-status {
-  margin: 0 0 0.75rem;
-  color: var(--muted);
-  font-size: 0.82rem;
+  margin: 5px 0 0.75rem;
+  color: var(--mute);
+  font-family: var(--font-libre-baskerville), Georgia, serif;
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+/* A closing remark under a figure — left-aligned, because it is a sentence about the figure
+   rather than a label for it. */
+.chart-note-copy {
+  margin: 10px 0 0;
+  color: var(--mute);
+  font-family: var(--font-libre-baskerville), Georgia, serif;
+  font-size: 11.5px;
+  line-height: 1.6;
 }
 
 /* Proxy scatter panels whose title + prose live in ROADMAP.md (:::chart-panel), so the
@@ -919,33 +953,215 @@ body {
   border-color: var(--ink);
 }
 
-/* Independent country/region layer checkboxes on the amplitude-proxy scatters (LayerToggle). */
-.chart-layers {
+/* One-country-at-a-time smoothing comparison. Each country's axes stay fixed across mode and
+   order changes so the control never introduces an opportunistic rescale. */
+.smoothing-demo {
+  margin-block: 1.8rem;
+}
+
+.smoothing-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.smoothing-country {
+  display: grid;
+  flex: 0 1 15rem;
+  gap: 0.3rem;
+  color: var(--muted);
+  font:
+    700 0.68rem/1.2 var(--font-public-sans),
+    sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.smoothing-country select {
+  width: 100%;
+  min-height: 2.15rem;
+  padding: 0.35rem 2rem 0.35rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  background: var(--card);
+  color: var(--ink);
+  font:
+    600 0.8rem/1.2 var(--font-public-sans),
+    sans-serif;
+}
+
+.smoothing-country select:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.smoothing-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
-  margin: 0 0 0.55rem;
+  gap: 0.4rem;
+  margin: 0.9rem 0 0.7rem;
+}
+
+.smoothing-control {
+  padding: 0.38rem 0.72rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
   color: var(--muted);
-  font-size: 0.75rem;
+  font:
+    600 0.72rem/1.2 var(--font-public-sans),
+    sans-serif;
+  cursor: pointer;
 }
 
-.chart-layers label {
-  display: inline-flex;
+.smoothing-control:hover,
+.smoothing-control:focus-visible {
+  color: var(--ink);
+  border-color: var(--blue);
+}
+
+.smoothing-control:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.smoothing-control.active {
+  color: var(--panel);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.smoothing-order {
+  display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.32rem;
+  margin: -0.15rem 0 0.7rem;
+  color: var(--muted);
+  font:
+    700 0.68rem/1.2 var(--font-public-sans),
+    sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.smoothing-order-control {
+  width: 1.85rem;
+  height: 1.85rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--muted);
   cursor: pointer;
 }
 
-.chart-layers input {
-  accent-color: var(--accent);
-  cursor: pointer;
+.smoothing-order-control:hover,
+.smoothing-order-control:focus-visible {
+  color: var(--ink);
+  border-color: var(--blue);
+}
+
+.smoothing-order-control:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.smoothing-order-control.active {
+  color: var(--panel);
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.smoothing-chart {
+  width: 100%;
+  height: auto;
+}
+
+.smoothing-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.smoothing-line {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.smoothing-point {
+  fill: var(--panel);
+  stroke: var(--ink);
+  stroke-width: 1.4;
+}
+
+.smoothing-copy {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0.85rem 0 0;
+}
+
+.smoothing-copy div {
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+}
+
+.smoothing-copy dt {
+  margin-bottom: 0.25rem;
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@media (width <= 620px) {
+  .smoothing-heading {
+    display: grid;
+  }
+
+  .smoothing-country {
+    width: min(100%, 18rem);
+  }
+}
+
+.smoothing-copy dd,
+.smoothing-source {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.smoothing-source {
+  margin-top: 0.85rem;
+}
+
+@media (width <= 640px) {
+  .smoothing-copy {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .smoothing-control,
+  .smoothing-line,
+  .smoothing-point {
+    transition: none;
+  }
 }
 
 /* Country-comparison combobox (CountryCurves) */
+
+/* The control sits under the figure, as the design's chip row does — you read the curves first,
+   then reach for the thing that changes them. */
 .cc-combobox {
   position: relative;
   max-width: 320px;
-  margin: 0 0 0.65rem;
+  margin: 12px 0 0;
 }
 
 .cc-label {
@@ -957,14 +1173,21 @@ body {
   text-transform: uppercase;
 }
 
+/* The design draws this as a plain select sitting on the section's own paper: transparent, a 10px
+   corner, and its border the ink at 18% — not the filled pill with a card background and a hard-set
+   ink colour this had grown into. `color: inherit` matters as much as the rest: it is what keeps the
+   field in the same voice as the prose around it under every sky. */
 .cc-input {
   width: 100%;
+  padding: 9px 10px;
   border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--ink);
-  font-size: 0.8rem;
-  padding: 0.4rem 0.65rem;
-  border-radius: 8px;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font:
+    600 12.5px/1 var(--font-public-sans),
+    sans-serif;
+  cursor: pointer;
 }
 
 .cc-input::placeholder {
@@ -1043,48 +1266,53 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* The design's chip row: each pill wears its own curve's colour, which is the whole point —
+   it is the legend as much as the control. */
 .cc-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
-  margin: 0 0 0.75rem;
+  gap: 6px;
+  margin: 9px 0 0;
 }
 
 .cc-chip {
   display: inline-flex;
+  gap: 7px;
   align-items: center;
-  gap: 0.4rem;
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--ink);
-  font-size: 0.74rem;
-  padding: 0.25rem 0.4rem 0.25rem 0.6rem;
+  padding: 7px 11px;
+  border: 0;
   border-radius: 999px;
+  color: #fff;
+  font:
+    600 12px/1 var(--font-public-sans),
+    sans-serif;
 }
 
 .cc-chip-remove {
+  padding: 0;
   border: none;
   background: transparent;
-  color: var(--muted);
-  font-size: 0.68rem;
+  color: inherit;
+  font: inherit;
   line-height: 1;
-  padding: 0;
+  opacity: 0.75;
   cursor: pointer;
 }
 
 .cc-chip-remove:hover {
-  color: var(--ink);
+  opacity: 1;
 }
 
 .cc-clear {
   align-self: center;
-  padding: 0.25rem 0.2rem;
-  border: none;
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
   background: transparent;
   color: var(--muted);
-  font: inherit;
-  font-size: 0.72rem;
-  text-decoration: underline;
+  font:
+    600 12px/1 var(--font-public-sans),
+    sans-serif;
   cursor: pointer;
 }
 
@@ -1098,60 +1326,32 @@ body {
   font-size: 0.72rem;
 }
 
-.seasonality-chart {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
-}
-
-/* World maps break out of the roadmap's centered, max-width shell to the full browser
-   viewport width, regardless of how deeply nested they are — the copy/legend around them
-   stay at reading width. */
-.seasonality-chart.map-bleed {
-  width: 100vw;
-  position: relative;
-  left: calc(50% - 50vw);
-  margin-left: 0;
-  margin-right: 0;
-}
-
+/* The design leaves its choropleth unlabelled; a rate map without a scale is a picture rather
+   than a reading, so the legend stays — reduced to the story's micro-label register and drawn
+   from the same seven steps the map uses (set inline from the palette). */
 .choropleth-legend {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 0.55rem;
-  color: var(--muted);
-  font-size: 0.72rem;
+  margin-top: 10px;
+  font:
+    700 8.5px/1 var(--font-public-sans),
+    sans-serif;
+  color: var(--mute);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
 .choropleth-legend-bar {
-  flex: 1;
-  height: 8px;
-  border-radius: 999px;
-  background: linear-gradient(to right, #ffe08a, #ffb24d, #ff7a3c, #ff3b30, #c81e2b, #7d1420);
-}
-
-.density-legend {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.55rem;
-  color: var(--muted);
-  font-size: 0.72rem;
-}
-
-.density-legend-bar {
   flex: 1;
-  min-width: 6rem;
-  height: 8px;
-  border-radius: 999px;
-  background: linear-gradient(to right, #000 0%, #ff2b2b 75%, #fff 100%);
+  height: 7px;
+  border-radius: 2px;
+  overflow: hidden;
 }
 
-.density-legend-caption {
-  margin-left: auto;
+.choropleth-legend-bar span {
+  flex: 1;
 }
 
 .amplitude-legend {
@@ -1195,75 +1395,76 @@ body {
 .chart-label,
 .chart-tick {
   fill: var(--muted);
-  font-size: 11px;
+  font:
+    500 9.5px/1 var(--font-public-sans),
+    sans-serif;
+}
+
+/* A number read off the mark it sits against, rather than a label naming one. */
+.chart-value {
+  fill: var(--muted);
+  font:
+    700 9.5px/1 var(--font-public-sans),
+    sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
 .chart-note {
-  fill: var(--muted);
-  font-size: 10px;
+  fill: var(--mute);
+  font-size: 9.5px;
   font-style: italic;
 }
 
-.chart-line-north {
-  fill: none;
-  stroke: #ff3b30;
-  stroke-width: 2.4;
+/* The correlation coefficient in a scatter's top corner. Set in the fit line's own colour (inline,
+   per chart) so the number and the line it describes are visibly the same claim. */
+.chart-coefficient {
+  font:
+    700 11px/1 var(--font-public-sans),
+    sans-serif;
+  font-variant-numeric: tabular-nums;
 }
 
-.chart-line-south {
-  fill: none;
-  stroke: #16a34a;
-  stroke-width: 2.4;
+/* A named conflict over its own cluster of cells. */
+.conflict-label {
+  fill: var(--ink);
+  font:
+    700 9px/1 var(--font-public-sans),
+    sans-serif;
 }
 
+/* Category labels under a strip scatter's columns — heavier than a tick, because they are names
+   rather than values. */
+.chart-zone {
+  fill: var(--mute);
+  font:
+    600 9.5px/1 var(--font-public-sans),
+    sans-serif;
+}
+
+/* Dots sit directly on the sky with no halo: the figure is transparent, so a stroke in the
+   card colour would draw a ring of a surface that isn't there. Fill is set per-chart from that
+   chart's proxy colour; this is only the fallback. */
 .chart-point {
   fill: var(--accent);
-  fill-opacity: 0.85;
-  stroke: var(--card);
-  stroke-width: 1.3;
-  transition:
-    fill-opacity 120ms ease,
-    stroke-opacity 120ms ease;
 }
 
-/* Hovering a discrete-step legend swatch mutes every dot outside that step and brings
-   the matching dots to full opacity with a light halo (see wireStepHover). */
-.chart-point.is-dimmed {
-  fill-opacity: 0.12;
-  stroke-opacity: 0.12;
-}
-
-.chart-point.is-active {
-  fill-opacity: 1;
-  stroke: var(--ink);
-  stroke-width: 1.6;
-}
-
+/* Least-squares line through a proxy's cloud. Stroke is set per-chart from the second colour
+   of that proxy's harmony, so the fit belongs to the same family as the dots. */
 .chart-fit {
   fill: none;
-  stroke: var(--ink);
   stroke-width: 1.5;
-  stroke-dasharray: 5 5;
-  stroke-opacity: 0.55;
+  stroke-dasharray: 5 4;
 }
 
+/* The spread behind a categorical column — a p10–p90 in that column's own accent. */
 .chart-band {
-  fill: var(--ink);
-  fill-opacity: 0.08;
   stroke: none;
-}
-
-.country-sd-band {
-  fill: currentcolor;
-  fill-opacity: 0.13;
-  stroke: currentcolor;
-  stroke-opacity: 0.55;
-  stroke-width: 0.75;
+  fill-opacity: 0.1;
 }
 
 .climate-band-boundary {
-  stroke: rgb(0 0 0 / 16%);
-  stroke-width: 0.75;
+  stroke: var(--rule);
+  stroke-width: 1;
   stroke-dasharray: 2 3;
 }
 
@@ -1277,17 +1478,16 @@ body {
   stroke: none;
 }
 
-/* No fill here (unlike .map-country) — the choropleth sets fill per-path via
-   attr(), and a CSS fill rule would win over that presentation attribute.
-   Overlay-blended against the relief basemap beneath it: black/white in the relief
-   (ocean floor, ice, deep shadow) stay black/white regardless of fill color, while
-   mid-gray relief (most land) is fully tinted by it — unlike hard-light, which
-   branches on the fill color's own brightness instead of the basemap's, so it doesn't
-   reliably preserve the basemap's black/white extremes. */
+/* No fill here (unlike .map-country) — the choropleth sets fill per-path via attr(), and a CSS fill
+   rule would win over that presentation attribute.
+
+   These used to be overlay-blended, which only worked because Natural Earth's shaded relief sat
+   underneath: overlay keeps a black backdrop black whatever colour is laid over it, and tints only
+   where the backdrop is mid-grey. With the relief dropped the backdrop is the plate — flat black —
+   so every country blended to black and the map rendered as an empty square. Painting the fills
+   directly is what the figure wants now that there is no terrain to tint. */
 .map-country-fill {
-  stroke: none;
   cursor: pointer;
-  mix-blend-mode: overlay;
 }
 
 .map-country-fill.is-calculated {
@@ -1304,15 +1504,6 @@ body {
   stroke: none;
   cursor: pointer;
   mix-blend-mode: overlay;
-}
-
-.chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.7rem;
-  margin-top: 0.55rem;
-  color: var(--muted);
-  font-size: 0.76rem;
 }
 
 /* Aggregate hold-one-out results table above the six example panels (PredictionComparison). */
@@ -1398,9 +1589,10 @@ body {
   stroke-opacity: 0.7;
 }
 
+/* A line now, not a rule: solid, because it is a measured series rather than an annotation. */
 .ewma-prediction {
-  stroke-width: 2;
-  stroke-dasharray: 6 3;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
 }
 
 .ewma-prediction-label {
@@ -1409,28 +1601,38 @@ body {
 
 .ewma-controls {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1.4rem;
-}
-
-.ewma-controls label {
-  display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  min-width: 200px;
-  color: var(--muted);
-  font-size: 0.76rem;
+  gap: 12px;
+  margin-top: 12px;
 }
 
-.ewma-widget .ewma-controls strong {
-  color: var(--ink);
-  font-weight: 700;
+/* Three presets, equal width, one of them always on. */
+.ewma-presets {
+  display: flex;
+  gap: 8px;
 }
 
-.ewma-controls input[type="range"] {
-  width: 100%;
-  accent-color: #f97316;
+.ewma-preset {
+  flex: 1;
+  padding: 10px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: none;
+  color: var(--mute);
+  font:
+    600 11.5px/1.3 var(--font-public-sans),
+    sans-serif;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.ewma-preset[aria-pressed="true"] {
+  border-color: var(--data);
+  background: var(--tile);
+  color: var(--data);
 }
 
 .ewma-readout {
@@ -1440,17 +1642,11 @@ body {
 }
 
 .ewma-widget .ewma-readout strong {
-  color: #ea580c;
+  color: var(--data);
 }
 
 .ewma-readout-aside {
   color: var(--muted);
-}
-
-.chart-legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
 }
 
 .swatch {
@@ -1464,93 +1660,6 @@ body {
   height: 7px;
   border: 1px solid currentcolor;
   opacity: 0.65;
-}
-
-/* A quantized legend (see renderGradientLegend in chartHelpers.ts): the bar's own
-   background is a smooth multi-stop gradient across the step colours, so it reads as
-   continuous, while invisible .legend-step slices sit on top as discrete hover targets —
-   hovering one highlights the dots in that step and mutes the rest (see wireStepHover). */
-.legend-gradient {
-  position: relative;
-  display: flex;
-  flex: 1 1 90px;
-  min-width: 90px;
-  height: 8px;
-  border-radius: 999px;
-  overflow: visible;
-}
-
-.guided-legend-visual {
-  min-width: 0;
-}
-
-.legend-step {
-  flex: 1;
-  height: 100%;
-  cursor: pointer;
-  background: transparent;
-  transition: background-color 120ms ease;
-}
-
-.legend-step.is-first {
-  border-radius: 999px 0 0 999px;
-}
-
-.legend-step.is-last {
-  border-radius: 0 999px 999px 0;
-}
-
-.legend-step:hover,
-.legend-step.is-guided {
-  background: rgb(0 0 0 / 14%);
-}
-
-.legend-tour-hand {
-  position: absolute;
-  z-index: 2;
-  top: 50%;
-  left: 0;
-  width: 32px;
-  height: 32px;
-  color: var(--ink);
-  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 25%));
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-}
-
-.legend-tour-hand.is-visible {
-  opacity: 1;
-}
-
-.legend-tour-hand svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.legend-tour-hand path {
-  fill: var(--panel);
-  stroke: currentcolor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
-}
-
-/* Small circular swatch for the odd legend entry that isn't part of the gradient run
-   (e.g. a "no data" fallback colour). */
-.swatch-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.legend-caption {
-  flex-basis: 100%;
-  color: var(--muted);
-  opacity: 0.85;
 }
 
 .swatch.north {
@@ -1575,19 +1684,31 @@ footer {
   font-size: 0.85rem;
 }
 
-/* Shared hover tooltip for all 7 charts (Stage 3). */
+/* The one hover tooltip every chart shares.
+
+   A flat label in the section's own colours: paper under ink, a heavy square border, no shadow. It
+   used to be a rounded dark chip with a drop shadow, which read as floating above the page rather
+   than belonging to it — and because it was parented to the body (see tooltip.ts) the palette never
+   reached it, so the background resolved to nothing and the chart showed straight through.
+
+   The border does the lifting the shadow used to: on a light sky it is near-black on near-white, on a
+   dark one white on a barely-lifted dark, so the label separates from whatever it covers without
+   pretending to hover over it. .chart-tooltip is in the palette cross-fade list at the top of this
+   file, so it changes colour with the section rather than snapping. */
 .chart-tooltip {
   position: fixed;
   z-index: 1000;
-  pointer-events: none;
-  background: var(--ink);
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 8px;
   padding: 0.4rem 0.6rem;
+
+  /* Fallbacks, even though tooltip.ts guarantees the tooltip is parented inside the story: the whole
+     appearance hangs off these two variables, so anywhere they cannot resolve the label would come
+     out as unreadable text on nothing at all. A wrong-but-legible surface beats an invisible one. */
+  border: 2px solid var(--ink, #1d1822);
+  background: var(--paper, #fdf5eb);
   font-size: 0.78rem;
-  color: #e8eaed;
-  box-shadow: 0 4px 16px rgb(15 15 30 / 20%);
+  color: var(--ink, #1d1822);
   white-space: pre-line;
+  pointer-events: none;
   opacity: 0;
   transition: opacity 0.08s ease-out;
 }
@@ -1596,38 +1717,11 @@ footer {
   opacity: 1;
 }
 
-/* ============ Step 3 — density panels, dark-navy tiles by design (kept as the
-   original two markdown slots, each paired with its own explanatory paragraph). ============ */
+/* The density close-ups used to be dark-navy tiles; they now composite onto the section sky
+   like every other figure, so the panel only has to stack its caption under its raster. */
 .density-cluster .chart-panel {
-  background: #0e1730;
-  border-color: rgb(255 255 255 / 8%);
   display: flex;
   flex-direction: column;
-}
-
-.density-cluster .chart-title {
-  color: #fff;
-}
-
-.density-cluster .chart-copy,
-.density-cluster .chart-status {
-  color: rgb(255 255 255 / 55%);
-}
-
-/* The density map opts out of the dark card (.no-card) along with every other world
-   map, so its dark-on-navy text theme above must be neutralized back to normal too. */
-.density-cluster .chart-panel.no-card {
-  background: none;
-  border-color: transparent;
-}
-
-.density-cluster .chart-panel.no-card .chart-title {
-  color: var(--ink);
-}
-
-.density-cluster .chart-panel.no-card .chart-copy,
-.density-cluster .chart-panel.no-card .chart-status {
-  color: var(--muted);
 }
 
 @media (width <= 680px) {
@@ -1648,22 +1742,8 @@ footer {
     height: 2.6rem;
   }
 
-  .chart-grid {
+  .pros-cons {
     grid-template-columns: 1fr;
-  }
-
-  .proxy-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .pros-cons,
-  .proxy-definition-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .proxy-results-intro {
-    display: grid;
-    gap: 0.2rem;
   }
 
   .correlation-row {
@@ -1672,13 +1752,1156 @@ footer {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .pulse-dot,
-  .pulse-dot.steady,
-  .pulse-dot.once {
-    animation: none;
+  /* The bars still move — the whole point of the figure is that the timing is uneven — but
+     nothing eases, so the change is a state rather than a motion. */
+  .beat-bar {
+    transition: none;
   }
 
   .back {
     transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Story shell — one vertical scroll: a sticky globe stage that exits as the
+   reader moves, then the sections. The sky is set inline by StoryClient and
+   cross-faded here rather than interpolated per frame.
+   --------------------------------------------------------------------------- */
+
+.story {
+  position: relative;
+
+  /* The reading column is fluid between two bounds rather than pinned to the phone it was designed
+     on. The floor keeps the measure from cramping on a small screen; the ceiling stops the line
+     length running past what is comfortable to read at 15px. Between them everything — column,
+     gutters, figures — follows the viewport. */
+  --story-column-min: 288px;
+  --story-column-max: 640px;
+  --story-gutter: clamp(22px, 5.6vw, 34px);
+
+  min-height: 100vh;
+  transition: background-color 0.55s ease;
+}
+
+/* The opening screen, and it scrolls away like any other screen: not sticky, so the globe leaves by
+   being scrolled off rather than by being moved, shrunk or faded out from under the reader. */
+#story-stage {
+  position: relative;
+  z-index: 3;
+  height: 100dvh;
+  pointer-events: none;
+}
+
+#story-stage #globe,
+#story-stage #island-wrap {
+  pointer-events: auto;
+}
+
+/* In the stage's own flow rather than pinned over it, filling it. The sphere is drawn at two thirds
+   of that height (HERO_FILL) and centred, so it has sky above it and its lower edge runs behind the
+   hero line — which is what the h1's glow was always for. */
+#story-stage #globe {
+  position: static;
+  width: 100%;
+  height: 100%;
+}
+
+/* The hero line and the cue under it, in one transparent box that runs from the globe's lower third
+   to the bottom of the screen. It takes pointer events rather than passing them through: the canvas
+   below sets `touch-action: none` for OrbitControls, so a finger landing on the copy would drag the
+   globe instead of scrolling the page. Catching the gesture here and allowing only vertical panning
+   means the bottom third of the opening screen scrolls, and the globe above it still rotates. */
+#story-hero {
+  position: absolute;
+  inset: 66% 0 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0 22px calc(env(safe-area-inset-bottom, 0px) + 30px);
+  text-align: center;
+  pointer-events: auto;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+#story-hero h1 {
+  margin: 0;
+
+  /* 86px at the 393px width the design was drawn at, and bounded either side of it. */
+  font:
+    400 clamp(56px, 22vw, 110px) / 0.86 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  color: #fff;
+  letter-spacing: 0;
+  text-wrap: balance;
+
+  /* The hero sits over the terminator, where the globe goes from lit to unlit — the glow keeps
+     the letters off whichever half is behind them. */
+  text-shadow: 0 2px 26px rgb(0 0 17 / 80%);
+}
+
+/* Last child of the hero box, so it sits at the bottom of it — the cue and the line it belongs to
+   travel together instead of being pinned to opposite ends of the stage. */
+#story-cue-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.story-cue {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin: 0;
+  padding: 6px 4px;
+  border: 0;
+  background: none;
+  font:
+    600 15px/1 var(--font-public-sans),
+    sans-serif;
+  color: rgb(255 255 255 / 88%);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.story-cue span {
+  animation: story-cue 1.8s ease-in-out infinite;
+}
+
+@keyframes story-cue {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(5px);
+  }
+}
+
+#story-flow {
+  position: relative;
+  z-index: 4;
+}
+
+/* Zero-height sticky rail: the control hangs over the story without taking a row from it. */
+#story-return-rail {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  height: 0;
+}
+
+/* Just outside the column where there is room for it, and back in the corner overlapping the copy
+   — as the design has it — once the window is too narrow for anything else. */
+#story-return {
+  position: absolute;
+  top: 14px;
+  right: max(16px, calc(50vw - var(--story-column-max) / 2 - 78px));
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  font:
+    600 12px/1 var(--font-public-sans),
+    sans-serif;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition:
+    opacity 0.4s ease,
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The canvas the mini globe draws into. It paints its own sphere, so nothing here but the box. */
+#story-return-disc {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+}
+
+/* One column at every width — the phone layout is still the layout — but a fluid one, bounded at
+   both ends and centred in whatever is left over. */
+.story-section {
+  min-width: var(--story-column-min);
+  max-width: var(--story-column-max);
+  padding: 26px var(--story-gutter);
+  margin: 0 auto;
+  color: var(--body);
+  font-family: var(--font-libre-baskerville), Georgia, serif;
+}
+
+/* The first section starts below the fold, so the globe is never half-covered on load. */
+.story-section:first-child {
+  padding-top: 8svh;
+}
+
+.story-section :is(h1, h2, h3, h4) {
+  font-family: var(--font-bebas-neue), Impact, sans-serif;
+  color: var(--ink);
+}
+
+/* A chapter takes its own screen: nothing but the word and the line under it, vertically
+   centred, so the reader crosses a threshold rather than passing a heading. */
+.story-chapter-block {
+  display: flex;
+  min-height: 46svh;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.story-chapter {
+  margin: 0;
+
+  /* 148px at the design width. A chapter title is one word filling the column, so it has to track
+     the column rather than sit at a size that overflows the narrow end and floats at the wide. */
+  font-size: clamp(88px, 38vw, 160px);
+  font-weight: 400;
+  line-height: 0.84;
+  letter-spacing: 0;
+  text-align: center;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+/* A three-letter chapter has to be set larger to fill the same column — 164px against 148px
+   at the design width. */
+.story-chapter-wide {
+  font-size: clamp(97px, 42vw, 176px);
+}
+
+.story-chapter-small {
+  font-size: clamp(48px, 18vw, 80px);
+  line-height: 0.88;
+}
+
+/* The line that shares the chapter's screen. */
+.story-chapter-sub {
+  max-width: 26ch;
+  margin: 16px auto 0;
+  color: var(--mute);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.story-section .story-heading-inline {
+  margin: 11px 0 0;
+}
+
+/* Balanced, like every heading in the design: a two-line heading reads as two even lines rather
+   than a full line and an orphan. The 26px in-flow subheadings are deliberately left greedy. */
+.story-heading {
+  margin: 0;
+  font-size: clamp(27px, 9.16vw, 40px);
+  font-weight: 400;
+  line-height: 1.02;
+  letter-spacing: 0;
+  text-align: center;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+/* The proxy correlation sections have their own rhythm in the design: 26px above the heading
+   (above) and 16px to the panel — tighter than the 22px a standalone figure gets, because these
+   five run as a series and the wider gap read as five separate sections. The 14px to the lead
+   paragraph already comes from `.story-section > :is(p, ul)`. */
+.proxy-figure .chart-panel {
+  margin-top: 16px;
+}
+
+/* Prose only. Every figure caption, note and card body is a classed paragraph with its own
+   smaller size, and this rule outranked all of them until it was scoped: the markdown renderer
+   emits bare `<p>` for prose, so the absence of a class is what distinguishes the two. */
+.story .story-section p:where(:not([class])) {
+  font-size: 15px;
+  line-height: 1.68;
+  text-wrap: pretty;
+}
+
+/* The opening answer types itself out. The spacer holds the finished text at zero opacity so
+   the bubble is already its final size, and the typed line is laid over it. */
+.chat-typing {
+  position: relative;
+}
+
+.chat-type-spacer {
+  opacity: 0;
+}
+
+.chat-type {
+  position: absolute;
+  inset: 0;
+  padding: inherit;
+}
+
+.chat-type.is-typing::after {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  background: currentcolor;
+  vertical-align: text-bottom;
+  animation: story-caret 1s steps(1) infinite;
+}
+
+@keyframes story-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* One word in the sentence carries the aside behind it. Set as a pill so it reads as a control
+   rather than a link, and inline so the sentence still scans as a sentence. */
+.rand-pill {
+  display: inline;
+  padding: 2px 10px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--blue);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rand-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgb(8 10 16 / 55%);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+.rand-scrim[data-open="1"] {
+  opacity: 1;
+}
+
+/* The sheet grows out of the pill and shrinks back into it, so the reader can see where the
+   aside came from and where the sentence they left is waiting. */
+.rand-sheet {
+  position: fixed;
+  z-index: 21;
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--tile);
+  color: var(--body);
+  opacity: 0;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 45%);
+  transition:
+    left 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    top 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    height 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.25s ease;
+}
+
+.rand-sheet[data-open="1"] {
+  opacity: 1;
+}
+
+.rand-inner {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 22px 20px 24px;
+  font-size: 15px;
+  line-height: 1.68;
+  opacity: 0;
+  transition: opacity 0.35s ease 0.22s;
+}
+
+.rand-sheet[data-open="1"] .rand-inner {
+  opacity: 1;
+}
+
+.story .rand-inner .roadmap-subheading {
+  margin-top: 0;
+}
+
+.rand-close {
+  width: 100%;
+  margin-top: 6px;
+  padding: 13px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--tile-open);
+  color: var(--ink);
+  font:
+    600 14px/1 var(--font-public-sans),
+    sans-serif;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rand-sheet,
+  .rand-scrim,
+  .rand-inner {
+    transition-duration: 0.01ms;
+  }
+}
+
+/* How a persona is assembled: the four draws in the order they happen, then the one they most
+   often produce. */
+.persona-demo {
+  margin-top: 12px;
+}
+
+.persona-chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: center;
+  justify-content: center;
+}
+
+.persona-step {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+}
+
+.persona-step-name {
+  color: var(--blue);
+  font:
+    700 14px/1 var(--font-public-sans),
+    sans-serif;
+}
+
+/* The cause is the draw the order exists to protect, so it is the one set apart. */
+.persona-step-name[data-last="1"] {
+  color: var(--red);
+}
+
+.persona-arrow {
+  color: var(--mute);
+  font-size: 12px;
+}
+
+.story .persona-draw {
+  margin: 14px 0 0;
+  padding-top: 13px;
+  border-top: 1px solid var(--rule);
+  color: var(--ink);
+  font:
+    700 15px/1.45 var(--font-public-sans),
+    sans-serif;
+  text-align: center;
+}
+
+.story .persona-note {
+  margin: 6px 0 0;
+  color: var(--mute);
+  font:
+    400 11.5px/1.5 var(--font-public-sans),
+    sans-serif;
+  text-align: center;
+}
+
+/* The closing list of open problems: a claim, its status, and the reasoning one tap away. */
+.accordion {
+  display: flex;
+  flex-direction: column;
+  margin-top: 26px;
+}
+
+.accordion-item {
+  overflow: hidden;
+  border-top: 1px solid var(--rule);
+}
+
+.accordion-head {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  width: 100%;
+  padding: 16px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.accordion-label {
+  flex: 1;
+}
+
+.accordion-title {
+  display: block;
+  color: var(--ink);
+  font:
+    400 24px/1.1 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  letter-spacing: 0;
+}
+
+.accordion-status {
+  display: block;
+  margin-top: 3px;
+  color: var(--mute);
+  font:
+    400 12px var(--font-libre-baskerville),
+    Georgia,
+    serif;
+}
+
+.accordion-icon {
+  flex: none;
+  color: var(--mute);
+  font:
+    600 16px/1 var(--font-public-sans),
+    sans-serif;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.accordion-item[data-open] .accordion-icon {
+  transform: rotate(45deg);
+}
+
+/* The panel is a grid row that grows from 0fr to 1fr: the copy is measured by the grid, so the
+   travel is correct at any width with nothing read in JavaScript. */
+.accordion-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.accordion-item[data-open] .accordion-body {
+  grid-template-rows: 1fr;
+}
+
+.accordion-copy {
+  overflow: hidden;
+}
+
+.story .accordion-copy > p {
+  margin: 0;
+  padding: 0 0 16px;
+  color: var(--body);
+  font-family: var(--font-public-sans), sans-serif;
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+
+/* ---- Concept tiles: the three asides that close "Who" and the conflicts section ------------ */
+
+.concept-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.concept-tile {
+  display: flex;
+  min-height: 104px;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--tile);
+  transition:
+    min-height 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.3s ease;
+}
+
+/* An open tile takes the whole row and lets its own copy set the height; the two it displaces
+   shrink and step back so the row reads as one card being read, not three competing. */
+.concept-tile[data-open] {
+  min-height: 0;
+  grid-column: span 2;
+  background: var(--tile-open);
+}
+
+.concept-tiles[data-any-open] .concept-tile:not([data-open]) {
+  min-height: 78px;
+  background: var(--tile-muted);
+}
+
+.concept-tile-head {
+  position: relative;
+  flex: 1;
+  padding: 12px 13px 14px;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.concept-tile-kind {
+  display: block;
+  color: var(--mute);
+  font:
+    600 11px/1 var(--font-public-sans),
+    sans-serif;
+}
+
+.concept-tile-title {
+  display: block;
+  margin-top: 7px;
+  color: var(--ink);
+  font:
+    400 19px/1.15 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  letter-spacing: 0;
+}
+
+.concept-tile-plus {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  color: var(--mute);
+  font:
+    600 14px/1 var(--font-public-sans),
+    sans-serif;
+  transition:
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.3s ease;
+}
+
+.concept-tile[data-open] .concept-tile-plus {
+  transform: rotate(45deg);
+  color: var(--ink);
+}
+
+/* Grid rows rather than the design's fixed max-height: the panel is then exactly as tall as its
+   own copy at any width, with nothing to clip and no number to keep in sync with the text. */
+.concept-tile-body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.concept-tile[data-open] .concept-tile-body {
+  grid-template-rows: 1fr;
+}
+
+.concept-tile-clip {
+  overflow: hidden;
+}
+
+.story .concept-tile-copy {
+  margin: 0;
+  padding: 0 13px 14px;
+  color: var(--body);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+/* The end of the story: pull up and the globe comes back. */
+.end-block {
+  display: flex;
+  min-height: 58svh;
+  flex-direction: column;
+  justify-content: center;
+  padding: 34px 0 40px;
+  text-align: center;
+}
+
+/* The closing line is set larger than a section heading — 44px at the design width — and in
+   white, because this section's sky is black. */
+.end-block .story-heading {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(34px, 11.2vw, 52px);
+  line-height: 0.98;
+}
+
+/* Serif, like the rest of the story's prose — the closing lines are the last thing read, not UI.
+   Leaving the family to inherit is also what widens the 28ch measure to the design's ~290px,
+   since a Baskerville `ch` is wider than a Public Sans one. */
+.story .end-block p {
+  max-width: 28ch;
+  margin: 14px auto 0;
+  color: rgb(255 255 255 / 62%);
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+.story .end-fine p {
+  max-width: 32ch;
+  margin: 20px auto 0;
+  color: rgb(255 255 255 / 50%);
+  font-size: 12.5px;
+  line-height: 1.65;
+}
+
+/* The closing block already holds the screen; the hint just sits at the end of it. */
+#pull-hint {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 30px;
+  color: rgb(255 255 255 / calc(60% + 40% * var(--pull-strength, 0)));
+
+  /* The gesture tracks the finger; letting go eases back rather than snapping. */
+  transition:
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.2s ease;
+}
+
+#pull-button {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+
+  /* No padding: the design lays arrow, label and track out at one 10px gap inside the hint, and
+     a button box around them has to add nothing to that rhythm. */
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font:
+    700 11px/1 var(--font-public-sans),
+    sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+#pull-arrow {
+  display: inline-block;
+  font:
+    600 19px/1 var(--font-public-sans),
+    sans-serif;
+  transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#pull-track {
+  width: 118px;
+  height: 2px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 16%);
+}
+
+#pull-bar {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 2px;
+
+  /* Solid white, not the hint's own faded colour: the fill is the progress readout and has to
+     stay legible against the track while the label around it is still dim. */
+  background: #fff;
+  transition: width 0.1s linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story {
+    transition: none;
+  }
+
+  .story-cue span,
+  .chat-type.is-typing::after {
+    animation: none;
+  }
+
+  #story-return {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The proxy ranking card — five write-ups that fold into a ranking as the
+   reader scrolls past them, then a modal that asks them to commit to it.
+   Geometry that the scroll drives (strip height, padding, margin) is set
+   inline per frame and deliberately has no transition; everything here is the
+   part that does not move.
+   --------------------------------------------------------------------------- */
+
+.proxy-stack {
+  position: relative;
+  margin-top: 18px;
+}
+
+.proxy-card {
+  position: sticky;
+  top: 12px;
+  padding: 14px 13px 15px;
+  border-radius: 18px;
+}
+
+.proxy-card[data-hidden="1"] {
+  visibility: hidden;
+}
+
+.proxy-card-title {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 0 6px;
+  font:
+    400 23px/1 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  color: var(--ink);
+  letter-spacing: 0;
+  text-align: center;
+}
+
+/* "Best predictor" / "Worst" only mean something once the list has actually become a list, so
+   both rails stay hidden until the last strip has folded. */
+.proxy-rail {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font:
+    700 8.5px/1 var(--font-public-sans),
+    sans-serif;
+  color: var(--mute);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.proxy-rail span:not(.proxy-rail-line) {
+  white-space: nowrap;
+}
+
+.proxy-rail-best {
+  margin: 0 0 8px;
+}
+
+.proxy-rail[data-shown="1"] {
+  opacity: 1;
+}
+
+.proxy-rail-line {
+  flex: 1;
+  height: 2px;
+  border-radius: 2px;
+  background: currentcolor;
+  opacity: 0.5;
+}
+
+.proxy-card-foot {
+  margin-top: 10px;
+}
+
+.proxy-reorder {
+  display: block;
+  width: 100%;
+  height: 36px;
+  margin-top: 11px;
+  border: 0;
+  border-radius: 11px;
+  font:
+    600 12px/1 var(--font-public-sans),
+    sans-serif;
+  cursor: pointer;
+}
+
+.proxy-boxes {
+  position: relative;
+}
+
+.proxy-strip {
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 16px 16px 17px;
+  border-radius: 16px;
+}
+
+.proxy-strip[data-folded="1"] {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.proxy-strip-row {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+
+.proxy-strip-rank {
+  min-width: 15px;
+  flex: none;
+  font:
+    400 21px/1 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  opacity: 0.62;
+}
+
+.proxy-strip .proxy-strip-title {
+  min-width: 0;
+  flex: 1;
+  margin: 0;
+  font:
+    400 24px/1.08 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  color: inherit;
+  letter-spacing: 0;
+}
+
+.proxy-strip[data-folded="1"] .proxy-strip-title {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.proxy-strip[data-in-modal="1"] {
+  height: 62px;
+  padding: 14px;
+  margin-top: 9px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.proxy-strip[data-in-modal="1"]:first-child {
+  margin-top: 0;
+}
+
+.proxy-strip[data-in-modal="1"] .proxy-strip-rank {
+  min-width: 19px;
+  font-size: 24px;
+}
+
+.proxy-strip[data-in-modal="1"] .proxy-strip-title {
+  font-size: 27px;
+}
+
+/* A row being dragged keeps the closed hand for as long as it is held. */
+.proxy-strip[data-in-modal="1"]:active {
+  cursor: grabbing;
+}
+
+/* The controls only appear once the whole stack has folded: while a write-up is open the case
+   for the proxy is on screen already, and there is nothing to reorder yet. */
+.proxy-strip-controls {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.proxy-strip-controls[data-shown="1"] {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.proxy-strip-info {
+  display: flex;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  box-shadow: inset 0 0 0 1.4px currentcolor;
+  color: inherit;
+  font:
+    700 10px/1 var(--font-public-sans),
+    sans-serif;
+  cursor: pointer;
+}
+
+/* In the modal the ⓘ is the only way back to the write-up, so it is a bigger target. */
+.proxy-strip[data-in-modal="1"] .proxy-strip-info {
+  width: 24px;
+  height: 24px;
+}
+
+/* Both of these have to outrank `.story-section :is(h3, h4, h5)` and `:is(p, li)`, which would
+   otherwise paint them in the section's ink — dark type on a vivid fill. The strip sets its own
+   white inline, so all these need to do is inherit it. */
+.proxy-strip .proxy-strip-body {
+  margin: 8px 0 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: inherit;
+}
+
+/* The same words as the strip's own paragraph, for when it has folded away. It hangs above the
+   ⓘ, and flips below when there is no room — the top row of the modal has none. */
+.proxy-tip {
+  position: absolute;
+  right: 12px;
+  bottom: calc(100% - 46px);
+  z-index: 4;
+  max-width: min(240px, 100vw - 28px);
+  padding: 9px 11px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--tile-open);
+  color: var(--body);
+  font:
+    400 12.5px/1.5 var(--font-public-sans),
+    sans-serif;
+  box-shadow: 0 10px 26px rgb(0 0 0 / 18%);
+  animation: proxy-tip-in 0.16s ease both;
+}
+
+.proxy-tip[data-below="1"] {
+  top: 42px;
+  bottom: auto;
+}
+
+@keyframes proxy-tip-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.proxy-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgb(8 10 16 / 55%);
+  backdrop-filter: blur(3px);
+  animation: proxy-scrim-in 0.35s ease both;
+}
+
+.proxy-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 21;
+  display: flex;
+
+  /* The dialog itself never scrolls — only the slot inside it does. With overflow on both, a
+     list one row too tall put a scrollbar on the whole screen instead of on the list. */
+  overflow: hidden;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 52px 20px 26px;
+  animation:
+    proxy-modal-fade 0.34s ease both,
+    proxy-modal-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The dialog fills the screen but its contents keep the column's own bounds: five rows stretched
+   across a desktop would put each rank number and its ⓘ a foot apart. */
+.proxy-modal > * {
+  width: 100%;
+  max-width: var(--story-column-max);
+}
+
+@keyframes proxy-scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes proxy-modal-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes proxy-modal-in {
+  from {
+    transform: scale(1.02);
+  }
+}
+
+.proxy-modal-eyebrow {
+  margin: 0;
+  font:
+    700 10px/1 var(--font-public-sans),
+    sans-serif;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.proxy-modal-heading {
+  margin: 9px 0 0;
+  font:
+    400 clamp(30px, 9.7vw, 42px) / 0.98 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  letter-spacing: 0;
+}
+
+.proxy-modal-note {
+  margin: 10px 0 0;
+  font:
+    500 13px/1.55 var(--font-public-sans),
+    sans-serif;
+}
+
+.proxy-modal-slot {
+  overflow-y: auto;
+  margin: 20px 0 0;
+}
+
+/* The line that closes the ask is set a step down from the instruction above the list. */
+.proxy-modal-closing {
+  margin: 16px 0 0;
+  font:
+    500 12.5px/1.5 var(--font-public-sans),
+    sans-serif;
+}
+
+.proxy-modal-actions {
+  display: flex;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.proxy-skip,
+.proxy-submit {
+  height: 46px;
+  border: 0;
+  border-radius: 13px;
+  font:
+    600 13px/1 var(--font-public-sans),
+    sans-serif;
+  cursor: pointer;
+}
+
+.proxy-skip {
+  flex: 1;
+}
+
+.proxy-submit {
+  flex: 1.5;
+}
+
+/* The reader's own ranking, echoed on the heading of the chart that tests that proxy. */
+.proxy-rank-note {
+  margin-left: 9px;
+  font:
+    700 9.5px/1 var(--font-public-sans),
+    sans-serif;
+  color: var(--mute);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proxy-scrim,
+  .proxy-modal {
+    animation-duration: 0.01ms;
   }
 }

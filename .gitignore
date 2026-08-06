@@ -1,6 +1,13 @@
 # Node.js / npm / pnpm
 node_modules/
 jspm_packages/
+
+# pnpm-lock.yaml is the only lockfile this project keeps (see the preinstall guard in
+# package.json). npm aborts on that guard but writes its lockfile before it fires, so a stray
+# one can be left behind — ignored here so it can never be committed alongside pnpm's.
+package-lock.json
+yarn.lock
+
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

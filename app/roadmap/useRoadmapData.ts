@@ -20,6 +20,7 @@ import type {
   RatePer100kByKey,
   RegionNeighborsByCode,
   SeasonalityData,
+  SmoothingDemoData,
   SeasonalityProxies,
   SubnationalCdr,
   SubnationalLoo,
@@ -51,6 +52,7 @@ interface RoadmapState {
   nutsIso2ToIso3: Map<string, string> | null; // NUTS CNTR_CODE (e.g. "EL","PT") -> ISO3, from data rows
   proxies: SeasonalityProxies | null; // per-country pop65 + Köppen–Geiger family for step-5 scatters
   looValidation: LooValidation | null; // leave-one-out predictions vs actual, for step-5 validation charts
+  smoothingDemo: SmoothingDemoData | null; // selectable weekly-country cadence/smoothing payload
   conflicts: ConflictsPayload | null; // ACLED conflict fatalities (step-6 map), optional
 }
 
@@ -98,6 +100,7 @@ export function useRoadmapData(): RoadmapState {
     nutsIso2ToIso3: null,
     proxies: null,
     looValidation: null,
+    smoothingDemo: null,
     conflicts: null,
   });
 
@@ -196,44 +199,57 @@ export function useRoadmapData(): RoadmapState {
       d3
         .json<AppliedSeasonalityFallbacks>("/data/seasonality-applied-fallbacks.json")
         .catch(() => null),
+      d3.json<SmoothingDemoData>("/data/seasonality-smoothing-demo.json").catch(() => null),
     ])
-      .then(([seasonality, topo, unified, proxies, looValidation, climate, appliedFallbacks]) => {
-        if (cancelled) return null;
-        if (!seasonality || !topo) return null;
-        // Attach the climate model so the amplitude map's spatial estimator can use its
-        // class→family blend for countries with no measured bordering donor.
-        if (climate) {
-          seasonality.climate = climate;
-          if (unified) unified.climate = climate;
-        }
-        const features = topojson.feature(topo, topo.objects.countries)
-          .features as CountryFeature[];
-        // Shared-border adjacency, straight from the topology's arcs (not a geometric
-        // touches-test on the converted GeoJSON) — exact and free of float-precision gaps.
-        const geoms = topo.objects.countries.geometries;
-        const neighborIndexes = topojson.neighbors(geoms);
-        const neighborsByM49: NeighborsByM49 = new Map(
-          geoms.map((g, i) => [
-            Number(g.id),
-            (neighborIndexes[i] ?? [])
-              .map((j) => geoms[j]?.id)
-              .filter((id): id is string | number => id != null)
-              .map(Number),
-          ]),
-        );
-        setState((s) => ({
-          ...s,
-          status: "ready",
-          features,
-          neighborsByM49,
+      .then(
+        ([
           seasonality,
-          unified: unified ?? null,
-          appliedFallbacks: appliedFallbacks ?? null,
-          proxies: proxies ?? null,
-          looValidation: looValidation ?? null,
-        }));
-        return features;
-      })
+          topo,
+          unified,
+          proxies,
+          looValidation,
+          climate,
+          appliedFallbacks,
+          smoothingDemo,
+        ]) => {
+          if (cancelled) return null;
+          if (!seasonality || !topo) return null;
+          // Attach the climate model so the amplitude map's spatial estimator can use its
+          // class→family blend for countries with no measured bordering donor.
+          if (climate) {
+            seasonality.climate = climate;
+            if (unified) unified.climate = climate;
+          }
+          const features = topojson.feature(topo, topo.objects.countries)
+            .features as CountryFeature[];
+          // Shared-border adjacency, straight from the topology's arcs (not a geometric
+          // touches-test on the converted GeoJSON) — exact and free of float-precision gaps.
+          const geoms = topo.objects.countries.geometries;
+          const neighborIndexes = topojson.neighbors(geoms);
+          const neighborsByM49: NeighborsByM49 = new Map(
+            geoms.map((g, i) => [
+              Number(g.id),
+              (neighborIndexes[i] ?? [])
+                .map((j) => geoms[j]?.id)
+                .filter((id): id is string | number => id != null)
+                .map(Number),
+            ]),
+          );
+          setState((s) => ({
+            ...s,
+            status: "ready",
+            features,
+            neighborsByM49,
+            seasonality,
+            unified: unified ?? null,
+            appliedFallbacks: appliedFallbacks ?? null,
+            proxies: proxies ?? null,
+            looValidation: looValidation ?? null,
+            smoothingDemo: smoothingDemo ?? null,
+          }));
+          return features;
+        },
+      )
       .catch((err) => {
         console.error("Could not render seasonality charts", err);
         if (!cancelled) setState((s) => ({ ...s, status: "seasonality-error" }));

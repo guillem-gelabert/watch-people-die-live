@@ -193,7 +193,7 @@ def impute(cache_dir: Path, iso_geo: dict, good_region_rows: list[dict]) -> list
     cent_by_adm1 = {g["adm1_code"]: (g["latitude"], g["longitude"]) for g in iso_geo.values()}
 
     imputed_rows: list[dict] = []
-    for iso, why in bad.items():
+    for iso, _why in bad.items():
         if iso not in iso_geo:
             continue
         g = iso_geo[iso]
@@ -209,11 +209,17 @@ def impute(cache_dir: Path, iso_geo: dict, good_region_rows: list[dict]) -> list
             )[:3]
         else:
             donors = [(0, r) for r in good_region_rows[:3]]
-        avg = np.mean([np.array(r["curve"]) for _, r in donors], axis=0)
-        avg = avg / avg.mean()
+        order = donors[0][1]["curve"]["order"]
+        avg = np.mean(
+            [np.array(r["curve"]["coefficients"], dtype=float) for _, r in donors], axis=0
+        )
+        avg[0] = 1.0
         imputed_rows.append({
             "country": "RUS", "geo": "adm1", "key": g["adm1_code"], "name": g["name"],
-            "isoRegion": iso, "interval": "week", "curve": [round(float(x), 4) for x in avg],
+            "isoRegion": iso, "interval": "week", "curve": {
+                "order": order,
+                "coefficients": [round(float(x), 8) for x in avg],
+            },
             "nYears": None, "annualDeaths": None, "measurement": "rate",
             "imputed": "nearest-region-average", "imputedFrom": [r["name"] for _, r in donors],
         })

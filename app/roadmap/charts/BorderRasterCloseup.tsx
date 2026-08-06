@@ -3,14 +3,17 @@
 import { useMemo, type PointerEvent as ReactPointerEvent } from "react";
 import * as d3 from "d3";
 import { showTooltip, hideTooltip } from "../tooltip";
-import { GRAY_EARTH_URL, grayEarthRasterRects, type RasterRect } from "./basemap";
-import type { CountryFeature, DensityGrid } from "../types";
+import { parseColor } from "../palette";
+import { projectCell, ringPath } from "./basemap";
+import type { CountryFeature, DensityGrid, NeighborsByM49 } from "../types";
 
 // Fixed viewBox: same aspect for every panel so a responsive grid gives every box the
 // same height. Equirectangular maps lon/lat linearly, so cell squareness now depends on
 // the roi's aspect ratio matching the panel's — a mismatch stretches cells uniformly.
 const NOMINAL_W = 600;
-const PANEL_AR = 1.5; // width / height (3:2)
+// Square, as in the design. `fitExtent` scales uniformly, so a region wider than it is tall is
+// letterboxed against the plate rather than stretched — the cells stay square either way.
+const PANEL_AR = 1; // width / height
 const NOMINAL_H = Math.round(NOMINAL_W / PANEL_AR);
 
 type Bbox = [[number, number], [number, number]];
@@ -34,7 +37,6 @@ interface BorderModel {
 interface Model {
   width: number;
   height: number;
-  rasterRects: RasterRect[];
   cells: CellModel[];
   borders: BorderModel[];
   nameById: Map<number, string>;
@@ -48,7 +50,55 @@ interface BorderRasterCloseupProps {
   title: string;
   id: string;
   colorBy?: "country" | "density";
+  // Shared-border adjacency, so "one hue per country" can actually be a four-colouring rather
+  // than a palette cycled by index — which would hand two neighbours the same hue and hide the
+  // very mismatch this figure exists to show.
+  neighborsByM49?: NeighborsByM49 | null;
 }
+
+// Greedy graph colouring over the countries present. Four hues suffice for any planar map, and
+// the greedy pass finds an assignment for a handful of countries immediately.
+function fourColour(
+  ids: number[],
+  neighbours: NeighborsByM49 | null | undefined,
+  palette: string[],
+): Map<number, string> {
+  const out = new Map<number, string>();
+  for (const id of ids) {
+    const taken = new Set(
+      (neighbours?.get(id) ?? []).map((n) => out.get(n)).filter((c): c is string => Boolean(c)),
+    );
+    const pick = palette.find((c) => !taken.has(c)) ?? palette[0];
+    out.set(id, pick as string);
+  }
+  return out;
+}
+
+// Density used to be carried in the fill's alpha. Resolved against the plate up front instead, so
+// every cell is opaque: with crispEdges below, two neighbours then meet on an exact pixel boundary
+// with nothing composited twice and nothing showing through, which is what a raster figure wants.
+function overPlate(color: string, alpha: number): string {
+  const parsed = parseColor(color);
+  const plate = parseColor(PLATE);
+  if (!parsed || !plate) return color;
+  const mixed = parsed.rgb.map((channel, i) =>
+    Math.round((plate.rgb[i] as number) + (channel - (plate.rgb[i] as number)) * alpha),
+  );
+  return `rgb(${mixed.join(",")})`;
+}
+
+// The plate both close-ups sit on. Every other figure in the story is transparent, but these two
+// are about what the grid does and does not cover: with the page showing through, "no cell here"
+// and "page" would be the same colour, and the ragged raster coastline — the whole subject —
+// would disappear. The cells are pastel so they read as light on dark.
+const PLATE = "#251f2b";
+
+// One hue per country, so the cell grid can be read against the real border.
+const COUNTRY_HUES = ["#f68fc0", "#8fc0f6", "#8ff6c5", "#f6f68f"];
+// Density carried by alpha over a single pink; the Benelux crop is the only density close-up.
+const DENSITY_HUE = "#f68fc0";
+// Borders follow rivers and coasts; the grid underneath cannot. Warm against the pastel cells.
+const BORDER = "#f6c58f";
 
 // Shows a region with the rastered density cells (blocky 0.5deg squares) overlaid by
 // the smooth vector country borders (topojson), so a cell can visibly belong to one
@@ -69,7 +119,18 @@ export default function BorderRasterCloseup({
   title,
   id,
   colorBy = "country",
+  neighborsByM49,
 }: BorderRasterCloseupProps) {
+  // Country mode gets four vivid hues to separate ownership; density mode gets one, because it
+  // is showing a quantity and a second hue would imply a second variable.
+  //
+  // These are fixed literals rather than palette-derived, matching the design: both close-ups keep
+  // a dark plate through every sky, so their cells have to stay in one pastel register instead of
+  // following the section hue. The design's renderer takes the raw canvas context for exactly this
+  // reason ("literal colours: the gaps between cells and the borders").
+  const countryHues = COUNTRY_HUES;
+  const densityHue = DENSITY_HUE;
+
   const model = useMemo<Model | null>(() => {
     if (!features || !grid) return null;
 
@@ -114,7 +175,6 @@ export default function BorderRasterCloseup({
       roi,
     );
     const path = d3.geoPath(projection);
-    const rasterRects = grayEarthRasterRects(projection);
     // Overscan window: the lon/lat span that actually covers the whole viewBox at this
     // projection (invert its four corners), padded a cell so cells reach the edges. We
     // draw everything in this window, not just the ROI, so off-aspect margins are filled.
@@ -134,52 +194,65 @@ export default function BorderRasterCloseup({
 
     const nameById = new Map(features.map((f) => [Number(f.id), f.properties?.name ?? "Unknown"]));
 
-    // "country" mode: one hue per country that owns a density cell in the window.
-    // Every country's borders are drawn (and cropped) regardless, so no membership
-    // sampling is required — just a stable color per raster owner.
+    // "country" mode: a four-colouring of whichever countries own a density cell in the window.
+    // Every country's borders are drawn (and cropped) regardless, so no membership sampling is
+    // required — just a stable hue per raster owner.
     let colorById: Map<number, string> | null = null;
-    // "density" mode: same log1p(pop) scale as the flat DensityMap chart, computed over
-    // the full grid so the color scale means the same thing in both charts.
-    let densityColor: d3.ScaleSequential<string> | null = null;
+    // "density" mode: one hue, with population carried by alpha. The stretch is min–max over the
+    // visible window rather than the whole world, because a crop of the Low Countries against the
+    // global maximum would be a single flat tone; the 0.8 gamma lifts the sparse end enough to
+    // see where the cells actually are.
+    let densityAlpha: ((pop: number) => number) | null = null;
     if (colorBy === "density") {
-      const maxLog = Math.log1p(d3.max(grid.cells, (c) => c[2]) ?? 0);
-      densityColor = d3
-        .scaleSequential()
-        .domain([0, maxLog])
-        .interpolator(d3.interpolateRgb("#1c2331", "#ff5252"));
+      const inView = grid.cells.filter((c) => inWindow(c[0], c[1])).map((c) => c[2]);
+      // Log, then a gamma lift. Raw population in this crop spans four orders of magnitude
+      // between a Dutch polder and the Randstad; stretched linearly, every ordinary cell would
+      // sit at the bottom of the range and the map would be one flat tone with three bright dots.
+      const hiLog = Math.log1p(d3.max(inView) ?? 1);
+      densityAlpha = (pop: number) => {
+        const t = Math.min(1, Math.log1p(Math.max(0, pop)) / Math.max(1e-6, hiLog));
+        // Gamma above 1 after the log: the log alone lifts every inhabited cell into the top half
+        // of the range, which flattens the crop back into one tone. This holds ordinary cells down
+        // so the cities are still the brightest thing in the frame.
+        return 0.08 + Math.pow(t, 1.6) * 0.92;
+      };
     } else {
       const inRegionIds = new Set<number>();
       for (const [lon, lat, , m49] of grid.cells) {
         if (inWindow(lon, lat)) inRegionIds.add(Number(m49));
       }
-      const idList = [...inRegionIds];
-      const palette = d3.quantize(d3.interpolateRainbow, Math.max(idList.length, 2));
-      colorById = new Map(idList.map((cid, i) => [cid, palette[i % palette.length]!]));
+      colorById = fourColour([...inRegionIds], neighborsByM49, countryHues);
     }
 
-    // Density cells in the window → projected GeoJSON squares. Ring wound
-    // SW→NW→NE→SE→SW so d3-geo's spherical fill treats the square as the small
-    // interior, not its complement (see the roi note above).
+    // Density cells in the window, projected corner by corner so each is the quad it really is
+    // rather than an axis-aligned box between two corners.
+    //
+    // They meet exactly, with no overlap and no stroke, and `shape-rendering: crispEdges` on the
+    // group is what keeps that clean: with antialiasing on, two exact neighbours each cover about
+    // half their shared edge and the halves do not add back up to one, so the plate reads through as
+    // a grid. Overlapping them instead — which is what closes the seams on the canvas map — is wrong
+    // here: these fills are opaque, so the later cell would paint a hard three-quarter-pixel line
+    // into its neighbour, trading the faint seam for a worse one. Turning antialiasing off removes
+    // the artefact rather than covering it, and a 0.5° raster is exactly the kind of figure that
+    // should have hard pixel edges anyway.
     const cells: CellModel[] = [];
     for (const [lon, lat, pop, m49] of grid.cells) {
       if (!inWindow(lon, lat)) continue;
-      const fill = densityColor ? densityColor(Math.log1p(pop)) : colorById?.get(Number(m49));
+      const fill = densityAlpha
+        ? overPlate(densityHue, densityAlpha(pop))
+        : colorById?.get(Number(m49));
       if (!fill) continue;
-      const square: GeoJSON.Polygon = {
-        type: "Polygon",
-        coordinates: [
-          [
-            [lon, lat],
-            [lon, lat + cellSize],
-            [lon + cellSize, lat + cellSize],
-            [lon + cellSize, lat],
-            [lon, lat],
-          ],
-        ],
-      };
-      const d = path(square);
-      if (!d) continue;
-      cells.push({ key: `${lon},${lat}`, d, fill, m49: Number(m49), pop, lon, lat });
+      const ring = projectCell(projection, lon, lat, cellSize);
+      if (!ring) continue;
+      cells.push({
+        key: `${lon},${lat}`,
+        d: ringPath(ring),
+        fill,
+        m49: Number(m49),
+        pop,
+        lon,
+        lat,
+      });
     }
 
     // Draw every country's borders; the viewBox-rect clip crops the overscan (and
@@ -192,19 +265,18 @@ export default function BorderRasterCloseup({
       })
       .filter((b): b is BorderModel => b !== null);
 
-    return { width, height, rasterRects, cells, borders, nameById };
-  }, [features, grid, bbox, zoom, colorBy]);
+    return { width, height, cells, borders, nameById };
+  }, [features, grid, bbox, zoom, colorBy, neighborsByM49, countryHues, densityHue]);
 
   if (!model) {
     return (
       <section className="chart-panel">
-        <h4 className="chart-title">{title}</h4>
         <div className="chart-status">Loading…</div>
       </section>
     );
   }
 
-  const { width, height, rasterRects, cells, borders, nameById } = model;
+  const { width, height, cells, borders, nameById } = model;
   const clipId = `${id}-clip`;
 
   // Cell hover: raster country is the cell's own m49; also resolve the vector country
@@ -228,15 +300,13 @@ export default function BorderRasterCloseup({
 
   return (
     <section className="chart-panel">
-      <h4 className="chart-title">{title}</h4>
       <svg
         id={id}
-        className="seasonality-chart"
+        className="story-figure"
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label={`Close-up of vector country borders overlapping rastered density cells near ${title}`}
-        style={{ background: "#0d0f14" }}
       >
         <defs>
           <clipPath id={clipId}>
@@ -244,20 +314,12 @@ export default function BorderRasterCloseup({
           </clipPath>
         </defs>
         <g clipPath={`url(#${clipId})`}>
-          <g opacity={0.55} style={{ pointerEvents: "none" }}>
-            {rasterRects.map((r) => (
-              <image
-                key={r.key}
-                href={GRAY_EARTH_URL}
-                x={r.x}
-                y={r.y}
-                width={r.width}
-                height={r.height}
-                preserveAspectRatio="none"
-              />
-            ))}
-          </g>
-          <g fillOpacity={colorBy === "density" ? 0.9 : 0.55} style={{ mixBlendMode: "overlay" }}>
+          {/* Water is simply the absence of a cell, so the plate showing through is the coastline
+              the grid thinks exists — which is the point of putting it next to the real border. */}
+          <rect x="0" y="0" width={width} height={height} fill={PLATE} />
+          {/* crispEdges, not for crispness but to stop the antialiasing between two exactly
+              adjacent cells from letting the plate show through as a grid. See the cell loop. */}
+          <g shapeRendering="crispEdges">
             {cells.map((c) => (
               <path
                 key={c.key}
@@ -269,7 +331,9 @@ export default function BorderRasterCloseup({
               />
             ))}
           </g>
-          <g fill="none" stroke="#ffffff" strokeWidth={1} strokeLinejoin="round">
+          {/* Borders in the page's own colour: they read as a cut through the raster rather than
+              as a third layer of ink on top of it. */}
+          <g fill="none" stroke={BORDER} strokeWidth={1.1} strokeLinejoin="round">
             {borders.map((b) => (
               <path
                 key={b.key}

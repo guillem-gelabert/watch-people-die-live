@@ -1,7 +1,10 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import * as d3 from "d3";
+import { figureHeight, useFigureWidth } from "./useFigureSize";
+import { useSkin } from "../SkinContext";
+import { harmony, marks } from "../palette";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { ConflictDailyStack } from "../types";
 
@@ -12,10 +15,25 @@ interface ConflictEwmaWidgetProps {
 // Stacked-segment colours: each named country a categorical hue, "Others" (last) a muted grey.
 // The named set is dynamic (day-share threshold), so use a palette rather than fixed slots.
 // There's no legend — hovering a segment names its country (and splits "Others").
-const NAMED_COLORS = d3.schemeTableau10;
-const OTHERS_COLOR = "#8b93a1";
-const PREDICTION_COLOR = "#e8eaed";
-const CLAMP_COLOR = "#9aa3af";
+// One hue per named conflict from the section's own palette, plus three neutral tones from the
+// skin for the roll-up, the prediction and the clamp — the widget is the last figure in the
+// conflicts chapter and has to wear the same colours as everything above it.
+const NAMED_COUNT = 8;
+// Wide and shallow: fourteen days across a shallow band of counts.
+const SHAPE = { aspect: 0.61, min: 210, max: 280 };
+
+// The clamp the worked example in the copy describes — P10–P90, fixed, because the prose commits
+// to those two percentiles by name.
+const CLAMP_P = 10;
+const DEFAULT_HALF_LIFE = 4;
+// `0` is the flat mean. Labels carry the unit because the section's tables are in days.
+const HALF_LIFE_PRESETS: ReadonlyArray<readonly [string, number]> = [
+  ["Half-life 2 days", 2],
+  ["Half-life 4 days", DEFAULT_HALF_LIFE],
+  ["Flat mean", 0],
+];
+// Label every third day, so fourteen ticks do not collide at ~23px apart.
+const AXIS_LABEL_EVERY = 3;
 
 // Linear-interpolation percentile (numpy default) — matches the worked example in the copy
 // (P10 = 20.6, P90 = 52.8 for [20,22,21,90,24,26,28]).
@@ -47,25 +65,38 @@ const MONTH_ABBR = [
   "Nov",
   "Dec",
 ];
-// Day-of-month number, except a month name at the first day shown of each month (the boundary
-// between one month and the next) so the numbers stay anchored to a month.
+// Day of the month, prefixed with the month's name at the first labelled day and again whenever
+// the month turns over, so the run of bare numbers always has a month to hang off. The month
+// never replaces the number — a lone "Jul" among day numbers reads as a data point, not a label.
 function axisLabel(iso: string, prevIso: string | null): string {
   const [, mm = "", dd = ""] = iso.split("-");
+  const day = String(Number(dd));
   const monthChanged = !prevIso || iso.slice(0, 7) !== prevIso.slice(0, 7);
-  return monthChanged ? (MONTH_ABBR[Number(mm) - 1] ?? mm) : String(Number(dd));
+  return monthChanged ? `${MONTH_ABBR[Number(mm) - 1] ?? mm} ${day}` : day;
 }
-// Named countries fill the leading slots; the final slot ("Others") is grey.
-const colorAt = (si: number, namedCount: number) =>
-  si < namedCount ? NAMED_COLORS[si % NAMED_COLORS.length]! : OTHERS_COLOR;
-
 // Interactive Robust EWMA over the last 14 days of conflict fatalities. Each day is a stacked
 // bar (top-6 countries + Others); the prediction clamps each day's *total* to a [P, 100-P]
 // band, then takes a half-life-weighted average — "today's" expected conflict deaths.
 export default function ConflictEwmaWidget({ dailyStack }: ConflictEwmaWidgetProps) {
-  const [halfLife, setHalfLife] = useState(4);
-  const [clampP, setClampP] = useState(10);
+  const { sky, skin } = useSkin();
+  const [sizeRef, width] = useFigureWidth<SVGSVGElement>();
+  // One hue per named conflict from the section's own palette; the roll-up, the prediction and the
+  // clamp band take neutral tones from the skin, because they are not conflicts.
+  const namedColors = useMemo(() => marks(harmony(NAMED_COUNT, sky, true), sky), [sky]);
+  const othersColor = skin.mute;
+  const predictionColor = skin.ink;
+  const clampColor = skin.mute;
+  // Named countries fill the leading slots; the final slot ("Others") is the neutral tone.
+  const colorAt = (si: number, namedCount: number) =>
+    si < namedCount ? namedColors[si % namedColors.length]! : othersColor;
+
+  // Three presets rather than a free slider: the section is arguing that the half-life matters,
+  // and two settings plus the naive alternative make that case faster than a continuous control.
+  // A half-life of 0 is the flat mean — the comparison the whole section argues against, where a
+  // massacre four days ago counts exactly as much as yesterday.
+  const [halfLife, setHalfLife] = useState(DEFAULT_HALF_LIFE);
+  const flat = halfLife === 0;
   const [hover, setHover] = useState<{ i: number; si: number } | null>(null);
-  const uid = useId();
 
   const days = useMemo(() => dailyStack?.days ?? [], [dailyStack]);
   const segLabels = useMemo(() => dailyStack?.countries ?? [], [dailyStack]);
@@ -75,15 +106,32 @@ export default function ConflictEwmaWidget({ dailyStack }: ConflictEwmaWidgetPro
     const n = totals.length;
     if (n === 0 || totals.every((v) => v === 0)) return null;
     const sorted = [...totals].sort((a, b) => a - b);
-    const plo = percentile(sorted, clampP);
-    const phi = percentile(sorted, 100 - clampP);
+    const plo = percentile(sorted, CLAMP_P);
+    const phi = percentile(sorted, 100 - CLAMP_P);
     const clamped = totals.map((v) => Math.min(Math.max(v, plo), phi));
-    const weights = totals.map((_, i) => Math.pow(0.5, (n - 1 - i) / halfLife));
-    const wsum = weights.reduce((a, b) => a + b, 0);
-    const prediction = wsum > 0 ? clamped.reduce((s, v, i) => s + v * weights[i]!, 0) / wsum : 0;
+    // A flat mean is the same weighted average with every weight set to one, and no clamp —
+    // it is the naive figure, so it should be shown naively.
+    const series = flat ? totals : clamped;
     const plainMean = totals.reduce((a, b) => a + b, 0) / n;
-    return { totals, n, plo, phi, prediction, plainMean };
-  }, [days, halfLife, clampP]);
+    // The mean as it stood on each day: the same half-life kernel, re-anchored at every day so it
+    // only ever looks backwards. Drawing it as a line rather than one horizontal rule is what
+    // shows the spike being damped instead of just asserting it — and the last point is by
+    // construction today's prediction, so the curve and the readout cannot disagree.
+    const curve = flat
+      ? series.map(() => plainMean)
+      : series.map((_, i) => {
+          let weightSum = 0;
+          let valueSum = 0;
+          for (let j = 0; j <= i; j++) {
+            const w = Math.pow(0.5, (i - j) / halfLife);
+            weightSum += w;
+            valueSum += series[j]! * w;
+          }
+          return weightSum > 0 ? valueSum / weightSum : 0;
+        });
+    const prediction = curve[curve.length - 1] ?? 0;
+    return { totals, n, plo, phi, prediction, plainMean, curve };
+  }, [days, halfLife, flat]);
 
   if (!model) {
     return (
@@ -94,10 +142,9 @@ export default function ConflictEwmaWidget({ dailyStack }: ConflictEwmaWidgetPro
     );
   }
 
-  const { totals, n, plo, phi, prediction, plainMean } = model;
+  const { totals, n, plo, phi, prediction, plainMean, curve } = model;
 
-  const width = 640;
-  const height = 240;
+  const height = figureHeight(width, SHAPE);
   const margin = { top: 14, right: 16, bottom: 26, left: 46 };
   const innerW = width - margin.left - margin.right;
   const innerH = height - margin.top - margin.bottom;
@@ -118,10 +165,11 @@ export default function ConflictEwmaWidget({ dailyStack }: ConflictEwmaWidgetPro
   return (
     <div className="ewma-widget">
       <svg
-        className="seasonality-chart"
+        ref={sizeRef}
+        className="story-figure"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label={`Daily conflict fatalities over the last ${n} days, stacked by country (each day's sub-10% countries grouped as Others at the bottom), with a robust exponentially-weighted prediction of ${fmt1(prediction)} deaths for today; half-life ${halfLife} days, outlier clamp P${clampP}–P${100 - clampP}`}
+        aria-label={`Daily conflict fatalities over the last ${n} days, stacked by country (each day's sub-10% countries grouped as Others at the bottom), with a robust exponentially-weighted prediction of ${fmt1(prediction)} deaths for today; , outlier clamp P–P`}
       >
         <g transform={`translate(${margin.left},${margin.top})`}>
           {yTicks.map((t) => (
@@ -140,7 +188,7 @@ export default function ConflictEwmaWidget({ dailyStack }: ConflictEwmaWidgetPro
             x2={innerW}
             y1={y(phi)}
             y2={y(phi)}
-            stroke={CLAMP_COLOR}
+            stroke={clampColor}
           />
           <line
             className="ewma-clamp"
@@ -148,7 +196,7 @@ export default function ConflictEwmaWidget({ dailyStack }: ConflictEwmaWidgetPro
             x2={innerW}
             y1={y(plo)}
             y2={y(plo)}
-            stroke={CLAMP_COLOR}
+            stroke={clampColor}
           />
 
           {/* One stacked bar per day: Others at the bottom, then named countries (biggest on top). */}
@@ -179,35 +227,39 @@ export default function ConflictEwmaWidget({ dailyStack }: ConflictEwmaWidgetPro
             );
           })}
 
-          {/* The prediction: half-life-weighted average of the clamped daily totals. */}
-          <line
+          {/* The weighted mean as it stood on each day, ending at today's prediction. */}
+          <polyline
             className="ewma-prediction"
-            x1={0}
-            x2={innerW}
-            y1={y(prediction)}
-            y2={y(prediction)}
-            stroke={PREDICTION_COLOR}
+            points={curve
+              .map((v, i) => `${(x(days[i]!.date) ?? 0) + x.bandwidth() / 2},${y(v)}`)
+              .join(" ")}
+            fill="none"
+            stroke={predictionColor}
           />
           <text
             className="chart-tick ewma-prediction-label"
             x={innerW}
-            y={y(prediction) - 5}
+            y={y(prediction) - 7}
             textAnchor="end"
           >
             today ≈ {fmt1(prediction)}/day
           </text>
 
-          {days.map((d, i) => (
-            <text
-              key={d.date}
-              className="chart-tick"
-              x={(x(d.date) ?? 0) + x.bandwidth() / 2}
-              y={innerH + 16}
-              textAnchor="middle"
-            >
-              {axisLabel(d.date, i > 0 ? days[i - 1]!.date : null)}
-            </text>
-          ))}
+          {days.map((d, i) => {
+            // Count back from the last day so today always carries a label.
+            if ((n - 1 - i) % AXIS_LABEL_EVERY !== 0) return null;
+            return (
+              <text
+                key={d.date}
+                className="chart-tick"
+                x={(x(d.date) ?? 0) + x.bandwidth() / 2}
+                y={innerH + 16}
+                textAnchor="middle"
+              >
+                {axisLabel(d.date, i > 0 ? days[i - 1]!.date : null)}
+              </text>
+            );
+          })}
 
           {/* Transparent overlay: resolves the pointer to a single day + segment, so hovering a
               country's slice shows only that country and hovering "Others" shows its split. */}
@@ -271,40 +323,32 @@ export default function ConflictEwmaWidget({ dailyStack }: ConflictEwmaWidgetPro
       </svg>
 
       <div className="ewma-controls">
-        <label htmlFor={`${uid}-hl`}>
-          <span>
-            Half-life <strong>{halfLife} days</strong>
-          </span>
-          <input
-            id={`${uid}-hl`}
-            type="range"
-            min={1}
-            max={14}
-            step={0.5}
-            value={halfLife}
-            onChange={(e) => setHalfLife(Number(e.target.value))}
-          />
-        </label>
-        <label htmlFor={`${uid}-cl`}>
-          <span>
-            Smoothing{" "}
-            <strong>
-              P{clampP}–P{100 - clampP} clamp
-            </strong>
-          </span>
-          <input
-            id={`${uid}-cl`}
-            type="range"
-            min={0}
-            max={25}
-            step={1}
-            value={clampP}
-            onChange={(e) => setClampP(Number(e.target.value))}
-          />
-        </label>
+        <div className="ewma-presets" role="group" aria-label="Weighting">
+          {HALF_LIFE_PRESETS.map(([label, value]) => (
+            <button
+              key={value}
+              type="button"
+              className="ewma-preset"
+              aria-pressed={halfLife === value}
+              onClick={() => setHalfLife(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <p className="ewma-readout">
           Predicted today: <strong>{fmt1(prediction)}</strong> deaths/day
-          <span className="ewma-readout-aside"> (plain average: {fmt1(plainMean)})</span>
+          {flat ? (
+            <span className="ewma-readout-aside">
+              {" "}
+              — the spike is averaged away instead of damped
+            </span>
+          ) : (
+            <span className="ewma-readout-aside">
+              {" "}
+              (plain average: {fmt1(plainMean)}, clamped to P{CLAMP_P}–P{100 - CLAMP_P})
+            </span>
+          )}
         </p>
       </div>
     </div>

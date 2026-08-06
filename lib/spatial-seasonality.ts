@@ -1,20 +1,28 @@
 import * as d3 from "d3";
 import isoCountries from "i18n-iso-countries";
 import type { Feature, Geometry } from "geojson";
+import {
+  harmonicRms,
+  isHarmonicCurve,
+  meanHarmonicCurves,
+  scaleHarmonicAmplitude,
+  shiftHarmonicCurveHalfYear,
+  type HarmonicCurve,
+} from "./seasonal-curve";
 
 // Population-weighted Köppen climate donor-blends, baked by pipeline/climate_fallback.py
 // (data/seasonality-climate-fallback.json). Curves are in a northern-canonical phase; the
 // estimator re-phases them for southern-hemisphere targets.
 export interface ClimateFallbackModel {
-  classCurves: Record<string, number[]>; // Köppen class (e.g. "Cfa") -> blended curve
-  familyCurves: Record<string, number[]>; // Köppen family (A–E) -> blended curve
+  classCurves: Record<string, HarmonicCurve>; // Köppen class (e.g. "Cfa") -> blended curve
+  familyCurves: Record<string, HarmonicCurve>; // Köppen family (A–E) -> blended curve
   classByM49: Record<string, { class: string; family: string }>; // target labels
 }
 
 export interface SpatialSeasonalityData {
-  countries: Record<string, number[]>;
+  countries: Record<string, HarmonicCurve>;
   fallback?: {
-    north: number[];
+    north: HarmonicCurve;
     tropicMaxAbsLat?: number;
     plateauAbsLat?: number;
     amplitudeCoef?: [number, number, number];
@@ -28,7 +36,7 @@ export interface SpatialSeasonalityRegion {
   geo: string;
   key?: string;
   name: string;
-  curve: number[];
+  curve: HarmonicCurve;
   annualDeaths: number | null;
   measurement?: string;
 }
@@ -37,13 +45,13 @@ export type SpatialSeasonalitySource =
   "observed" | "own-regions" | "bordering-countries" | "climate" | "latitude";
 
 export interface SpatialSeasonalityEstimate {
-  curve: number[];
+  curve: HarmonicCurve;
   source: SpatialSeasonalitySource;
   donorNames: string[];
 }
 
 export interface AppliedFallbackCurve {
-  curve: number[];
+  curve: HarmonicCurve;
   source: Extract<SpatialSeasonalitySource, "bordering-countries" | "climate" | "latitude">;
   proxy: "Regional / neighbour" | "Climate" | "Latitude";
   overridden?: boolean;
@@ -56,23 +64,12 @@ export interface AppliedSeasonalityFallbacks {
 }
 
 interface CurveDonor {
-  curve: number[];
+  curve: HarmonicCurve;
   weight?: number | null;
 }
 
-function meanCurve(donors: CurveDonor[], useAvailableWeights = false): number[] {
-  const valid = donors.filter((d) => d.curve.length > 0);
-  if (!valid.length) return [];
-  const months = Math.min(...valid.map((d) => d.curve.length));
-  const canWeight = useAvailableWeights && valid.every((d) => (d.weight ?? 0) > 0);
-  const totalWeight = d3.sum(valid, (d) => (canWeight ? (d.weight as number) : 1));
-  return d3.range(months).map((month) => {
-    const total = d3.sum(
-      valid,
-      (d) => (d.curve[month] as number) * (canWeight ? (d.weight as number) : 1),
-    );
-    return total / totalWeight;
-  });
+function meanCurve(donors: CurveDonor[], useAvailableWeights = false): HarmonicCurve | null {
+  return meanHarmonicCurves(donors, useAvailableWeights);
 }
 
 function featureName(feature: Feature<Geometry>): string {
@@ -90,15 +87,15 @@ function m49ForIso3(iso3: string): number | null {
 function latitudeFallbackCurve(
   latitude: number,
   fallback: SpatialSeasonalityData["fallback"],
-): number[] {
-  if (!fallback?.north.length) return [];
+): HarmonicCurve | null {
+  if (!fallback || !isHarmonicCurve(fallback.north)) return null;
   const absLat = Math.abs(latitude);
   let scale = 0;
   if (fallback.amplitudeCoef && fallback.ampClamp) {
     const [a, b, c] = fallback.amplitudeCoef;
     const [lo, hi] = fallback.ampClamp;
     const targetRms = Math.max(lo, Math.min(hi, a * absLat * absLat + b * absLat + c)) / 100;
-    const canonicalRms = Math.sqrt(d3.mean(fallback.north, (value) => (value - 1) ** 2) ?? 0);
+    const canonicalRms = harmonicRms(fallback.north);
     scale = canonicalRms > 0 ? targetRms / canonicalRms : 0;
   } else {
     const tropicMaxAbsLat = fallback.tropicMaxAbsLat ?? 0;
@@ -106,11 +103,8 @@ function latitudeFallbackCurve(
     const span = plateauAbsLat - tropicMaxAbsLat;
     scale = span > 0 ? Math.max(0, Math.min(1, (absLat - tropicMaxAbsLat) / span)) : 0;
   }
-  const shift = latitude < 0 ? 6 : 0;
-  return fallback.north.map((_, month) => {
-    const shape = fallback.north[(month + shift) % fallback.north.length] as number;
-    return 1 + scale * (shape - 1);
-  });
+  const curve = scaleHarmonicAmplitude(fallback.north, scale);
+  return latitude < 0 ? shiftHarmonicCurveHalfYear(curve) : curve;
 }
 
 // Population-weighted climate fallback for a country with no measured bordering donor: the
@@ -120,14 +114,13 @@ function climateFallbackCurve(
   id: number,
   latitude: number,
   climate: ClimateFallbackModel | undefined,
-): { curve: number[]; label: string } | null {
+): { curve: HarmonicCurve; label: string } | null {
   const target = climate?.classByM49[String(id)];
   if (!target) return null;
   const byClass = climate.classCurves[target.class];
   const canonical = byClass ?? climate.familyCurves[target.family];
-  if (!canonical?.length) return null;
-  const curve =
-    latitude < 0 ? canonical.map((_, m) => canonical[(m + 6) % 12] as number) : canonical;
+  if (!isHarmonicCurve(canonical)) return null;
+  const curve = latitude < 0 ? shiftHarmonicCurveHalfYear(canonical) : canonical;
   return { curve, label: byClass ? `${target.class} climate` : `${target.family} climate` };
 }
 
@@ -147,7 +140,7 @@ export function buildSpatialSeasonality(
 
   const regionsByCountry = new Map<number, SpatialSeasonalityRegion[]>();
   for (const region of regions) {
-    if (region.geo !== "adm1" || !region.curve.length) continue;
+    if (region.geo !== "adm1" || !isHarmonicCurve(region.curve)) continue;
     const m49 = m49ForIso3(region.country);
     if (m49 == null) continue;
     const rows = regionsByCountry.get(m49) ?? [];
@@ -159,17 +152,19 @@ export function buildSpatialSeasonality(
   const estimates = new Map<number, SpatialSeasonalityEstimate>();
   for (const [id] of featureById) {
     const own = seasonality.countries[String(id)];
-    if (own?.length) {
+    if (isHarmonicCurve(own)) {
       estimates.set(id, { curve: own, source: "observed", donorNames: [] });
       continue;
     }
     const ownRegions = regionsByCountry.get(id) ?? [];
     if (ownRegions.length) {
+      const curve = meanCurve(
+        ownRegions.map((region) => ({ curve: region.curve, weight: region.annualDeaths })),
+        true,
+      );
+      if (!curve) continue;
       estimates.set(id, {
-        curve: meanCurve(
-          ownRegions.map((region) => ({ curve: region.curve, weight: region.annualDeaths })),
-          true,
-        ),
+        curve,
         source: "own-regions",
         donorNames: ownRegions.map((region) => region.name),
       });
@@ -180,9 +175,9 @@ export function buildSpatialSeasonality(
   // through multiple borders, which would make results depend on traversal order.
   const measured = new Map(estimates);
   for (const [id, feature] of featureById) {
-    if (seasonality.countries[String(id)]?.length) continue;
+    if (isHarmonicCurve(seasonality.countries[String(id)])) continue;
     const applied = appliedFallbacks?.countries[String(id)];
-    if (applied?.curve.length) {
+    if (applied && isHarmonicCurve(applied.curve)) {
       estimates.set(id, {
         curve: applied.curve,
         source: applied.source,
@@ -199,8 +194,10 @@ export function buildSpatialSeasonality(
         : [];
     });
     if (bordering.length) {
+      const curve = meanCurve(bordering);
+      if (!curve) continue;
       estimates.set(id, {
-        curve: meanCurve(bordering),
+        curve,
         source: "bordering-countries",
         donorNames: bordering.map((donor) => donor.name),
       });
@@ -216,7 +213,7 @@ export function buildSpatialSeasonality(
     }
 
     const curve = latitudeFallbackCurve(latitude, seasonality.fallback);
-    if (curve.length) {
+    if (curve) {
       estimates.set(id, {
         curve,
         source: "latitude",

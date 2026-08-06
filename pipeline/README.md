@@ -1,11 +1,17 @@
 # Subnational seasonality pipeline
 
-Builds `data/seasonality-subnational.json` — per-region 12-point monthly mortality-seasonality
-curves — from raw files cached under `data/source/subnational/` (gitignored). One module per
+Builds `data/seasonality-subnational.json` — per-region continuous order-4 Fourier mortality-
+seasonality curves — from raw files cached under `data/source/subnational/` (gitignored). One module per
 source in `pipeline/sources/`, a declarative registry (`pipeline/registry.py`), and a
 deterministic builder (`pipeline/build.py`) that folds every source through the same canonical
 curve math (`pipeline/curve.py`, shared with `notebooks/seasonality.ipynb` via a re-export shim
 at `notebooks/lib/seasonality_curve.py`).
+
+Every complete non-COVID year is normalized independently before observations are pooled into
+one regression. Count inputs are first divided by their actual calendar exposure (including leap
+years and quarterly month lengths); standardized rates remain intensive. Complete weekly series
+retain all 52/53 observations. The serialized nine coefficients evaluate a mean-1 multiplier at
+any day-of-year phase, so neither the pipeline nor the globe reduces the result to month buckets.
 
 ## CLI
 
@@ -17,6 +23,11 @@ uv run python -m pipeline argentina-latitudes   # rebuild data/argentina-partido
 ```
 
 `build` is also runnable as `pnpm run build:seasonality-subnational`.
+
+After rebuilding national or subnational curves, run `pnpm run build:seasonality-fallbacks`
+and `pnpm run build:seasonality-validation`. The latter regenerates both country and region
+leave-one-out payloads from the harmonic coefficients; its twelve month-midpoint values are
+chart samples, not the production curve contract.
 
 ## Sources
 

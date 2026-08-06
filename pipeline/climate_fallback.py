@@ -74,7 +74,7 @@ def _dominant_koppen_by_m49(root: Path) -> dict[str, dict[str, str]]:
         gap_samples = list(ds.sample(list(_DENSITY_GAP_CENTROIDS.values())))
 
     pop_by_class: dict[int, dict[str, float]] = collections.defaultdict(lambda: collections.defaultdict(float))
-    for (_lon, _lat, population, m49), value in zip(grid, samples):
+    for (_lon, _lat, population, m49), value in zip(grid, samples, strict=True):
         code = KG_CLASSES.get(int(value[0]))
         if code:
             pop_by_class[m49][code] += population
@@ -83,23 +83,28 @@ def _dominant_koppen_by_m49(root: Path) -> dict[str, dict[str, str]]:
         for m49, classes in pop_by_class.items()
         if classes
     }
-    for (m49, _coord), value in zip(_DENSITY_GAP_CENTROIDS.items(), gap_samples):
+    for (m49, _coord), value in zip(_DENSITY_GAP_CENTROIDS.items(), gap_samples, strict=True):
         code = KG_CLASSES.get(int(value[0]))
         if code and str(m49) not in labels:
             labels[str(m49)] = {"class": code, "family": code[0]}
     return labels
 
 
-def _shift6(curve: list[float]) -> list[float]:
-    """Swap summer/winter halves (its own inverse). Maps a southern-hemisphere curve to a
-    northern-canonical phase and back, so donors of one Koppen class reinforce rather than
-    cancel when blended, and a blend can be re-phased for a southern target."""
-    return [curve[(m + 6) % 12] for m in range(12)]
+def _shift6(curve: dict) -> dict:
+    """Shift a Fourier curve by half a year by flipping every odd harmonic pair."""
+    coefficients = list(curve["coefficients"])
+    for harmonic in range(1, curve["order"] + 1):
+        sign = -1 if harmonic % 2 else 1
+        coefficients[2 * harmonic - 1] *= sign
+        coefficients[2 * harmonic] *= sign
+    return {"order": curve["order"], "coefficients": coefficients}
 
 
-def apply_hemisphere(curve: list[float], latitude: float) -> list[float]:
+def apply_hemisphere(curve: dict, latitude: float) -> dict:
     """Re-phase a northern-canonical blend for the target's hemisphere."""
-    return _shift6(curve) if latitude < 0 else list(curve)
+    return _shift6(curve) if latitude < 0 else {
+        "order": curve["order"], "coefficients": list(curve["coefficients"])
+    }
 
 
 def _deaths_by_m49(root: Path) -> dict[int, float]:
@@ -110,27 +115,43 @@ def _deaths_by_m49(root: Path) -> dict[int, float]:
     return deaths
 
 
-def _weighted_mean_curves(entries: list[tuple[list[float], float]]) -> list[float] | None:
-    """Population-weighted mean of equal-length curves; None if empty."""
-    entries = [(c, w) for c, w in entries if c and w > 0]
+def _weighted_mean_curves(entries: list[tuple[dict, float]]) -> dict | None:
+    """Population-weighted coefficient mean; exact because Fourier blending is linear."""
+    entries = [(curve, weight) for curve, weight in entries if curve and weight > 0]
     if not entries:
         return None
-    months = min(len(c) for c, _ in entries)
-    total = sum(w for _, w in entries)
-    return [sum(c[m] * w for c, w in entries) / total for m in range(months)]
+    order = entries[0][0]["order"]
+    if any(curve["order"] != order for curve, _ in entries):
+        raise ValueError("Climate donors must use one harmonic order.")
+    total = sum(weight for _, weight in entries)
+    coefficients = [
+        sum(curve["coefficients"][index] * weight for curve, weight in entries) / total
+        for index in range(2 * order + 1)
+    ]
+    coefficients[0] = 1.0
+    return {"order": order, "coefficients": coefficients}
 
 
-def _latitude_curve(latitude: float, fallback: dict) -> list[float]:
+def _latitude_curve(latitude: float, fallback: dict) -> dict:
     """Port of lib/spatial-seasonality.ts latitudeFallbackCurve (quadratic-RMS branch)."""
     north = fallback["north"]
     abs_lat = abs(latitude)
     a, b, c = fallback["amplitudeCoef"]
     lo, hi = fallback["ampClamp"]
     target_rms = max(lo, min(hi, a * abs_lat * abs_lat + b * abs_lat + c)) / 100
-    canonical_rms = math.sqrt(sum((v - 1) ** 2 for v in north) / len(north))
+    coefficients = north["coefficients"]
+    canonical_rms = math.sqrt(
+        sum(
+            (coefficients[2 * harmonic - 1] ** 2 + coefficients[2 * harmonic] ** 2) / 2
+            for harmonic in range(1, north["order"] + 1)
+        )
+    )
     scale = target_rms / canonical_rms if canonical_rms > 0 else 0.0
-    shift = 6 if latitude < 0 else 0
-    return [round(1 + scale * (north[(m + shift) % len(north)] - 1), 4) for m in range(len(north))]
+    curve = {
+        "order": north["order"],
+        "coefficients": [1.0] + [value * scale for value in coefficients[1:]],
+    }
+    return apply_hemisphere(curve, latitude)
 
 
 def build_climate_model(root: Path) -> dict:
@@ -139,8 +160,8 @@ def build_climate_model(root: Path) -> dict:
     pop = _population_by_m49(root)
     hemi = _hemisphere_by_m49(root)
 
-    class_entries: dict[str, list[tuple[list[float], float]]] = {}
-    family_entries: dict[str, list[tuple[list[float], float]]] = {}
+    class_entries: dict[str, list[tuple[dict, float]]] = {}
+    family_entries: dict[str, list[tuple[dict, float]]] = {}
     for m49_str, curve in unified["countries"].items():
         p = proxies.get(m49_str)
         if not p or not p.get("kgClass"):
@@ -162,22 +183,26 @@ def build_climate_model(root: Path) -> dict:
         if p.get("kgClass"):
             class_by_m49[m49_str] = {"class": p["kgClass"], "family": p["kgFamily"]}
 
-    round4 = lambda c: [round(x, 4) for x in c]  # noqa: E731
+    def rounded(curve: dict) -> dict:
+        return {
+            "order": curve["order"],
+            "coefficients": [round(value, 8) for value in curve["coefficients"]],
+        }
     return {
         # Only emit blends backed by >= MIN_DONORS countries; thin classes/families are omitted so
         # the class -> family -> latitude cascade skips them automatically.
         "classCurves": {
-            k: round4(_weighted_mean_curves(v)) for k, v in class_entries.items() if len(v) >= MIN_DONORS
+            k: rounded(_weighted_mean_curves(v)) for k, v in class_entries.items() if len(v) >= MIN_DONORS
         },
         "familyCurves": {
-            k: round4(_weighted_mean_curves(v)) for k, v in family_entries.items() if len(v) >= MIN_DONORS
+            k: rounded(_weighted_mean_curves(v)) for k, v in family_entries.items() if len(v) >= MIN_DONORS
         },
         "classByM49": class_by_m49,
         "fallback": unified["fallback"],
     }
 
 
-def climate_curve(kg_class: str | None, kg_family: str | None, model: dict) -> tuple[list[float], str] | None:
+def climate_curve(kg_class: str | None, kg_family: str | None, model: dict) -> tuple[dict, str] | None:
     """class -> family blend from the model; None if neither has donors (caller does latitude)."""
     if kg_class and model["classCurves"].get(kg_class):
         return model["classCurves"][kg_class], "climate-class"
@@ -223,7 +248,7 @@ def india_china_regions(root: Path, model: dict, iso_geo: dict) -> list[dict]:
         with rasterio.open(tif) as ds:
             samples = list(ds.sample([(g["longitude"], g["latitude"]) for g in regions.values()]))
 
-        for (iso, g), value in zip(regions.items(), samples):
+        for (iso, g), value in zip(regions.items(), samples, strict=True):
             kg = KG_CLASSES.get(int(value[0]))
             kg_class, kg_family = (kg, kg[0]) if kg else (None, None)
             picked = climate_curve(kg_class, kg_family, model)
@@ -231,12 +256,14 @@ def india_china_regions(root: Path, model: dict, iso_geo: dict) -> list[dict]:
                 curve = apply_hemisphere(picked[0], g["latitude"])
             else:
                 curve = _latitude_curve(g["latitude"], model["fallback"])
-            mean = sum(curve) / len(curve)  # normalise to mean 1 (blends already are; latitude ~is)
-            curve = [x / mean for x in curve]
+            curve["coefficients"][0] = 1.0
             annual = round(region_pop.get(iso, 0.0) * rate)
             rows.append({
                 "country": iso3, "geo": "adm1", "key": g["adm1_code"], "name": g["name"],
-                "isoRegion": iso, "interval": "month", "curve": [round(x, 4) for x in curve],
+                "isoRegion": iso, "interval": "month", "curve": {
+                    "order": curve["order"],
+                    "coefficients": [round(value, 8) for value in curve["coefficients"]],
+                },
                 "nYears": None, "annualDeaths": annual if annual > 0 else None,
                 "measurement": "climate-modeled", "kgFamily": kg_family,
             })

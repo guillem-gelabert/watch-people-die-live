@@ -1,105 +1,170 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as d3 from "d3";
 import { expGap, randomPointOnSphere, REAL_MEAN_GAP_MS } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
-import {
-  appendGrayEarthBasemap,
-  fitRegionProjection,
-  insideViewport,
-  useIsMobileMap,
-  type Bbox,
-} from "./basemap";
-import type { CountryFeature } from "../types";
+import { fitProjection, GRATICULE_WIDTH, insideViewport, type Bbox } from "./basemap";
+import { buildLandMask, buildPopulatedMask, classify, convergenceShares } from "./dartField";
+import { bumpDart, setDartLimits } from "./dartTallyState";
+import { useFigureWidth } from "./useFigureSize";
+import { useSkin } from "../SkinContext";
+import type { CountryFeature, DensityGrid } from "../types";
 
-interface Dot {
+interface Dart {
   id: number;
   x: number;
   y: number;
+  // Bearing of local north at the landing point, in degrees — the crosshair is squared to the
+  // graticule rather than to the screen, so it reads as a point on a globe.
+  bearing: number;
   born: number;
 }
 
 interface GlobalRandomMapProps {
   features: CountryFeature[] | null;
+  grid: DensityGrid | null;
 }
 
-const WIDTH = 860;
-const HEIGHT = 430;
-const MOBILE_SIZE = 430;
-const DOT_LIFETIME_MS = 5200;
+// A dart stays legible for a long time and fades as k², so the figure builds up a scatter
+// instead of showing one blip at a time.
+const LIFE_MS = 20800;
+const CROSSHAIR = 10;
+const OCEAN = "#6dc0e8";
+const DART = "#6de895";
 
-// Pacific + South America — open ocean on the left (no country weighting yet, so an
-// empty expanse is exactly the point) with a continent on the right for scale.
+// South America and the Pacific it sits in: an ocean wide enough that the answer to "where do
+// random points land" is visible without counting, and a coastline to measure it against.
 const BBOX: Bbox = [
-  [-150, -60],
-  [-30, 20],
+  [-124, -34],
+  [-62, -2],
 ];
 
-// Same center as BBOX, cropped to a square and zoomed in for the 1:1 mobile panel.
-const MOBILE_BBOX: Bbox = [
-  [-120, -50],
-  [-60, 10],
-];
-
-// Chart 1: animated Poisson-dot world map, rendered as SVG.
-export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
+// The first spatial model: a death lands anywhere on Earth with equal probability. Land is the
+// page itself and only the ocean is inked, so every dart that misses is a dart you can see
+// missing. Each mark is also counted by the tally below (see dartTallyState).
+export default function GlobalRandomMap({ features, grid }: GlobalRandomMapProps) {
+  const { sky } = useSkin();
   const ref = useRef<SVGSVGElement | null>(null);
-  const isMobile = useIsMobileMap();
-  const width = isMobile ? MOBILE_SIZE : WIDTH;
-  const height = isMobile ? MOBILE_SIZE : HEIGHT;
-  const bbox = isMobile ? MOBILE_BBOX : BBOX;
+  const [sizeRef, measured] = useFigureWidth<SVGSVGElement>();
+  // Square, at exactly the width the column gave it: the column's own max-width is the bound, so
+  // the viewBox always equals the rendered size and nothing is scaled.
+  const width = measured;
+  const height = width;
+
+  // Only the land follows the palette — it is painted in the page's own colour so it disappears
+  // into it, leaving the ocean as the only thing inked. The water and the marks stay literal:
+  // water that isn't blue stops reading as water, and a dart has to sit clearly on top of both.
+  const land = `rgb(${sky.join(",")})`;
+
+  const masks = useMemo(() => {
+    if (!features || !grid) return null;
+    const landMask = buildLandMask(features);
+    if (!landMask) return null;
+    return { land: landMask, populated: buildPopulatedMask(grid) };
+  }, [features, grid]);
+
+  // One pass over 20 000 area-correct samples, published once so the tally can show what each
+  // running count is heading for.
+  useEffect(() => {
+    if (!masks) return;
+    setDartLimits(convergenceShares(masks.land, masks.populated));
+  }, [masks]);
 
   useEffect(() => {
     if (!ref.current || !features) return;
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
 
-    const projection = fitRegionProjection(bbox, width, height);
-    const content = appendGrayEarthBasemap(svg, projection, width, height, "global-random-map");
+    const projection = fitProjection(
+      d3.geoConicEqualArea().parallels([-10, -28]).rotate([92, 0]).center([0, -18]),
+      BBOX,
+      width,
+      height,
+      22,
+    );
+    const path = d3.geoPath(projection);
 
-    const meanGapMs = REAL_MEAN_GAP_MS;
+    // The plate: ocean, then land in the page's own colour, then a graticule that only shows
+    // over water. Nothing here is a photograph — the figure is about position, not terrain.
+    svg
+      .append("path")
+      .attr("d", path({ type: "Sphere" }) ?? "")
+      .attr("fill", OCEAN);
+    const landG = svg.append("g");
+    for (const f of features) {
+      landG
+        .append("path")
+        .attr("d", path(f) ?? "")
+        .attr("fill", land)
+        .attr("stroke", "none");
+    }
+    svg
+      .append("path")
+      .attr("d", path(d3.geoGraticule().step([10, 10])()) ?? "")
+      .attr("class", "map-graticule")
+      .attr("fill", "none")
+      .attr("stroke-width", GRATICULE_WIDTH);
 
-    const dotsG = content.append("g").attr("class", "map-dots");
-    const dots: Dot[] = [];
+    const dartsG = svg.append("g").attr("class", "dart-marks");
+    const darts: Dart[] = [];
     let nextId = 0;
-    let nextAt = performance.now() + expGap(meanGapMs);
+    let nextAt = performance.now() + expGap(REAL_MEAN_GAP_MS);
     let rafId = 0;
     let cancelled = false;
 
+    const bearingAt = (lon: number, lat: number, xy: [number, number]) => {
+      const north = projection([lon, Math.min(90, lat + 0.5)]);
+      if (!north) return 0;
+      return (Math.atan2(north[0] - xy[0], xy[1] - north[1]) * 180) / Math.PI;
+    };
+
     function frame(now: number) {
       if (cancelled) return;
+      // Darts spawn at the real global rate over the whole sphere. Every one is counted; only
+      // the ones inside this crop are drawn, so the visible slice shows the true rate for its
+      // own share of the planet rather than an inflated one.
       while (now >= nextAt) {
-        // Points still spawn at the real global rate, uniformly over the whole sphere —
-        // only those landing inside the cropped region are kept, so the visible slice
-        // shows the same rate it always would, just for a smaller part of Earth.
-        const xy = projection(randomPointOnSphere());
+        const [lon, lat] = randomPointOnSphere();
+        if (masks) bumpDart(classify(lon, lat, masks.land, masks.populated));
+        const xy = projection([lon, lat]);
         if (insideViewport(xy, width, height)) {
-          dots.push({ id: nextId++, x: xy[0], y: xy[1], born: nextAt });
+          darts.push({
+            id: nextId++,
+            x: xy[0],
+            y: xy[1],
+            bearing: bearingAt(lon, lat, xy),
+            born: nextAt,
+          });
         }
-        nextAt += expGap(meanGapMs);
+        nextAt += expGap(REAL_MEAN_GAP_MS);
       }
-      for (let i = dots.length - 1; i >= 0; i--) {
-        if (now - dots[i]!.born >= DOT_LIFETIME_MS) dots.splice(i, 1);
+      for (let i = darts.length - 1; i >= 0; i -= 1) {
+        if (now - darts[i]!.born >= LIFE_MS) darts.splice(i, 1);
       }
-      dotsG
-        .selectAll<SVGCircleElement, Dot>("circle")
-        .data(dots, (d) => d.id)
-        .join((enter) =>
-          enter
-            .append("circle")
-            .attr("cx", (d) => d.x)
-            .attr("cy", (d) => d.y),
-        )
-        .attr("r", (d) => 2.2 + (now - d.born) / 850)
-        .attr("fill", "#2f4bff")
-        .attr("fill-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.9)
-        .attr("stroke", "#2f4bff")
-        .attr("stroke-opacity", (d) => Math.max(0, 1 - (now - d.born) / DOT_LIFETIME_MS) * 0.42);
+
+      dartsG
+        .selectAll<SVGGElement, Dart>("g")
+        .data(darts, (d) => d.id)
+        .join((enter) => {
+          const g = enter.append("g");
+          g.append("line").attr("x1", -CROSSHAIR).attr("x2", CROSSHAIR).attr("y1", 0).attr("y2", 0);
+          g.append("line").attr("x1", 0).attr("x2", 0).attr("y1", -CROSSHAIR).attr("y2", CROSSHAIR);
+          g.append("circle").attr("r", 2.1);
+          return g;
+        })
+        .attr("transform", (d) => `translate(${d.x},${d.y}) rotate(${d.bearing})`)
+        .attr("opacity", (d) => {
+          const k = Math.max(0, 1 - (now - d.born) / LIFE_MS);
+          return k * k;
+        })
+        .call((g) => {
+          g.selectAll("line").attr("stroke", "#ffffff").attr("stroke-width", 1.1);
+          g.selectAll("circle").attr("fill", DART);
+        });
       rafId = requestAnimationFrame(frame);
     }
 
-    // Hover: country under the pointer, or plain coordinates over open ocean.
     svg
       .append("rect")
       .attr("width", width)
@@ -125,22 +190,20 @@ export default function GlobalRandomMap({ features }: GlobalRandomMapProps) {
       cancelled = true;
       cancelAnimationFrame(rafId);
     };
-  }, [features, bbox, width, height]);
+  }, [features, masks, land, width, height]);
 
   return (
-    <section className="chart-panel wide no-card">
-      <p className="chart-copy">
-        Blue dots appear at exponentially random intervals, averaging nearly two events every second
-        (~0.5s between deaths), and at uniformly random points on the Earth&apos;s surface. This
-        first layer has no country, density, or seasonality weighting.
-      </p>
+    <section className="chart-panel wide">
       <svg
-        ref={ref}
+        ref={(node) => {
+          ref.current = node;
+          sizeRef(node);
+        }}
         id="global-random-map-chart"
-        className="seasonality-chart map-bleed"
+        className="story-figure"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="Map of the Pacific and South America where blue dots appear randomly at the global mortality rate"
+        aria-label="South America and the Pacific, with crosshairs falling at random points at the global mortality rate"
       />
     </section>
   );

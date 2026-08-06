@@ -4,6 +4,9 @@ import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import { fmtPlainPct, pearson, strength, styleAxis } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
+import { figureHeight, useFigureWidth } from "./useFigureSize";
+import { useSkin } from "../SkinContext";
+import { mapColor } from "../palette";
 import type {
   CountryFeature,
   NeighborsByM49,
@@ -17,6 +20,9 @@ interface Row {
   amplitude: number;
   neighborMean: number;
 }
+
+// A square frame: both axes are the same quantity, so equal scales are the point.
+const SHAPE = { aspect: 0.78, min: 250, max: 340 };
 
 interface RegionNeighbourScatterProps {
   regions: SubnationalSeasonalityRegion[] | null;
@@ -36,6 +42,11 @@ export default function RegionNeighbourScatter({
   neighborsByM49,
 }: RegionNeighbourScatterProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
+  const HEIGHT = figureHeight(WIDTH, SHAPE);
+  const { skin } = useSkin();
+  // The dots are .chart-point, which reads --accent; the legend now resolves the same value.
+  const accent = mapColor("#ff3b30", skin);
   const legendRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -72,8 +83,8 @@ export default function RegionNeighbourScatter({
       })
       .filter((r): r is Row => r !== null);
 
-    const width = 420;
-    const height = 260;
+    const width = WIDTH;
+    const height = HEIGHT;
     const margin = { top: 16, right: 18, bottom: 42, left: 52 };
     const innerW = width - margin.left - margin.right;
     const innerH = height - margin.top - margin.bottom;
@@ -91,8 +102,8 @@ export default function RegionNeighbourScatter({
       .attr("y1", innerH)
       .attr("x2", x(domainMax))
       .attr("y2", y(domainMax))
-      .attr("stroke", "#444")
-      .attr("stroke-width", 0.8);
+      .attr("stroke", skin.rule)
+      .attr("stroke-width", 1);
 
     g.selectAll("circle.country-pt")
       .data(countryRows)
@@ -102,8 +113,8 @@ export default function RegionNeighbourScatter({
       .attr("cy", (d) => y(d.amplitude))
       .attr("r", 3)
       .attr("fill", "none")
-      .attr("stroke", "#888")
-      .attr("stroke-width", 0.8)
+      .attr("stroke", skin.mute)
+      .attr("stroke-width", 0.9)
       .attr("opacity", 0.6);
 
     g.selectAll("circle.region-pt")
@@ -156,19 +167,24 @@ export default function RegionNeighbourScatter({
 
     const legend = d3.select(legendRef.current);
     legend.selectAll("span").remove();
-    legend.append("span").html('<span class="swatch" style="color:#5aa9d6"></span>regions');
+    // The region swatch used to be a fixed blue while the dots themselves were --accent, so the
+    // legend named a colour that appeared nowhere on the chart. Both now read from the palette.
+    legend.append("span").html(`<span class="swatch" style="color:${accent}"></span>regions`);
     legend
       .append("span")
-      .html('<span class="swatch" style="color:#888"></span>countries (outline)');
-  }, [regions, regionNeighbors, unified, features, neighborsByM49]);
+      .html(`<span class="swatch" style="color:${skin.mute}"></span>countries (outline)`);
+  }, [regions, regionNeighbors, unified, features, neighborsByM49, skin, accent, WIDTH, HEIGHT]);
 
   return (
     <>
       <svg
-        ref={svgRef}
+        ref={(node) => {
+          svgRef.current = node;
+          sizeRef(node);
+        }}
         id="region-neighbour-scatter-chart"
-        className="seasonality-chart"
-        viewBox="0 0 420 260"
+        className="story-figure"
+        viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
         aria-label="Scatter plot of each measured Admin-1 region's seasonal amplitude against the mean amplitude of its bordering measured regions, with countries overlaid as grey outlines"
       />

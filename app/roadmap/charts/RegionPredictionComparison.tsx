@@ -26,8 +26,8 @@ export default function RegionPredictionComparison({
     <section className="chart-panel wide">
       <h4 className="chart-title">Predictions vs. Measured Curve (region)</h4>
       <p className="chart-copy">
-        The same leave-one-out test, run over {regionCount} observed Admin-1 regions instead of
-        countries. {subnationalLoo.meta.note}
+        The same leave-one-out test, run over {subnationalLoo.meta.nRegions ?? regionCount} observed
+        Admin-1 regions instead of countries. {subnationalLoo.meta.note}
       </p>
 
       <div className="loo-summary">

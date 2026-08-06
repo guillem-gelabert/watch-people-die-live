@@ -18,3 +18,7 @@ pnpm-lock.yaml
 # Next.js rewrites tsconfig.json to its own style on every dev/build, so Prettier and
 # Next would fight over it forever. Let Next own it.
 tsconfig.json
+
+# Design reference, not source (see its README — the .dc.html and support.js are the
+# prototyping runtime it was authored in).
+design_handoff_watchpeople_live

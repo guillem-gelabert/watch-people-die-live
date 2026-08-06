@@ -14,7 +14,7 @@ from pathlib import Path
 
 from .cache import cache_dir as resolve_cache_dir
 from .contract import Source
-from .curve import country_curve_records, rate_curve_records
+from .curve import HARMONIC_ORDER, country_curve_records, evaluate_harmonic, rate_curve_records
 from .geo import load_iso_geo, sample_kg_family
 from .registry import MODULES, REGISTRY
 
@@ -48,7 +48,10 @@ def _fold_source(source: Source, rows: list[dict], iso_geo: dict) -> tuple[list[
 
         interval = "week" if source.cadence in ("week", "rate") else "month"
         meta = meta_by_key[key]
-        curve = [round(x, 4) for x in result["curve"]]
+        harmonic = {
+            "order": result["harmonic"]["order"],
+            "coefficients": [round(x, 8) for x in result["harmonic"]["coefficients"]],
+        }
         annual = round(result["annual"]) if result["annual"] is not None else None
 
         if source.geo == "adm1":
@@ -58,14 +61,14 @@ def _fold_source(source: Source, rows: list[dict], iso_geo: dict) -> tuple[list[
             g = iso_geo[iso_region]
             region_rows.append({
                 "country": g["adm0_a3"], "geo": "adm1", "key": g["adm1_code"], "name": g["name"],
-                "isoRegion": iso_region, "interval": interval, "curve": curve,
+                "isoRegion": iso_region, "interval": interval, "curve": harmonic,
                 "nYears": result["n_years"], "annualDeaths": annual,
                 "measurement": source.measurement,
             })
         else:
             partido_rows.append({
                 "country": source.country_iso3, "geo": "partido", "key": meta["region_key"],
-                "name": meta["region_name"], "isoRegion": None, "interval": interval, "curve": curve,
+                "name": meta["region_name"], "isoRegion": None, "interval": interval, "curve": harmonic,
                 "nYears": result["n_years"], "annualDeaths": annual,
                 "measurement": source.measurement,
             })
@@ -108,7 +111,7 @@ def build_seasonality(root: Path | None = None, sources: list[str] | None = None
     # Partido rows are finer than admin-1 and were never KG-sampled.
     cent_by_adm1 = {g["adm1_code"]: (g["latitude"], g["longitude"]) for g in iso_geo.values()}
     points = [cent_by_adm1.get(r["key"], (None, None)) for r in all_region_rows]
-    for row, family in zip(all_region_rows, sample_kg_family(root, points)):
+    for row, family in zip(all_region_rows, sample_kg_family(root, points), strict=True):
         if family:
             row["kgFamily"] = family
 
@@ -125,30 +128,38 @@ def build_seasonality(root: Path | None = None, sources: list[str] | None = None
     assert not _duplicated([r["key"] for r in all_region_rows + climate_rows]), "duplicate adm1 key"
     assert not _duplicated([r["key"] for r in all_partido_rows]), "duplicate partido key"
     all_rows = all_region_rows + all_partido_rows + climate_rows
+    phases = [i / 1464 for i in range(1464)]
     for r in all_rows:
-        assert len(r["curve"]) == 12, r["key"]
-        assert abs(sum(r["curve"]) / 12 - 1) < 1e-3, (r["key"], sum(r["curve"]) / 12)
-        assert all(0.3 < x < 3 for x in r["curve"]), (r["key"], r["curve"])
+        harmonic = r["curve"]
+        assert harmonic["order"] == HARMONIC_ORDER, r["key"]
+        assert len(harmonic["coefficients"]) == 2 * HARMONIC_ORDER + 1, r["key"]
+        assert abs(harmonic["coefficients"][0] - 1) < 1e-6, r["key"]
+        dense = evaluate_harmonic(harmonic["coefficients"], phases)
+        assert all(0.3 < x < 3 for x in dense), (r["key"], harmonic)
 
     meta = {
         "sources": [s.notes for s in enabled if s.notes],
         "method": (
-            "Per-region 12-point monthly curve via the canonical country_curve/rate_curve "
-            "(pipeline/curve.py), identical to the country model: each complete non-COVID "
-            "calendar year normalised to mean 1, averaged across years, 3-tap circular "
-            "smoothed, renormalised. Weekly folded to month by the ISO week's Thursday. "
-            "Russia uses weekly SDR averaged within each month (a rate is intensive). "
+            "Per-region continuous pooled order-4 Fourier curve via the canonical "
+            "country_curve/rate_curve (pipeline/curve.py), identical to the country model. "
+            "Each complete non-COVID calendar year is converted to daily intensity and "
+            "normalised to annual mean 1 before all observations are pooled. Complete weekly "
+            "series retain their 52/53 observations; Russia's weekly SDR remains intensive. "
             "min_annual=500 for count-based regions (nYears/annualDeaths attached so small "
             "regions can be confidence-flagged); Buenos Aires partidos keep all complete years."
         ),
-        "months": 12,
+        "harmonicOrder": HARMONIC_ORDER,
+        "continuous": True,
         "covidExcluded": [2020, 2021, 2022],
         "geoLayer": (
             "adm1 rows keyed by Natural Earth 10m admin-1 code (data/admin1-10m.json), the "
             "same key as data/subnational-cdr.json; partido rows (geo='partido') are finer "
             "than admin-1 and roadmap-only."
         ),
-        "curveMeaning": "12 monthly multipliers, mean 1 (Jan..Dec); >1 = above-average mortality that month.",
+        "curveMeaning": (
+            "Fourier coefficients for a continuous annual multiplier with integral mean 1; "
+            ">1 = above-average mortality at that phase of the year."
+        ),
         "adm1Count": len(all_region_rows),
         "partidoCount": len(all_partido_rows),
         "perCountryAdm1": dict(sorted(Counter(r["country"] for r in all_region_rows).items())),

@@ -7,6 +7,7 @@ import type { GeometryCollection, Topology } from "topojson-specification";
 import type { Feature, Geometry } from "geojson";
 import { initPersona } from "./persona";
 import type { ConflictsPayload } from "@/lib/acled";
+import { evaluateHarmonicCurve, type HarmonicCurve } from "@/lib/seasonal-curve";
 import {
   buildSpatialSeasonality,
   type AppliedSeasonalityFallbacks,
@@ -15,7 +16,10 @@ import {
   type SpatialSeasonalityRegion,
 } from "@/lib/spatial-seasonality";
 
-const FLAT_SEASON = new Array<number>(12).fill(1);
+const FLAT_SEASON: HarmonicCurve = {
+  order: 4,
+  coefficients: [1, 0, 0, 0, 0, 0, 0, 0, 0],
+};
 
 // Emphasis multiplier for the ACLED conflict layer. 1.0 folds annualised conflict fatalities
 // in at face value (they already share the grid's deaths/year unit); raise it to make active
@@ -42,7 +46,10 @@ interface RateGrid {
 interface Seasonality extends SpatialSeasonalityData {
   source: string;
   method: string;
-  months: number;
+  harmonicOrder: number;
+  continuous: true;
+  covidExcluded: number[];
+  exposureAdjustment: string;
 }
 
 interface SubnationalSeasonality {
@@ -64,7 +71,7 @@ export interface Sampler {
 export interface GlobeData {
   error: boolean;
   nameById: Map<number, string>;
-  buildSampler: (month: number) => Sampler;
+  buildSampler: (yearPhase: number) => Sampler;
 }
 
 type GlobeDataState = GlobeData | { error: true } | null;
@@ -148,10 +155,10 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
           )
         : new Map();
 
-      // A country's own 12-month curve if it reported one; otherwise its spatial estimate
+      // A country's own continuous harmonic curve if it reported one; otherwise its spatial estimate
       // from measured regions or bordering countries, then latitude when neither exists.
-      const seasonalCurveCache = new Map<number, number[]>();
-      function seasonalCurve(m49: number): number[] {
+      const seasonalCurveCache = new Map<number, HarmonicCurve>();
+      function seasonalCurve(m49: number): HarmonicCurve {
         const cached = seasonalCurveCache.get(m49);
         if (cached) return cached;
         const curve = spatialSeasonality.get(m49)?.curve ?? FLAT_SEASON;
@@ -203,15 +210,17 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
         }
       }
 
-      // Rebuilt on init and whenever the UTC month changes (~12x/year): the seasonal
+      // Rebuilt on init and once per UTC day: the continuous seasonal
       // multiplier shifts weight toward/away from each country, so both the per-cell
       // cumulative distribution AND the global total (hence the Poisson mean) change.
-      function buildSampler(month: number): Sampler {
+      function buildSampler(yearPhase: number): Sampler {
         const cum = new Float64Array(n);
         let sum = 0;
         for (let i = 0; i < n; i++) {
           const w = baseW[i] as number;
-          if (w > 0) sum += w * (seasonalCurve(m49Arr[i] as number)[month] as number);
+          if (w > 0) {
+            sum += w * evaluateHarmonicCurve(seasonalCurve(m49Arr[i] as number), yearPhase);
+          }
           // Conflict weight is added flat (unseasoned) — conflicts don't follow the winter
           // mortality curve — on top of the cell's seasonal baseline.
           const cw = conflictW[i] as number;

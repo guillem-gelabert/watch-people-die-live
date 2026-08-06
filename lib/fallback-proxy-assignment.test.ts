@@ -10,6 +10,7 @@ import {
   CLIMATE_METHOD_QUALITY_WEIGHT,
   FALLBACK_PROXY_OVERRIDES,
 } from "./fallback-proxy-assignment";
+import type { HarmonicCurve } from "./seasonal-curve";
 
 const feature = (id: number, name: string, latitude: number, longitude = 0): CountryFeature => ({
   type: "Feature",
@@ -18,15 +19,20 @@ const feature = (id: number, name: string, latitude: number, longitude = 0): Cou
   geometry: { type: "Point", coordinates: [longitude, latitude] },
 });
 
-const curve = (high: number, low: number) =>
-  Array.from({ length: 12 }, (_, index) => (index % 2 ? low : high));
+const curve = (high: number, low: number): HarmonicCurve => ({
+  order: 4,
+  coefficients: [1, (high - low) / 2, 0, 0, 0, 0, 0, 0, 0],
+});
 
 describe("buildFallbackProxyAssignments", () => {
   it("generates all three fallback amplitudes and reports their spread", () => {
     const seasonality: SeasonalityData = {
       source: "test",
       method: "test",
-      months: 12,
+      harmonicOrder: 4,
+      continuous: true,
+      covidExcluded: [2020, 2021, 2022],
+      exposureAdjustment: "test",
       fallback: {
         north: curve(1.1, 0.9),
         amplitudeCoef: [0, 0, 10],
@@ -99,7 +105,8 @@ describe("buildFallbackProxyAssignments", () => {
       climate: { qualityAdjustedDonors: 12.0625, label: "Cfa class" },
       neighbor: { qualityAdjustedDonors: 0.75, donorCoverage: 1 },
     });
-    expect(classTarget?.latitude.amplitude).toBeCloseTo(0.1);
+    // The latitude regression targets RMS amplitude; a single cosine's peak is √2 times its RMS.
+    expect(classTarget?.latitude.amplitude).toBeCloseTo(Math.sqrt(0.02));
     expect(classTarget?.climate.amplitude).toBeCloseTo(0.05);
     expect(classTarget?.neighbor.amplitude).toBeCloseTo(0.3);
     expect(classTarget?.amplitudeSpread).toBeCloseTo(0.25);
@@ -145,7 +152,10 @@ describe("buildFallbackProxyAssignments", () => {
     const seasonality: SeasonalityData = {
       source: "test",
       method: "test",
-      months: 12,
+      harmonicOrder: 4,
+      continuous: true,
+      covidExcluded: [2020, 2021, 2022],
+      exposureAdjustment: "test",
       fallback: {
         north: curve(1.1, 0.9),
         amplitudeCoef: [0, 0, 10],
@@ -189,7 +199,10 @@ describe("buildFallbackProxyAssignments", () => {
     const seasonality: SeasonalityData = {
       source: "test",
       method: "test",
-      months: 12,
+      harmonicOrder: 4,
+      continuous: true,
+      covidExcluded: [2020, 2021, 2022],
+      exposureAdjustment: "test",
       fallback: {
         north: curve(1.1, 0.9),
         amplitudeCoef: [0, 0, 10],
@@ -224,7 +237,10 @@ describe("buildFallbackProxyAssignments", () => {
     const seasonality: SeasonalityData = {
       source: "test",
       method: "test",
-      months: 12,
+      harmonicOrder: 4,
+      continuous: true,
+      covidExcluded: [2020, 2021, 2022],
+      exposureAdjustment: "test",
       fallback: {
         north: curve(1.1, 0.9),
         amplitudeCoef: [0, 0, 10],
@@ -297,7 +313,10 @@ describe("buildFallbackProxyAssignments", () => {
     const seasonality: SeasonalityData = {
       source: "test",
       method: "test",
-      months: 12,
+      harmonicOrder: 4,
+      continuous: true,
+      covidExcluded: [2020, 2021, 2022],
+      exposureAdjustment: "test",
       fallback: {
         north: curve(1.1, 0.9),
         amplitudeCoef: [0, 0, 10],
