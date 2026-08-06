@@ -4,12 +4,29 @@ import { useEffect, useMemo, useRef } from "react";
 import * as d3 from "d3";
 import type { Feature, Geometry } from "geojson";
 import { showTooltip, hideTooltip } from "../tooltip";
-import { fitProjection, insideViewport, type Bbox } from "./basemap";
+import {
+  fitProjection,
+  GRATICULE_WIDTH,
+  insideViewport,
+  projectCell,
+  ringPath,
+  type Bbox,
+} from "./basemap";
 import { useFigureWidth } from "./useFigureSize";
-import type { Admin1Feature, Nuts2Feature, RatePer100kByCountry, RatePer100kByKey } from "../types";
+import type {
+  Admin1Feature,
+  CountryFeature,
+  Nuts2Feature,
+  RatePer100kByCountry,
+  RatePer100kByKey,
+} from "../types";
 
 interface SubnationalChoroplethMapProps {
   admin1Features: Admin1Feature[] | null;
+  // Country outlines, drawn over the raster as the coastline. The cells are the subject, but with
+  // nothing but cells the sea and an unmapped region are the same dark plate — the coast is what
+  // says which of the two the reader is looking at.
+  features: CountryFeature[] | null;
   nuts2Features: Nuts2Feature[] | null;
   ratePer100kByKey: RatePer100kByKey | null;
   ratePer100kByCountry: RatePer100kByCountry | null;
@@ -45,7 +62,10 @@ const RAMP_STEPS = 7;
 // this map keeps a dark plate through every sky, so its ramp has to stay in one register instead of
 // following the section hue — and a rate ramp needs one hue, not seven harmony members.
 const PLATE = "#251f2b";
-const GRATICULE = "rgb(231,233,228)";
+// The coastline over the raster, the same warm line the two border close-ups use for their borders,
+// so "vector line cut through a grid" reads the same way in all three figures. It has to sit against
+// both the dark plate and the pink ramp, which rules out either of their own colours.
+const COAST = "#f6c58f";
 const RAMP_HI = [240, 72, 152]; // #f04898 — the highest rate
 const RAMP_LO = [252, 214, 232]; // #fcd6e8 — the lowest
 const RAMP = Array.from({ length: RAMP_STEPS }, (_, k) => {
@@ -67,6 +87,7 @@ const BBOX: Bbox = [
 // the single national rate in step 2 flattens away. Grey = country reported only nationally.
 export default function SubnationalChoroplethMap({
   admin1Features,
+  features,
   nuts2Features,
   ratePer100kByKey,
   ratePer100kByCountry,
@@ -167,20 +188,25 @@ export default function SubnationalChoroplethMap({
     const CELL = 0.5;
     const bounds = visibleRegions.map((d) => ({ d, b: d3.geoBounds(d.feature) }));
     const centroids = visibleRegions.map((d) => d3.geoCentroid(d.feature));
-    const cells: { x: number; y: number; w: number; h: number; region: DrawnRegion }[] = [];
+    const cells: { ring: [number, number][]; region: DrawnRegion }[] = [];
 
     const q = (v: number, f: "floor" | "ceil") => Math[f](v / CELL) * CELL;
     const [[lon0, lat0], [lon1, lat1]] = BBOX;
     for (let lon = q(lon0, "floor"); lon < q(lon1, "ceil"); lon += CELL) {
       for (let lat = q(lat0, "floor"); lat < q(lat1, "ceil"); lat += CELL) {
-        const tl = projection([lon, lat + CELL]);
-        const br = projection([lon + CELL, lat]);
-        if (!tl || !br || !isFinite(tl[0]) || !isFinite(br[0])) continue;
-        const cw = Math.abs(br[0] - tl[0]);
-        const ch = Math.abs(br[1] - tl[1]);
-        const cx = Math.min(tl[0], br[0]);
-        const cy = Math.min(tl[1], br[1]);
-        if (cx + cw < 0 || cx > width || cy + ch < 0 || cy > height) continue;
+        // All four corners, not two: this is an azimuthal projection, so a lon/lat rectangle comes
+        // out as a tilted quad and the tilt grows with distance from the point it is centred on.
+        const ring = projectCell(projection, lon, lat, CELL);
+        if (!ring) continue;
+        const xs = ring.map(([x]) => x);
+        const ys = ring.map(([, y]) => y);
+        if (
+          Math.max(...xs) < 0 ||
+          Math.min(...xs) > width ||
+          Math.max(...ys) < 0 ||
+          Math.min(...ys) > height
+        )
+          continue;
 
         const centre: [number, number] = [lon + CELL / 2, lat + CELL / 2];
         // Bounding box first: geoContains against every prefecture for every cell is the one
@@ -210,29 +236,21 @@ export default function SubnationalChoroplethMap({
         }
         if (!hit) continue;
 
-        // Snapped to whole pixels so neighbouring cells butt up with no hairline between them.
-        const x0 = Math.round(cx);
-        const y0 = Math.round(cy);
-        cells.push({
-          x: x0,
-          y: y0,
-          w: Math.max(1, Math.round(cx + cw) - x0),
-          h: Math.max(1, Math.round(cy + ch) - y0),
-          region: hit,
-        });
+        // No pixel snapping any more — that was what kept the cells square. Neighbours meet exactly
+        // instead, and the group below carries `shape-rendering: crispEdges` so the antialiasing
+        // between two exact edges cannot let the plate through as a grid.
+        cells.push({ ring, region: hit });
       }
     }
 
     content
       .append("g")
       .attr("class", "map-region-cells")
-      .selectAll("rect")
+      .attr("shape-rendering", "crispEdges")
+      .selectAll("path")
       .data(cells)
-      .join("rect")
-      .attr("x", (c) => c.x)
-      .attr("y", (c) => c.y)
-      .attr("width", (c) => c.w)
-      .attr("height", (c) => c.h)
+      .join("path")
+      .attr("d", (c) => ringPath(c.ring))
       .attr("fill", (c) => {
         const { rate } = rateOf(c.region);
         return rate != null ? step(rate) : PLATE;
@@ -248,6 +266,24 @@ export default function SubnationalChoroplethMap({
         showTooltip(label, event.clientX, event.clientY);
       })
       .on("pointerleave", hideTooltip);
+
+    // The coastline, over the cells: country outlines rather than region ones, so the line the reader
+    // sees is the land/sea edge and not a mesh of internal borders. Drawn inside the clipped content
+    // group so it stops at the panel, and transparent to the pointer so the cells keep their hover.
+    if (features) {
+      content
+        .append("g")
+        .attr("class", "map-coast")
+        .attr("fill", "none")
+        .attr("stroke", COAST)
+        .attr("stroke-width", 1)
+        .attr("stroke-linejoin", "round")
+        .style("pointer-events", "none")
+        .selectAll("path")
+        .data(features)
+        .join("path")
+        .attr("d", (f) => path(f) ?? "");
+    }
 
     // Callout leader dots (no labels — the region name/rate shows via hover instead),
     // kept only where they land inside this crop (West Virginia, Utah).
@@ -279,11 +315,10 @@ export default function SubnationalChoroplethMap({
     svg
       .append("path")
       .attr("d", path(d3.geoGraticule().step([5, 5])()) ?? "")
+      .attr("class", "map-graticule")
       .attr("fill", "none")
-      .attr("stroke", GRATICULE)
-      .attr("stroke-width", 1.1)
-      .attr("opacity", 0.55);
-  }, [drawn, ratePer100kByKey, ratePer100kByCountry, domain, width, height]);
+      .attr("stroke-width", GRATICULE_WIDTH);
+  }, [drawn, features, ratePer100kByKey, ratePer100kByCountry, domain, width, height]);
 
   const loading = !drawn || !ratePer100kByKey;
 

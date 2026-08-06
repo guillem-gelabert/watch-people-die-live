@@ -17,11 +17,10 @@ export const ATMOSPHERE_TWILIGHT_COLOR = "#bc490b";
 export const FOV = 45;
 export const FIT_MARGIN = 1.5;
 export const START_ZOOM = 0.58;
-// How much of the stage's height the globe covers when the story opens. Over 1 means the
-// sphere is cropped by the frame rather than floating inside it — the design frames the
-// opening screen as a surface you are close to, not a planet seen whole, and the hero line
-// sits on clean sky underneath instead of over the sphere's lower edge.
-export const HERO_FILL = 1.14;
+// The fraction of the stage's height the sphere's silhouette covers when the story opens. The
+// stage is the full viewport, so this is two thirds of the screen: a whole planet with sky around
+// it, sitting high enough that the hero line crosses its lower edge rather than clearing it.
+export const HERO_FILL = 0.66;
 
 export const CALIBRATION: [string, number, number, number][] = [
   ["Null Island (0°,0°)", 0, 0, 0xffffff],

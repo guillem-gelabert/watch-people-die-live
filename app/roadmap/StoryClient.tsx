@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import GlobeStage from "../globe/GlobeStage";
 import { setHeroActive } from "../globe/stageState";
-import { smoothstep } from "../globe/helpers";
 import MiniEarth from "./MiniEarth";
 import Section from "./Section";
 import { parseSky, skinFromSky, skinToCssVars } from "./palette";
@@ -60,29 +59,23 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     const vh = window.innerHeight || 1;
     const phase = Math.min(1, Math.max(0, window.scrollY / (vh * EXIT_SCREENS)));
     phaseRef.current = phase;
-    const e = smoothstep(phase);
 
-    // The globe's exit: the scene-side half (rotation, dolly) happens in Earth's useFrame.
+    // The globe's exit: the tip-away rotation in Earth's useFrame, the stage scrolling off the top
+    // like anything else, and this fade. It never moves under the reader and never shrinks — the
+    // fade is on top of the scroll, so the globe is already thinning out by the time its lower limb
+    // reaches the top of the screen. Releasing the pointer matters too: the canvas sets
+    // `touch-action: none` for OrbitControls, so a drag on a half-scrolled globe would rotate it
+    // instead of carrying on with the scroll.
     const globe = stage.querySelector<HTMLElement>("#globe");
     if (globe) {
-      globe.style.transform = `translateY(${-e * 88}%) scale(${1 - e * 0.34})`;
       globe.style.opacity = String(Math.max(0, 1 - Math.max(0, phase - 0.62) / 0.3));
       globe.style.pointerEvents = phase > 0.35 ? "none" : "auto";
     }
-    const hero = stage.querySelector<HTMLElement>("#story-hero");
-    if (hero) {
-      const t = Math.min(1, phase / 0.32);
-      hero.style.opacity = String(Math.max(0, 1 - t * 1.15));
-      hero.style.transform = `translateY(${-t * 46}px)`;
-    }
-    const cue = stage.querySelector<HTMLElement>("#story-cue-wrap");
-    if (cue) {
-      const t = Math.min(1, phase / 0.32);
-      cue.style.opacity = String(Math.max(0, 1 - t * 1.6));
-      // The cue is the only thing in the pointer-transparent stage that can be clicked, and
-      // only while it is still legible.
-      cue.style.pointerEvents = t > 0.4 ? "none" : "auto";
-    }
+
+    // The hero line is deliberately not touched here. It used to fade and lift on scroll, from when
+    // the stage was pinned and the copy had to be taken off a globe that stayed put; now the whole
+    // stage scrolls away, so it leaves on its own, and fading it as well read as the words
+    // dissolving before the reader had left them.
     const island = stage.querySelector<HTMLElement>("#island-wrap");
     if (island) island.style.opacity = String(Math.max(0, 1 - phase / 0.28));
     setHeroActive(phase < 0.04);
@@ -164,6 +157,47 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     return { sky, skin: skinFromSky(sky) };
   }, [activeSky]);
 
+  // The sections are built once and reused across sky changes. They do not depend on the active sky
+  // — each only declares its own, and the palette reaches the figures through SkinContext and CSS
+  // variables — so rebuilding this tree ten times a page was rebuilding every section's markdown
+  // and every figure's element tree to change one background colour. That was ~100ms of main thread
+  // per sky change, landing as a stutter in the globe exactly as the cross-fade started. Held apart
+  // like this, a sky change re-renders only what actually reads the skin.
+  const flow = useMemo(
+    () =>
+      sections.map((section) => {
+        const isChapter = section.heading === "chapter" || section.heading === "chapter-small";
+        const title = section.heading !== "hidden" && (
+          <h2
+            className={
+              CHAPTER_CLASS[section.heading] +
+              (section.heading === "chapter" && section.label.length <= SHORT_CHAPTER
+                ? " story-chapter-wide"
+                : "")
+            }
+          >
+            {section.label}
+          </h2>
+        );
+        return (
+          <Section key={section.key} sky={section.sky} screenLabel={section.screenLabel}>
+            {/* A chapter takes its own screen: the title and the line under it are centred
+                together in it, rather than the title standing alone above the prose. */}
+            {isChapter ? (
+              <div className="story-chapter-block">
+                {title}
+                {section.subtitle && <p className="story-chapter-sub">{section.subtitle}</p>}
+              </div>
+            ) : (
+              title
+            )}
+            <RoadmapMarkdown source={section.body} slots={slotsByKey[section.key]} />
+          </Section>
+        );
+      }),
+    [sections, slotsByKey],
+  );
+
   const body = (
     <div
       className="story"
@@ -175,18 +209,22 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     >
       <div id="story-stage" ref={stageRef}>
         <GlobeStage phaseRef={phaseRef} />
+        {/* Hero line and cue in one box: transparent, over the globe's lower edge, and the only
+            thing in the stage that takes a gesture — see #story-hero for why. */}
         <div id="story-hero">
           <h1>Every flash is a death.</h1>
-        </div>
-        <div id="story-cue-wrap">
-          {/* The cue is the invitation to start reading, so it does what it invites. */}
-          <button
-            type="button"
-            className="story-cue"
-            onClick={() => window.scrollTo({ top: window.innerHeight * 1.05, behavior: "smooth" })}
-          >
-            What? <span aria-hidden="true">↓</span>
-          </button>
+          <div id="story-cue-wrap">
+            {/* The cue is the invitation to start reading, so it does what it invites. */}
+            <button
+              type="button"
+              className="story-cue"
+              onClick={() =>
+                window.scrollTo({ top: window.innerHeight * 1.05, behavior: "smooth" })
+              }
+            >
+              What? <span aria-hidden="true">↓</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -203,36 +241,7 @@ export default function StoryClient({ markdown }: StoryClientProps) {
       </div>
 
       <div id="story-flow" ref={flowRef}>
-        {sections.map((section) => {
-          const isChapter = section.heading === "chapter" || section.heading === "chapter-small";
-          const title = section.heading !== "hidden" && (
-            <h2
-              className={
-                CHAPTER_CLASS[section.heading] +
-                (section.heading === "chapter" && section.label.length <= SHORT_CHAPTER
-                  ? " story-chapter-wide"
-                  : "")
-              }
-            >
-              {section.label}
-            </h2>
-          );
-          return (
-            <Section key={section.key} sky={section.sky} screenLabel={section.screenLabel}>
-              {/* A chapter takes its own screen: the title and the line under it are centred
-                  together in it, rather than the title standing alone above the prose. */}
-              {isChapter ? (
-                <div className="story-chapter-block">
-                  {title}
-                  {section.subtitle && <p className="story-chapter-sub">{section.subtitle}</p>}
-                </div>
-              ) : (
-                title
-              )}
-              <RoadmapMarkdown source={section.body} slots={slotsByKey[section.key]} />
-            </Section>
-          );
-        })}
+        {flow}
       </div>
     </div>
   );

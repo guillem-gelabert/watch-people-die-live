@@ -1,5 +1,6 @@
 import * as d3 from "d3";
 import { harmony, marks, skinFromSky, type Rgb } from "./palette";
+import { isHarmonicCurve, sampleHarmonicCurve, type HarmonicCurve } from "@/lib/seasonal-curve";
 
 export const MONTHS = [
   "Jan",
@@ -22,7 +23,13 @@ export function rotateSix(values: number[]): number[] {
   return values.slice(6).concat(values.slice(0, 6));
 }
 
-export function strength(values: number[]): number {
+export function strength(values: number[] | HarmonicCurve): number {
+  if (isHarmonicCurve(values)) {
+    values = sampleHarmonicCurve(
+      values,
+      d3.range(720).map((index) => index / 720),
+    );
+  }
   return d3.max(values, (d) => Math.abs(d - 1)) ?? 0;
 }
 

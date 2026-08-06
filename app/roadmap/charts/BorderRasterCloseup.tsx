@@ -4,6 +4,7 @@ import { useMemo, type PointerEvent as ReactPointerEvent } from "react";
 import * as d3 from "d3";
 import { showTooltip, hideTooltip } from "../tooltip";
 import { parseColor } from "../palette";
+import { projectCell, ringPath } from "./basemap";
 import type { CountryFeature, DensityGrid, NeighborsByM49 } from "../types";
 
 // Fixed viewBox: same aspect for every panel so a responsive grid gives every box the
@@ -73,10 +74,17 @@ function fourColour(
   return out;
 }
 
-function withAlpha(color: string, alpha: number): string {
+// Density used to be carried in the fill's alpha. Resolved against the plate up front instead, so
+// every cell is opaque: with crispEdges below, two neighbours then meet on an exact pixel boundary
+// with nothing composited twice and nothing showing through, which is what a raster figure wants.
+function overPlate(color: string, alpha: number): string {
   const parsed = parseColor(color);
-  if (!parsed) return color;
-  return `rgba(${parsed.rgb.join(",")},${alpha.toFixed(3)})`;
+  const plate = parseColor(PLATE);
+  if (!parsed || !plate) return color;
+  const mixed = parsed.rgb.map((channel, i) =>
+    Math.round((plate.rgb[i] as number) + (channel - (plate.rgb[i] as number)) * alpha),
+  );
+  return `rgb(${mixed.join(",")})`;
 }
 
 // The plate both close-ups sit on. Every other figure in the story is transparent, but these two
@@ -216,31 +224,35 @@ export default function BorderRasterCloseup({
       colorById = fourColour([...inRegionIds], neighborsByM49, countryHues);
     }
 
-    // Density cells in the window → projected GeoJSON squares. Ring wound
-    // SW→NW→NE→SE→SW so d3-geo's spherical fill treats the square as the small
-    // interior, not its complement (see the roi note above).
+    // Density cells in the window, projected corner by corner so each is the quad it really is
+    // rather than an axis-aligned box between two corners.
+    //
+    // They meet exactly, with no overlap and no stroke, and `shape-rendering: crispEdges` on the
+    // group is what keeps that clean: with antialiasing on, two exact neighbours each cover about
+    // half their shared edge and the halves do not add back up to one, so the plate reads through as
+    // a grid. Overlapping them instead — which is what closes the seams on the canvas map — is wrong
+    // here: these fills are opaque, so the later cell would paint a hard three-quarter-pixel line
+    // into its neighbour, trading the faint seam for a worse one. Turning antialiasing off removes
+    // the artefact rather than covering it, and a 0.5° raster is exactly the kind of figure that
+    // should have hard pixel edges anyway.
     const cells: CellModel[] = [];
     for (const [lon, lat, pop, m49] of grid.cells) {
       if (!inWindow(lon, lat)) continue;
       const fill = densityAlpha
-        ? withAlpha(densityHue, densityAlpha(pop))
+        ? overPlate(densityHue, densityAlpha(pop))
         : colorById?.get(Number(m49));
       if (!fill) continue;
-      const square: GeoJSON.Polygon = {
-        type: "Polygon",
-        coordinates: [
-          [
-            [lon, lat],
-            [lon, lat + cellSize],
-            [lon + cellSize, lat + cellSize],
-            [lon + cellSize, lat],
-            [lon, lat],
-          ],
-        ],
-      };
-      const d = path(square);
-      if (!d) continue;
-      cells.push({ key: `${lon},${lat}`, d, fill, m49: Number(m49), pop, lon, lat });
+      const ring = projectCell(projection, lon, lat, cellSize);
+      if (!ring) continue;
+      cells.push({
+        key: `${lon},${lat}`,
+        d: ringPath(ring),
+        fill,
+        m49: Number(m49),
+        pop,
+        lon,
+        lat,
+      });
     }
 
     // Draw every country's borders; the viewBox-rect clip crops the overscan (and
@@ -305,7 +317,9 @@ export default function BorderRasterCloseup({
           {/* Water is simply the absence of a cell, so the plate showing through is the coastline
               the grid thinks exists — which is the point of putting it next to the real border. */}
           <rect x="0" y="0" width={width} height={height} fill={PLATE} />
-          <g>
+          {/* crispEdges, not for crispness but to stop the antialiasing between two exactly
+              adjacent cells from letting the plate show through as a grid. See the cell loop. */}
+          <g shapeRendering="crispEdges">
             {cells.map((c) => (
               <path
                 key={c.key}

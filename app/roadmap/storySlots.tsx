@@ -27,6 +27,7 @@ import Pop65Scatter from "./charts/Pop65Scatter";
 import PredictionComparison from "./charts/PredictionComparison";
 import RegionNeighbourScatter from "./charts/RegionNeighbourScatter";
 import RegionPredictionComparison from "./charts/RegionPredictionComparison";
+import SmoothingExplainer from "./charts/SmoothingExplainer";
 import SubnationalChoroplethMap from "./charts/SubnationalChoroplethMap";
 import { PROXY } from "./charts/chartFrame";
 import { useRoadmapData } from "./useRoadmapData";
@@ -72,6 +73,7 @@ export function useStorySlots(): SlotsBySection {
     proxies,
     conflicts,
     looValidation,
+    smoothingDemo,
     subnationalLoo,
   } = useRoadmapData();
 
@@ -129,6 +131,7 @@ export function useStorySlots(): SlotsBySection {
         "[subnational choropleth]": (
           <SubnationalChoroplethMap
             admin1Features={admin1Features}
+            features={features}
             nuts2Features={nuts2Features}
             ratePer100kByKey={ratePer100kByKey}
             ratePer100kByCountry={ratePer100kByCountry}
@@ -146,6 +149,7 @@ export function useStorySlots(): SlotsBySection {
         "[seasonality curves]": (
           <CountryCurves seasonality={activeSeasonality} features={features} proxies={proxies} />
         ),
+        "[smoothing explainer]": <SmoothingExplainer data={smoothingDemo} />,
         "[proxy ranking card]": <ProxyRankingCard />,
         "[latitude scatter]": (
           <ProxyFigure proxyIndex={PROXY.latitude} title="Latitude correlation">
@@ -297,6 +301,7 @@ export function useStorySlots(): SlotsBySection {
       proxies,
       conflicts,
       looValidation,
+      smoothingDemo,
       subnationalLoo,
     ],
   );

@@ -25,6 +25,7 @@ import type {
   SeasonalityProxies,
   SubnationalSeasonality,
 } from "../app/roadmap/types";
+import { isHarmonicCurve, type HarmonicCurve } from "../lib/seasonal-curve";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -41,7 +42,7 @@ function sourceForProxy(proxy: FallbackGroup): AppliedFallbackCurve["source"] {
   return sources[proxy];
 }
 
-function selectedCurve(row: FallbackProxyAssignment): number[] | null {
+function selectedCurve(row: FallbackProxyAssignment): HarmonicCurve | null {
   const proxy = row.appliedProxy?.group;
   if (proxy === "Latitude") return row.latitude.curve;
   if (proxy === "Climate") return row.climate.curve;
@@ -52,7 +53,7 @@ function selectedCurve(row: FallbackProxyAssignment): number[] | null {
 function appliedCurve(row: FallbackProxyAssignment): AppliedFallbackCurve | null {
   const proxy = row.appliedProxy?.group;
   const curve = selectedCurve(row);
-  if (!proxy || !curve?.length) return null;
+  if (!proxy || !isHarmonicCurve(curve)) return null;
   return {
     curve,
     source: sourceForProxy(proxy),

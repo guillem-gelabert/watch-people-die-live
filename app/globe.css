@@ -30,7 +30,7 @@ body {
   inset: 0;
   z-index: 0;
   background: transparent;
-  will-change: transform, opacity;
+  will-change: opacity;
 }
 
 #globe canvas {

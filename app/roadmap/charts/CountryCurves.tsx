@@ -14,10 +14,12 @@ import { figureHeight, useFigureWidth } from "./useFigureSize";
 import { useSkin } from "../SkinContext";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, SeasonalityData, SeasonalityProxies } from "../types";
+import { sampleHarmonicCurve, shiftHarmonicCurveHalfYear } from "@/lib/seasonal-curve";
 
 // Wide and shallow: twelve months across, a narrow band of deviation vertically. Bounded so a
 // wider column lengthens the year rather than inflating the labels.
 const SHAPE = { aspect: 0.636, min: 210, max: 290 };
+const CURVE_PHASES = d3.range(181).map((index) => index / 180);
 
 interface Series {
   id: number;
@@ -278,7 +280,8 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
         const color = slot === undefined ? undefined : palette[slot % palette.length];
         if (!curve || !color) return null;
         const shift = (signedLatById.get(id) ?? 0) < 0 ? 6 : 0;
-        const aligned = shift ? curve.map((_, mo) => curve[(mo + shift) % curve.length]!) : curve;
+        const alignedCurve = shift ? shiftHarmonicCurveHalfYear(curve) : curve;
+        const aligned = sampleHarmonicCurve(alignedCurve, CURVE_PHASES);
         return { id, name: resolveName(id), color, curve: aligned, shift };
       })
       .filter((d): d is Series => d !== null);
@@ -288,13 +291,13 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
     // average, <1 slower. Shown as the raw factor, not a percentage deviation.
     const fmtFactor = d3.format(".2f");
 
-    const x = d3.scalePoint().domain(MONTHS).range([0, innerW]).padding(0.35);
+    const x = d3.scaleLinear().domain([0, 1]).range([0, innerW]);
     // A fixed y-domain rather than one fitted to the selection: adding a flatter country must not
     // rescale the ones already on screen, or the reader loses the comparison they were making.
     const y = d3.scaleLinear().domain(CURVE_Y_DOMAIN).range([innerH, 0]);
     const line = d3
       .line<number>()
-      .x((_, i) => x(MONTHS[i]!) ?? 0)
+      .x((_, i) => x(CURVE_PHASES[i] ?? 0))
       .y((d) => y(d))
       .curve(d3.curveMonotoneX);
     const g = svg.append("g").attr("transform", `translate(${m.left},${m.top})`);
@@ -325,19 +328,12 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
       .attr("d", (d) => line(d.curve))
       .style("cursor", "pointer")
       .on("pointermove", (event, d) => {
-        // Nearest month under the pointer for this series.
+        // Nearest phase under the pointer for this series.
         const [px] = d3.pointer(event, g.node());
-        let i = 0;
-        let best = Infinity;
-        for (let j = 0; j < MONTHS.length; j++) {
-          const dist = Math.abs((x(MONTHS[j]!) ?? 0) - px);
-          if (dist < best) {
-            best = dist;
-            i = j;
-          }
-        }
+        const phase = Math.max(0, Math.min(1, x.invert(px)));
+        const i = Math.min(CURVE_PHASES.length - 1, Math.round(phase * (CURVE_PHASES.length - 1)));
         // Report the country's true calendar month, not the aligned x position.
-        const trueMonth = MONTHS[(i + d.shift) % MONTHS.length];
+        const trueMonth = MONTHS[Math.floor(((phase + d.shift / 12) % 1) * 12) % 12];
         showTooltip(
           `${d.name}, ${trueMonth}: ${fmtFactor(d.curve[i]!)}×`,
           event.clientX,
@@ -349,9 +345,9 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
     // A dot at each end of every curve: with a dozen lines crossing, the ends are what let the eye
     // pick one out and follow it.
     for (const s of series) {
-      for (const i of [0, MONTHS.length - 1]) {
+      for (const i of [0, CURVE_PHASES.length - 1]) {
         g.append("circle")
-          .attr("cx", x(MONTHS[i]!) ?? 0)
+          .attr("cx", x(CURVE_PHASES[i] ?? 0))
           .attr("cy", y(s.curve[i]!))
           .attr("r", 2.6)
           .attr("fill", s.color);
@@ -364,7 +360,7 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
       if (i % 3 !== 0) return;
       g.append("text")
         .attr("class", "chart-tick")
-        .attr("x", x(month) ?? 0)
+        .attr("x", x((i + 0.5) / 12))
         .attr("y", innerH + 14)
         .attr("text-anchor", "middle")
         .text(month);

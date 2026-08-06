@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import type { OrbitControls } from "@react-three/drei";
 import * as THREE from "three/webgpu";
+import { utcYearPhase } from "@/lib/seasonal-curve";
 import { createEarth, type EarthMaterials } from "./shaders";
 import { sunDirectionNow, expGap, flashIntensity, lonLatToVec3, smoothstep } from "./helpers";
 import {
@@ -25,6 +26,11 @@ import {
 import type { GlobeData, GeoPayload, Sampler } from "./useGlobeData";
 
 const PLANE_NORMAL = new THREE.Vector3(0, 0, 1); // PlaneGeometry faces +Z
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
+// Scratch for the scroll tip-away, and the last non-degenerate axis it resolved to. Module scope
+// because there is one globe on the page and this runs every frame.
+const tipAxis = new THREE.Vector3();
+const lastTipAxis = new THREE.Vector3(1, 0, 0);
 // The color daylight map. Natural Earth's grayscale relief (GRAY_EARTH_URL) is the basemap for
 // the flat roadmap maps only — pointing the globe at it renders the whole planet gray. Whatever
 // goes here also has to stay inside WebGPU's portable 8192px dimension limit.
@@ -43,7 +49,7 @@ interface Blast {
 interface Sim {
   sampler: Sampler;
   mean: number; // ms, global Poisson mean inter-arrival time
-  curMonth: number;
+  seasonalDay: string;
   next: number;
   blasts: Blast[];
   flashTexture: THREE.CanvasTexture;
@@ -182,14 +188,15 @@ export default function Earth({
     if (!globeData || globeData.error || !earth) return;
     const { buildSampler } = globeData;
 
-    const curMonth = new Date().getUTCMonth();
-    const sampler = buildSampler(curMonth);
+    const date = new Date();
+    const seasonalDay = date.toISOString().slice(0, 10);
+    const sampler = buildSampler(utcYearPhase(date));
     const mean = MS_PER_YEAR_REAL / sampler.total;
 
     sim.current = {
       sampler,
       mean,
-      curMonth,
+      seasonalDay,
       next: expGap(mean),
       blasts: [],
       flashTexture: buildFlashTexture(),
@@ -230,9 +237,18 @@ export default function Earth({
         controlsRef.current.maxDistance = maxDist;
       }
       if (!didInitZoom.current) {
-        // Framed off the height alone, so the crop holds at any aspect: a wide window shows
-        // more of the globe left and right, never a band of empty sky under it.
-        const fillDist = GLOBE_R / Math.sin((HERO_FILL * ((FOV * Math.PI) / 180)) / 2);
+        // Framed off the height alone, so the framing holds at any aspect: a wide window shows more
+        // sky left and right rather than a bigger or smaller planet.
+        //
+        // Solved in pixels rather than in angle. A perspective camera maps angle to pixels through
+        // a tangent, so treating HERO_FILL as a fraction of the FOV — as this did — leaves the
+        // silhouette several percent off the fraction of the screen it is supposed to cover. The
+        // silhouette is the ring of rays tangent to the sphere, at asin(R/d) off-axis, and a ray at
+        // angle t lands at (h/2)·tan(t)/tan(FOV/2) pixels from centre. Setting that to the half
+        // height we want and solving for d is the two lines below.
+        const halfFov = (FOV * Math.PI) / 360;
+        const tangentAngle = Math.atan(HERO_FILL * Math.tan(halfFov));
+        const fillDist = GLOBE_R / Math.sin(tangentAngle);
         perspCamera.position.setLength(Math.max(fillDist, GLOBE_R * 1.15));
         didInitZoom.current = true;
       } else {
@@ -263,25 +279,6 @@ export default function Earth({
       window.removeEventListener("orientationchange", onResize);
     };
   }, [perspCamera, gl, controlsRef]);
-
-  // Nudge the sphere above the stage midpoint so the hero line has room beneath it. This
-  // used to also make room for the landscape feed panel and export the projected
-  // silhouette to CSS (so persona text could hide behind the globe) — both went with the
-  // feed when the island replaced it.
-  useEffect(() => {
-    function updateProjection() {
-      const w = gl.domElement.clientWidth || window.innerWidth;
-      const h = gl.domElement.clientHeight || window.innerHeight;
-      perspCamera.setViewOffset(w, h, 0, Math.min(h * 0.09, 96), w, h);
-    }
-    updateProjection();
-    window.addEventListener("resize", updateProjection);
-    window.addEventListener("orientationchange", updateProjection);
-    return () => {
-      window.removeEventListener("resize", updateProjection);
-      window.removeEventListener("orientationchange", updateProjection);
-    };
-  }, [perspCamera, gl]);
 
   // Center on the viewer's IP location once geo resolves (best-effort, non-blocking).
   useEffect(() => {
@@ -328,15 +325,16 @@ export default function Earth({
 
     const now = performance.now();
     const t = now - startRef.current;
-    const curMonth = new Date().getUTCMonth();
+    const date = new Date();
+    const seasonalDay = date.toISOString().slice(0, 10);
 
-    // The seasonal multiplier shifts weight between countries every month, so both the
+    // The continuous seasonal multiplier shifts weight between countries through the year, so both the
     // per-cell distribution AND the global total (hence the Poisson mean) change. The
     // already-scheduled `next` carries over unchanged across the rebuild.
-    if (curMonth !== s.curMonth && globeData && !globeData.error) {
-      s.sampler = globeData.buildSampler(curMonth);
+    if (seasonalDay !== s.seasonalDay && globeData && !globeData.error) {
+      s.sampler = globeData.buildSampler(utcYearPhase(date));
       s.mean = MS_PER_YEAR_REAL / s.sampler.total;
-      s.curMonth = curMonth;
+      s.seasonalDay = seasonalDay;
     }
 
     // Paused (island expanded) still advances the schedule, exactly like the existing
@@ -383,11 +381,25 @@ export default function Earth({
     }
     earth.blastCount.value = nBlasts;
 
-    // Scroll exit: the wrapper handles translate/scale/fade in CSS; the parts that have to
-    // happen in the scene are the tip-away rotation and the camera pulling back.
+    // Scroll exit: the globe keeps its place and its size and scrolls away with the page, so the
+    // whole exit is this one rotation — tipping the north pole away until the reader is looking over
+    // the south pole.
+    //
+    // The axis has to be derived from where the camera actually is, not hard-coded to world X. The
+    // camera is eased to the viewer's own latitude and longitude and can be dragged anywhere after
+    // that, and a fixed axis only reads as "tipping back" from the one viewpoint it was picked for
+    // — from anywhere else the same rotation looks like a roll. `up × camDir` is the screen-
+    // horizontal axis for the current viewpoint, so tipping about it always reads as tipping back.
+    // Written every frame, including at e = 0, so scrolling back to the top restores the opening
+    // pose instead of stranding the globe wherever the reader turned around.
     const e = smoothstep(phaseRef.current);
-    if (groupRef.current) groupRef.current.rotation.x = -e * 1.25;
-    if (e > 0 && !camTarget.current) perspCamera.position.setLength(3 + e * 0.9);
+    if (groupRef.current) {
+      tipAxis.crossVectors(WORLD_UP, perspCamera.position).normalize();
+      // Degenerate only when the camera is directly over a pole, where every axis is a roll and
+      // there is no "back" to tip toward; keeping the last good axis avoids a snap.
+      if (tipAxis.lengthSq() > 0.5) lastTipAxis.copy(tipAxis);
+      groupRef.current.quaternion.setFromAxisAngle(lastTipAxis, -e * 1.25);
+    }
 
     if (camTarget.current) {
       const dist = perspCamera.position.length();

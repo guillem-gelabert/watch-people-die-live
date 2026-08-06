@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { Canvas, extend } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
@@ -10,7 +10,7 @@ import Island from "./Island";
 import { useGlobeData } from "./useGlobeData";
 import { makePersona } from "./persona";
 import { publishDeath } from "./stageState";
-import { GLOBE_R, FOV } from "./constants";
+import { FOV } from "./constants";
 import "../globe.css";
 
 // `extend`'s Catalogue overload wants Record<string, ConstructorRepresentation>; the
@@ -31,7 +31,7 @@ interface GlobeStageProps {
 // The opening screen of the story: the live globe, its loader, and the island. Deaths do
 // not flow through React state here — Earth publishes them to the stage store and only the
 // island subscribes, so a death (roughly twice a second) never re-renders the canvas.
-export default function GlobeStage({ phaseRef }: GlobeStageProps) {
+function GlobeStage({ phaseRef }: GlobeStageProps) {
   const { data: globeData, geo } = useGlobeData();
   const [loaded, setLoaded] = useState(false);
   // Direction the camera eases toward to center the viewer's location, or null when
@@ -123,13 +123,17 @@ export default function GlobeStage({ phaseRef }: GlobeStageProps) {
               pausedRef={pausedRef}
             />
           )}
+          {/* Rotation only. Zoom is off on every input: the opening framing is chosen (HERO_FILL
+              puts the sphere at two thirds of the screen) and a reader who pinched or scrolled into
+              it could not get back to it — and on a wheel the globe was swallowing the gesture the
+              page needed for scrolling. Two-finger touch is left as ROTATE rather than DOLLY_PAN so
+              a second finger does not zoom either. */}
           <OrbitControls
             ref={controlsRef}
             enableDamping
             enablePan={false}
-            minDistance={GLOBE_R * 1.1}
-            maxDistance={6}
-            touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
+            enableZoom={false}
+            touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.ROTATE }}
             onStart={() => (camTarget.current = null)}
           />
         </Canvas>
@@ -139,3 +143,10 @@ export default function GlobeStage({ phaseRef }: GlobeStageProps) {
     </>
   );
 }
+
+// Memoised, and it has to be. The story re-renders whenever the section in view changes the sky —
+// about ten times over the page — and its only prop here is a ref, so every one of those renders
+// was re-rendering this subtree for nothing. That is not free: <Canvas> re-runs `configure()` on
+// each render (see createRenderer above), and each sky change cost a ~100ms stall — a visible jolt
+// in the globe at the exact moment the background began to cross-fade.
+export default memo(GlobeStage);

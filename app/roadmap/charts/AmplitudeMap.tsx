@@ -13,7 +13,7 @@ import { showTooltip, hideTooltip } from "../tooltip";
 import { useFigureWidth } from "./useFigureSize";
 import { useSkin } from "../SkinContext";
 import { harmony } from "../palette";
-import { appendGrayEarthBasemap, fitRegionProjection, type Bbox } from "./basemap";
+import { appendMapPlate, fitRegionProjection, type Bbox } from "./basemap";
 import type {
   Admin1Feature,
   CountryFeature,
@@ -86,7 +86,7 @@ export default function AmplitudeMap({
 
     const projection = fitRegionProjection(BBOX, width, height);
     const path = d3.geoPath(projection);
-    const content = appendGrayEarthBasemap(svg, projection, width, height, "amplitude-map");
+    const content = appendMapPlate(svg, width, height, "amplitude-map");
 
     const estimates = buildSpatialSeasonality(
       features,
@@ -150,6 +150,15 @@ export default function AmplitudeMap({
           : "map-country-fill is-calculated",
       )
       .attr("fill", (d) => color(d.amplitude))
+      // Stroked in its own fill colour, which is what closes the hairlines between neighbours. Two
+      // adjacent polygons share an edge exactly, and each antialiases to about half coverage there, so
+      // the halves do not add back up to one and the plate reads through as a thin dark line along
+      // every border. A stroke of the same colour restores the coverage; because it is the polygon's
+      // own colour it cannot show up as an outline, and at half a unit the encroachment onto a
+      // neighbour is far below what the seam it removes was costing.
+      .attr("stroke", (d) => color(d.amplitude))
+      .attr("stroke-width", 0.5)
+      .attr("stroke-linejoin", "round")
       .attr("d", (d) => path(d.feature))
       .on("pointermove", (event, d) => {
         const name = d.feature.properties?.name ?? "Unknown";
@@ -184,6 +193,11 @@ export default function AmplitudeMap({
           : "map-country-fill has-data",
       )
       .attr("fill", (d) => color(d.amplitude))
+      // Same self-stroke as the country layer above, for the same reason: adjacent regions meet
+      // exactly and would otherwise show the plate between them.
+      .attr("stroke", (d) => color(d.amplitude))
+      .attr("stroke-width", 0.5)
+      .attr("stroke-linejoin", "round")
       .attr("d", (d) => path(d.feature))
       .on("pointermove", (event, d) => {
         const note =

@@ -12,6 +12,117 @@ body {
   margin: 0;
 }
 
+/* The palette changes when the section in view does, and what is drawn from it should travel with the
+   sky rather than snapping a frame ahead of it. `.story` already cross-fades its background; these
+   rules give the ink, the boxes and their rules the same 0.55s so everything arrives together — an
+   earlier 0.35s here left the ink ahead of the sky, which read as a snap onto a stale background.
+
+   Every rule is wrapped in :where() so it carries no specificity: this is a default any component
+   below can replace with its own transition, and the beat bars, the scale toggle and the accordion
+   all do, keeping their own timings.
+
+   The list names only the surfaces that declare a palette colour of their own and are big enough to
+   read as one: the section itself (where most prose inherits its ink), its prose blocks and headings,
+   and the boxes — tiles, chat, accordion, proxy strips, captions, tables, controls.
+
+   It is a list rather than `*` because that is the honest scope, not because breadth is expensive:
+   going from ~950 animated elements to ~200 moved the cost of a sky change by nothing measurable
+   (250ms against 242ms), so whatever that stall is, it is not the number of colour animations. Do not
+   assume trimming this list further will buy anything.
+
+   Inline children — strong, em, span, code — are deliberately absent: they inherit the interpolated
+   value from the block above them for free, so listing them would pay twice for one effect. The
+   ~8,000 SVG marks inside the charts are absent for the same reason plus their own, being data rather
+   than surface; the labelling among them gets its fade by class below. `.loo-summary-table` cells are
+   out too — 222 of them, folded behind an accordion the reader is usually not looking into. */
+:where(
+  .story-section,
+  .story-section > :is(p, ul, ol),
+  .story-section :is(h1, h2, h3, h4, h5),
+  .story-section a,
+  .roadmap-table :is(th, td),
+  .story-chapter-sub,
+  .concept-tile,
+  .concept-tile-title,
+  .concept-tile-kind,
+  .concept-tile-copy,
+  .chat-bubble,
+  .chat-bubble-user,
+  .chat-avatar,
+  .accordion-item,
+  .accordion-title,
+  .accordion-status,
+  .accordion-copy,
+  .proxy-strip,
+  .proxy-strip-title,
+  .proxy-strip-body,
+  .proxy-card-title,
+  .chart-copy,
+  .chart-note-copy,
+  .chart-status,
+  .chart-tooltip,
+  .roadmap-code,
+  .note,
+  .source,
+  .lead,
+  .legend,
+  .cc-input,
+  .cc-listbox,
+  .cc-option,
+  .cc-label,
+  .cc-status,
+  .chart-toggle button,
+  .ewma-preset,
+  .ewma-readout,
+  .ewma-readout-aside,
+  .dart-tally-cell,
+  .dart-tally-count,
+  .dart-tally-label,
+  .dart-tally-share,
+  .persona-step-name,
+  .persona-draw,
+  .persona-note,
+  .amplitude-legend,
+  footer
+) {
+  transition:
+    color 0.55s ease,
+    background-color 0.55s ease,
+    border-color 0.55s ease;
+}
+
+/* The parts of a figure that are type or plate rather than data: axes, ticks, labels, bar fills and
+   country outlines. Named individually so the marks carrying the data are left out. */
+:where(
+  .chart-label,
+  .chart-tick,
+  .chart-note,
+  .chart-axis,
+  .chart-gridline,
+  .bars-national,
+  .bars-region,
+  .bars-value,
+  .map-country,
+  .climate-band-boundary
+) {
+  transition:
+    fill 0.55s ease,
+    stroke 0.55s ease;
+}
+
+/* A prose block waiting for, or making, its entrance (armed by storyMotion's prepareReveals, which
+   sets only the stagger delay inline). The entrance and the palette fade have to be declared in one
+   `transition`, because it is one property: naming opacity and transform alone — as the inline style
+   used to — cancels the colour fade on every block the reader has already passed. */
+.story-section > [data-rv] {
+  transition:
+    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.8s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.55s ease,
+    background-color 0.55s ease,
+    border-color 0.55s ease;
+}
+
 /* Section titles carry their own size class (.story-chapter / .story-heading, set from the
    section's declared treatment) — see the story shell rules at the bottom of this file. */
 
@@ -435,16 +546,38 @@ body {
   border: 0;
 }
 
-/* Positioning context for the switch that sits on top of the density raster. */
+/* Positioning context for the switch and the graticule that sit on top of the density raster. */
 .density-map-frame {
   position: relative;
+}
+
+/* Every square map's graticule: the section's own background at full opacity, so the grid reads as
+   the page showing through the map rather than as ink drawn over it, and follows the sky for free
+   because it is the same variable the sky itself is set from. Width comes from GRATICULE_WIDTH in
+   basemap.ts, so the grid is one device across the story. */
+.map-graticule,
+.density-graticule {
+  stroke: var(--sky);
+}
+
+/* The density map's graticule is the one that has to be an overlay: its figure is a canvas, where the
+   same line was a rasterised half-CSS-pixel stroke that could not follow the palette without redrawing
+   the whole raster. Sits over the canvas and passes every pointer event through to it, since the
+   canvas owns the hover. */
+.density-graticule {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 /* The log/linear switch that sits on the density map: one square cut along its anti-diagonal. */
 .scale-diagonal {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  right: 10px;
+  bottom: 10px;
   width: 20%;
   aspect-ratio: 1;
   padding: 0;
@@ -626,18 +759,21 @@ body {
 
 /* The two beat strips in First light: one bar per death. The metronome holds every bar at its
    resting height; the Poisson strip lets each bar's height carry how long that gap was. Both sit
-   directly on the sky. Bar count and gap are the design's — 44 bars 3px apart — so a strip holds
-   a long enough run of beats for the uneven rhythm to be legible as a pattern. */
+   directly on the sky. The gap is wider than the design's 3px, so BARS in BeatStrip is lower to
+   match — the bars are flex:1 and would otherwise thin to slivers to pay for it. */
 .beat-strip {
   display: flex;
-  gap: 3px;
+  gap: 5px;
   align-items: flex-end;
   height: 38px;
 }
 
 .beat-bar {
   flex: 1;
-  border-radius: 2px;
+
+  /* Fully rounded rather than the design's 2px: a bar this narrow reads as a capsule, and the
+     rounded cap keeps the short Poisson bars from looking like clipped stubs. */
+  border-radius: 999px;
   transition:
     height 0.18s ease,
     background 0.18s ease;
@@ -817,6 +953,207 @@ body {
   border-color: var(--ink);
 }
 
+/* One-country-at-a-time smoothing comparison. Each country's axes stay fixed across mode and
+   order changes so the control never introduces an opportunistic rescale. */
+.smoothing-demo {
+  margin-block: 1.8rem;
+}
+
+.smoothing-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.smoothing-country {
+  display: grid;
+  flex: 0 1 15rem;
+  gap: 0.3rem;
+  color: var(--muted);
+  font:
+    700 0.68rem/1.2 var(--font-public-sans),
+    sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.smoothing-country select {
+  width: 100%;
+  min-height: 2.15rem;
+  padding: 0.35rem 2rem 0.35rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  background: var(--card);
+  color: var(--ink);
+  font:
+    600 0.8rem/1.2 var(--font-public-sans),
+    sans-serif;
+}
+
+.smoothing-country select:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.smoothing-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.9rem 0 0.7rem;
+}
+
+.smoothing-control {
+  padding: 0.38rem 0.72rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font:
+    600 0.72rem/1.2 var(--font-public-sans),
+    sans-serif;
+  cursor: pointer;
+}
+
+.smoothing-control:hover,
+.smoothing-control:focus-visible {
+  color: var(--ink);
+  border-color: var(--blue);
+}
+
+.smoothing-control:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.smoothing-control.active {
+  color: var(--panel);
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.smoothing-order {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  margin: -0.15rem 0 0.7rem;
+  color: var(--muted);
+  font:
+    700 0.68rem/1.2 var(--font-public-sans),
+    sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.smoothing-order-control {
+  width: 1.85rem;
+  height: 1.85rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.smoothing-order-control:hover,
+.smoothing-order-control:focus-visible {
+  color: var(--ink);
+  border-color: var(--blue);
+}
+
+.smoothing-order-control:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.smoothing-order-control.active {
+  color: var(--panel);
+  background: var(--blue);
+  border-color: var(--blue);
+}
+
+.smoothing-chart {
+  width: 100%;
+  height: auto;
+}
+
+.smoothing-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.smoothing-line {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.smoothing-point {
+  fill: var(--panel);
+  stroke: var(--ink);
+  stroke-width: 1.4;
+}
+
+.smoothing-copy {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 0.85rem 0 0;
+}
+
+.smoothing-copy div {
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--line);
+}
+
+.smoothing-copy dt {
+  margin-bottom: 0.25rem;
+  color: var(--ink);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+@media (width <= 620px) {
+  .smoothing-heading {
+    display: grid;
+  }
+
+  .smoothing-country {
+    width: min(100%, 18rem);
+  }
+}
+
+.smoothing-copy dd,
+.smoothing-source {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.smoothing-source {
+  margin-top: 0.85rem;
+}
+
+@media (width <= 640px) {
+  .smoothing-copy {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .smoothing-control,
+  .smoothing-line,
+  .smoothing-point {
+    transition: none;
+  }
+}
+
 /* Country-comparison combobox (CountryCurves) */
 
 /* The control sits under the figure, as the design's chip row does — you read the curves first,
@@ -836,16 +1173,21 @@ body {
   text-transform: uppercase;
 }
 
+/* The design draws this as a plain select sitting on the section's own paper: transparent, a 10px
+   corner, and its border the ink at 18% — not the filled pill with a card background and a hard-set
+   ink colour this had grown into. `color: inherit` matters as much as the rest: it is what keeps the
+   field in the same voice as the prose around it under every sky. */
 .cc-input {
   width: 100%;
-  padding: 9px 12px;
+  padding: 9px 10px;
   border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--ink);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
   font:
-    500 12px/1.2 var(--font-public-sans),
+    600 12.5px/1 var(--font-public-sans),
     sans-serif;
+  cursor: pointer;
 }
 
 .cc-input::placeholder {
@@ -1136,17 +1478,16 @@ body {
   stroke: none;
 }
 
-/* No fill here (unlike .map-country) — the choropleth sets fill per-path via
-   attr(), and a CSS fill rule would win over that presentation attribute.
-   Overlay-blended against the relief basemap beneath it: black/white in the relief
-   (ocean floor, ice, deep shadow) stay black/white regardless of fill color, while
-   mid-gray relief (most land) is fully tinted by it — unlike hard-light, which
-   branches on the fill color's own brightness instead of the basemap's, so it doesn't
-   reliably preserve the basemap's black/white extremes. */
+/* No fill here (unlike .map-country) — the choropleth sets fill per-path via attr(), and a CSS fill
+   rule would win over that presentation attribute.
+
+   These used to be overlay-blended, which only worked because Natural Earth's shaded relief sat
+   underneath: overlay keeps a black backdrop black whatever colour is laid over it, and tints only
+   where the backdrop is mid-grey. With the relief dropped the backdrop is the plate — flat black —
+   so every country blended to black and the map rendered as an empty square. Painting the fills
+   directly is what the figure wants now that there is no terrain to tint. */
 .map-country-fill {
-  stroke: none;
   cursor: pointer;
-  mix-blend-mode: overlay;
 }
 
 .map-country-fill.is-calculated {
@@ -1343,19 +1684,31 @@ footer {
   font-size: 0.85rem;
 }
 
-/* Shared hover tooltip for all 7 charts (Stage 3). */
+/* The one hover tooltip every chart shares.
+
+   A flat label in the section's own colours: paper under ink, a heavy square border, no shadow. It
+   used to be a rounded dark chip with a drop shadow, which read as floating above the page rather
+   than belonging to it — and because it was parented to the body (see tooltip.ts) the palette never
+   reached it, so the background resolved to nothing and the chart showed straight through.
+
+   The border does the lifting the shadow used to: on a light sky it is near-black on near-white, on a
+   dark one white on a barely-lifted dark, so the label separates from whatever it covers without
+   pretending to hover over it. .chart-tooltip is in the palette cross-fade list at the top of this
+   file, so it changes colour with the section rather than snapping. */
 .chart-tooltip {
   position: fixed;
   z-index: 1000;
-  pointer-events: none;
-  background: var(--ink);
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 8px;
   padding: 0.4rem 0.6rem;
+
+  /* Fallbacks, even though tooltip.ts guarantees the tooltip is parented inside the story: the whole
+     appearance hangs off these two variables, so anywhere they cannot resolve the label would come
+     out as unreadable text on nothing at all. A wrong-but-legible surface beats an invisible one. */
+  border: 2px solid var(--ink, #1d1822);
+  background: var(--paper, #fdf5eb);
   font-size: 0.78rem;
-  color: #e8eaed;
-  box-shadow: 0 4px 16px rgb(15 15 30 / 20%);
+  color: var(--ink, #1d1822);
   white-space: pre-line;
+  pointer-events: none;
   opacity: 0;
   transition: opacity 0.08s ease-out;
 }
@@ -1431,13 +1784,13 @@ footer {
   transition: background-color 0.55s ease;
 }
 
+/* The opening screen, and it scrolls away like any other screen: not sticky, so the globe leaves by
+   being scrolled off rather than by being moved, shrunk or faded out from under the reader. */
 #story-stage {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 3;
   height: 100dvh;
   pointer-events: none;
-  will-change: transform, opacity;
 }
 
 #story-stage #globe,
@@ -1445,21 +1798,31 @@ footer {
   pointer-events: auto;
 }
 
-/* The globe holds the top two thirds of the opening screen and the hero line sits under it,
-   rather than the globe filling the viewport with the copy laid over it. */
+/* In the stage's own flow rather than pinned over it, filling it. The sphere is drawn at two thirds
+   of that height (HERO_FILL) and centred, so it has sky above it and its lower edge runs behind the
+   hero line — which is what the h1's glow was always for. */
 #story-stage #globe {
-  inset: 0 0 auto;
-  height: 66%;
+  position: static;
+  width: 100%;
+  height: 100%;
 }
 
+/* The hero line and the cue under it, in one transparent box that runs from the globe's lower third
+   to the bottom of the screen. It takes pointer events rather than passing them through: the canvas
+   below sets `touch-action: none` for OrbitControls, so a finger landing on the copy would drag the
+   globe instead of scrolling the page. Catching the gesture here and allowing only vertical panning
+   means the bottom third of the opening screen scrolls, and the globe above it still rotates. */
 #story-hero {
   position: absolute;
-  top: 66%;
-  right: 0;
-  left: 0;
-  padding: 0 22px;
+  inset: 66% 0 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0 22px calc(env(safe-area-inset-bottom, 0px) + 30px);
   text-align: center;
-  pointer-events: none;
+  pointer-events: auto;
+  touch-action: pan-y;
+  user-select: none;
 }
 
 #story-hero h1 {
@@ -1479,11 +1842,9 @@ footer {
   text-shadow: 0 2px 26px rgb(0 0 17 / 80%);
 }
 
+/* Last child of the hero box, so it sits at the bottom of it — the cue and the line it belongs to
+   travel together instead of being pinned to opposite ends of the stage. */
 #story-cue-wrap {
-  position: absolute;
-  right: 0;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 30px);
-  left: 0;
   display: flex;
   justify-content: center;
 }

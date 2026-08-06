@@ -107,9 +107,17 @@ Add or remove any country with a directly-measured curve to compare.
 
 [seasonality curves]
 
-In this chart a factor above 1 means deaths fire faster than the annual average, and a factor below 1 means they fire slower. Some countries have flatter curves, others have steeper ones, but they all follow a very similar pattern: winter is significantly more deadly than summer. As the song says _Summertime, and the livin' is easy_.
+## From observations to a continuous multiplier
 
-Again, I've done a little trickery here and I've only chosen countries in the northern hemisphere. In the southern hemisphere the curve would have been the opposite, as winter and summer are swapped relative to the northern hemisphere. And another thing, I've only chosen countries that are quite far from the tropics. As the further from the equator we get, the less noticeable are the seasons.
+Weekly, monthly and quarterly describe how often observations arrive. They are not smoothing methods. Choose any quality-gated country with weekly observations below to see what each cadence preserves, compare the former circular three-month average, and toggle orders 1–4 of the continuous harmonic curve. Order 4 is the model the globe now uses.
+
+[smoothing explainer]
+
+In these charts a factor above 1 means deaths fire faster than the annual average, and a factor below 1 means they fire slower. The production curve is a pooled order-4 Fourier regression over every complete non-COVID year: weekly observations stay weekly, counts are converted to daily intensity, and the result can be evaluated continuously on any day of the year.
+
+Many temperate countries follow a similar pattern: winter is significantly more deadly than summer. Closer to the equator the annual signal is usually flatter or follows rainy and dry seasons rather than a winter/summer contrast, so the harmonic model does not assume that every country has a winter peak.
+
+Southern-hemisphere curves are shifted by half a year only when the chart compares their seasonal shape with northern countries. Their production curves retain their true calendar phase.
 
 These choices on my wording reveal an assumption that, even if quite obvious, could be flawed: that change in rates over a year are mostly based on climatic seasons. In theory they could reflect something different: think social mechanisms like Ramadan or data artifacts like late reporting of defunctions, default defunction dates, and so on.
 
@@ -119,7 +127,7 @@ When I'm missing the data I need I always ask the question: are there any proxie
 
 [proxy ranking card]
 
-Before committing to one, it's worth seeing what actually tracks the _strength_ of a country's seasonal swing among the countries that already report a curve. Seasonal curves are mostly unimodal, roughly sinusoidal: they peak once a year and rise and fall in a smooth, wave-like pattern. For these kinds of curves the most differentiating characteristic is amplitude — how far the peak is from the trough.
+Before committing to one, it's worth seeing what actually tracks the _strength_ of a country's seasonal swing among the countries that already report a curve. Many are roughly unimodal, while some tropical climates can have broader or multiple rainy-season features. Amplitude is still a useful first summary — how far the curve moves away from its annual mean — without claiming that every shape has one winter peak.
 
 In the charts that follow, every dot is a country with observed seasonal data. The y-axis shows amplitude: the higher a dot is, the bigger the difference in mortality between summer and winter. The x-axis places countries on each of the proposed proxies.
 
@@ -151,7 +159,7 @@ How about neighbouring countries? That's better. There's a strong correlation he
 
 ## How the proxies actually score · Leave-one-out scores for all five proxies
 
-Those are claims about error and skill, so here they are measured. Every country that does report a monthly curve is hidden in turn, predicted from each proxy in place of its own data, and scored against the curve we already had.
+Those are claims about error and skill, so here they are measured. Every country that reports a curve is hidden in turn, predicted from each proxy in place of its own data, and scored against the observed shape.
 
 [prediction comparison]
 
@@ -176,26 +184,6 @@ Adjacent regions inside the same country track each other even more tightly than
 [amplitude map]
 
 Every rendered country and region is coloured by seasonal amplitude. Observations use their measured curves; targets without observations use the assigned climate, neighbour or latitude proxy.
-
-### who · Who · #d9dbdd · chapter
-
-:::chapter-sub
-Every flash gets a sentence, drawn from the distribution of the place it fired in.
-:::
-
-# Age, then sex, then one cause
-
-**Age and sex** come from the UN World Population Prospects table of deaths by age and sex. **Cause** comes from the IHME Global Burden of Disease, expanded to its level-3 causes — the recognisable ones — and reduced to the strongest eight per country, sex and age band, with everything else folded into "other causes".
-
-They are sampled **in that order**, so a cause is only ever drawn from the age and sex band that plausibly dies of it. Draw the cause first and you get twenty-year-olds with dementia.
-
-Both tables ship as JSON in the repository, so the feed needs no runtime API call and reads the same offline. The Global Burden of Disease has no tokened API at all — its table is exported once by hand from the results tool and committed.
-
-[sampling order]
-
-[deaths by age and cause]
-
-[what the clock got wrong]
 
 ### conflicts · A war is not a Poisson process [Conflicts] · #eeb87d
 
@@ -253,6 +241,26 @@ Then we do a weighted average using these weights. Which gives us 28.4.
 [map of conflict fatalities]
 
 [what the rate model assumes]
+
+### who · Who · #d9dbdd · chapter
+
+:::chapter-sub
+Every flash gets a sentence, drawn from the distribution of the place it fired in.
+:::
+
+# Age, then sex, then one cause
+
+**Age and sex** come from the UN World Population Prospects table of deaths by age and sex. **Cause** comes from the IHME Global Burden of Disease, expanded to its level-3 causes — the recognisable ones — and reduced to the strongest eight per country, sex and age band, with everything else folded into "other causes".
+
+They are sampled **in that order**, so a cause is only ever drawn from the age and sex band that plausibly dies of it. Draw the cause first and you get twenty-year-olds with dementia.
+
+Both tables ship as JSON in the repository, so the feed needs no runtime API call and reads the same offline. The Global Burden of Disease has no tokened API at all — its table is exported once by hand from the results tool and committed.
+
+[sampling order]
+
+[deaths by age and cause]
+
+[what the clock got wrong]
 
 ### still-missing · What is still missing [Still missing] · #cf7a68 · chapter-small
 

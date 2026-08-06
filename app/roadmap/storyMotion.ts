@@ -37,7 +37,7 @@ export function prepareReveals(root: HTMLElement): { pending: HTMLElement[]; res
       if (el.getAttribute("data-rv") === "done") continue;
       el.style.opacity = "";
       el.style.transform = "";
-      el.style.transition = "";
+      el.style.transitionDelay = "";
       el.removeAttribute("data-rv");
     }
   };
@@ -46,11 +46,15 @@ export function prepareReveals(root: HTMLElement): { pending: HTMLElement[]; res
   armed.forEach((el, i) => {
     // Three blocks share a stagger cycle: enough to read as a cascade when a whole screen
     // enters at once, short enough that the last one is not still arriving.
-    const delay = `${((i % 3) * 0.06).toFixed(2)}s`;
+    //
+    // Only the delay is written here. The transition itself lives in the stylesheet, on
+    // `.story-section > [data-rv]` — an inline `transition` would win over every rule in the
+    // stylesheet and, because it names opacity and transform only, would silently cancel the
+    // palette's colour fade on exactly the prose that carries most of it.
     el.setAttribute("data-rv", "");
     el.style.opacity = "0";
     el.style.transform = "translateY(22px)";
-    el.style.transition = `opacity .7s cubic-bezier(.22,1,.36,1) ${delay}, transform .8s cubic-bezier(.22,1,.36,1) ${delay}`;
+    el.style.transitionDelay = `${((i % 3) * 0.06).toFixed(2)}s`;
   });
   return { pending: armed, restore };
 }

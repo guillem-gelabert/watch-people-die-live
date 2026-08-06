@@ -5,9 +5,10 @@ import { useSkin } from "../SkinContext";
 import { REAL_MEAN_GAP_MS, expGap, formatMeanGap } from "../chartHelpers";
 import { mapColor } from "../palette";
 
-// The design's count, at its 3px gap: 44 bars across the column leaves each one about 5px wide.
-// Long enough that the Poisson strip shows several clusters and several gaps in one screen.
-const BARS = 44;
+// What fits across a phone at a legible width, given the 5px gap between bars — the two trade
+// against each other, since the bars are flex:1 and share whatever the gaps leave. Still long
+// enough that the Poisson strip shows several clusters and several gaps in one screen.
+const BARS = 32;
 // Resting height of a bar. The metronome never leaves it; the Poisson strip uses it as the
 // midpoint of its range so the two strips read as the same instrument.
 const REST_HEIGHT = 22;

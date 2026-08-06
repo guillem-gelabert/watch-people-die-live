@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as d3 from "d3";
 import { expGap, randomPointOnSphere, REAL_MEAN_GAP_MS } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
-import { fitProjection, insideViewport, type Bbox } from "./basemap";
+import { fitProjection, GRATICULE_WIDTH, insideViewport, type Bbox } from "./basemap";
 import { buildLandMask, buildPopulatedMask, classify, convergenceShares } from "./dartField";
 import { bumpDart, setDartLimits } from "./dartTallyState";
 import { useFigureWidth } from "./useFigureSize";
@@ -102,9 +102,9 @@ export default function GlobalRandomMap({ features, grid }: GlobalRandomMapProps
     svg
       .append("path")
       .attr("d", path(d3.geoGraticule().step([10, 10])()) ?? "")
+      .attr("class", "map-graticule")
       .attr("fill", "none")
-      .attr("stroke", land)
-      .attr("stroke-width", 1.1);
+      .attr("stroke-width", GRATICULE_WIDTH);
 
     const dartsG = svg.append("g").attr("class", "dart-marks");
     const darts: Dart[] = [];

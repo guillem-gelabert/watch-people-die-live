@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import { expGap } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
-import { fitProjection, insideViewport, type Bbox } from "./basemap";
+import { fitProjection, GRATICULE_WIDTH, insideViewport, type Bbox } from "./basemap";
 import { useFigureWidth } from "./useFigureSize";
 import type { CountryFeature, DeathsPerYearById } from "../types";
 
@@ -38,7 +38,6 @@ const RAMP_STEPS = 7;
 // ranking reads as one ramp; a per-section harmony would hand it seven unrelated hues and turn the
 // ordering into a categorical map. The ocean is the same salmon the darts land in.
 const OCEAN = "#e86d83";
-const GRATICULE = "#e8956d";
 const RAMP_HI = [222, 191, 43]; // #debf2b — the highest rate
 const RAMP_LO = [242, 231, 175]; // #f2e7af — the lowest
 const RAMP = Array.from({ length: RAMP_STEPS }, (_, k) => {
@@ -129,9 +128,9 @@ export default function CountryCentroidMap({
     svg
       .append("path")
       .attr("d", path(d3.geoGraticule().step([10, 10])()) ?? "")
+      .attr("class", "map-graticule")
       .attr("fill", "none")
-      .attr("stroke", GRATICULE)
-      .attr("stroke-width", 1.1);
+      .attr("stroke-width", GRATICULE_WIDTH);
 
     // Only the countries actually in frame are candidates. Picking from the whole world and then
     // discarding everything off-screen throws away ~19 of every 20 draws, which is what left this

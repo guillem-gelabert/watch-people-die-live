@@ -11,6 +11,13 @@ import type {
   SeasonalityProxies,
   SubnationalSeasonalityRegion,
 } from "../app/roadmap/types";
+import {
+  isHarmonicCurve,
+  meanHarmonicCurves,
+  sampleHarmonicCurve,
+  shiftHarmonicCurveHalfYear,
+  type HarmonicCurve,
+} from "./seasonal-curve";
 
 export const LATITUDE_DONOR_TOLERANCE_DEGREES = 10;
 export const DONOR_DISTANCE_DECAY_KM = 2_000;
@@ -55,7 +62,7 @@ export interface FallbackCurveSummary {
   qualityAdjustedDonors: number;
   distanceAdjustedDonors: number;
   amplitude: number | null;
-  curve: number[] | null;
+  curve: HarmonicCurve | null;
 }
 
 export interface FallbackProxyAssignment {
@@ -78,9 +85,16 @@ function m49ForIso3(iso3: string): number | null {
   return Number.isFinite(m49) ? m49 : null;
 }
 
-function amplitude(curve: number[] | undefined): number | null {
-  if (!curve?.length) return null;
-  return d3.max(curve, (value) => Math.abs(value - 1)) ?? null;
+function amplitude(curve: HarmonicCurve | undefined): number | null {
+  return curve
+    ? (d3.max(
+        sampleHarmonicCurve(
+          curve,
+          d3.range(720).map((index) => index / 720),
+        ),
+        (value) => Math.abs(value - 1),
+      ) ?? null)
+    : null;
 }
 
 function amplitudeSpread(summaries: FallbackCurveSummary[]): number | null {
@@ -90,38 +104,27 @@ function amplitudeSpread(summaries: FallbackCurveSummary[]): number | null {
   return values.length >= 2 ? (d3.max(values) as number) - (d3.min(values) as number) : null;
 }
 
-function meanCurve(curves: number[][]): number[] | undefined {
-  const months = d3.max(curves, (curve) => curve.length) ?? 0;
-  if (!months) return undefined;
-  return d3.range(months).flatMap((month) => {
-    const values = curves.flatMap((curve) => (curve[month] == null ? [] : [curve[month]]));
-    const value = d3.mean(values);
-    return value == null ? [] : [value];
-  });
+function meanCurve(curves: HarmonicCurve[]): HarmonicCurve | undefined {
+  return meanHarmonicCurves(curves.map((curve) => ({ curve }))) ?? undefined;
 }
 
 function inferredClimateClass(
-  curve: number[],
+  curve: HarmonicCurve,
   latitude: number,
   family: string | null | undefined,
   climate: SeasonalityData["climate"],
 ): string | null {
-  if (!family || !climate || !curve.length) return null;
+  if (!family || !climate || !isHarmonicCurve(curve)) return null;
+  const phases = d3.range(48).map((index) => (index + 0.5) / 48);
+  const sampled = sampleHarmonicCurve(curve, phases);
   const candidates = Object.entries(climate.classCurves).filter(([key]) => key.startsWith(family));
   const best = candidates
     .map(([key, canonical]) => {
-      const phased =
-        latitude < 0 ? canonical.map((_, month) => canonical[(month + 6) % 12]) : canonical;
-      const months = Math.min(curve.length, phased.length);
-      const error =
-        months > 0
-          ? Math.sqrt(
-              d3.mean(
-                d3.range(months),
-                (month) => ((curve[month] ?? 0) - (phased[month] ?? 0)) ** 2,
-              ) ?? 0,
-            )
-          : Number.POSITIVE_INFINITY;
+      const phased = latitude < 0 ? shiftHarmonicCurveHalfYear(canonical) : canonical;
+      const prediction = sampleHarmonicCurve(phased, phases);
+      const error = Math.sqrt(
+        d3.mean(sampled, (value, index) => (value - (prediction[index] ?? 0)) ** 2) ?? 0,
+      );
       return { key, error };
     })
     .sort((left, right) => left.error - right.error)[0];
@@ -262,7 +265,7 @@ export function buildFallbackProxyAssignments(
 ): FallbackProxyAssignment[] {
   const observedIds = new Set(
     Object.entries(seasonality.countries)
-      .filter(([, curve]) => curve.length > 0)
+      .filter(([, curve]) => isHarmonicCurve(curve))
       .map(([m49]) => Number(m49)),
   );
   const centroidByM49 = new Map<number, Centroid>(
@@ -287,7 +290,9 @@ export function buildFallbackProxyAssignments(
     regionDonorQuality(region, centroidByRegionKey.get(region.key) ?? null);
   const measuredRegions = regions.filter(
     (region) =>
-      region.geo === "adm1" && region.measurement !== "climate-modeled" && region.curve.length,
+      region.geo === "adm1" &&
+      region.measurement !== "climate-modeled" &&
+      isHarmonicCurve(region.curve),
   );
   const modeledRegionCountryIds = new Set(
     regions
@@ -347,10 +352,10 @@ export function buildFallbackProxyAssignments(
       const latitude = latitudeByM49.get(m49) ?? Number.NaN;
       const targetClimate = seasonality.climate?.classByM49[String(m49)];
       const usesClass = Boolean(
-        targetClimate && seasonality.climate?.classCurves[targetClimate.class]?.length,
+        targetClimate && isHarmonicCurve(seasonality.climate?.classCurves[targetClimate.class]),
       );
       const usesFamily = Boolean(
-        targetClimate && seasonality.climate?.familyCurves[targetClimate.family]?.length,
+        targetClimate && isHarmonicCurve(seasonality.climate?.familyCurves[targetClimate.family]),
       );
       const ownRegions = measuredRegionsByM49.get(m49) ?? [];
       const neighboring = neighborsByM49.get(m49) ?? [];
@@ -469,7 +474,9 @@ export function buildFallbackProxyAssignments(
   const regionalRows = regions
     .filter(
       (region) =>
-        region.geo === "adm1" && region.measurement === "climate-modeled" && region.curve.length,
+        region.geo === "adm1" &&
+        region.measurement === "climate-modeled" &&
+        isHarmonicCurve(region.curve),
     )
     .flatMap((region) => {
       const targetCentroid = centroidByRegionKey.get(region.key);
@@ -482,10 +489,10 @@ export function buildFallbackProxyAssignments(
         inferredClimateClass(region.curve, latitude, region.kgFamily, seasonality.climate);
       const targetFamily = targetClass?.[0] ?? region.kgFamily ?? null;
       const usesClass = Boolean(
-        targetClass && seasonality.climate?.classCurves[targetClass]?.length,
+        targetClass && isHarmonicCurve(seasonality.climate?.classCurves[targetClass]),
       );
       const usesFamily = Boolean(
-        targetFamily && seasonality.climate?.familyCurves[targetFamily]?.length,
+        targetFamily && isHarmonicCurve(seasonality.climate?.familyCurves[targetFamily]),
       );
       const hasClimateBlend = usesClass || usesFamily;
       const canonicalClimateCurve = usesClass
@@ -495,9 +502,7 @@ export function buildFallbackProxyAssignments(
           : undefined;
       const climateCurve = canonicalClimateCurve
         ? latitude < 0
-          ? canonicalClimateCurve.map(
-              (_, month) => canonicalClimateCurve[(month + 6) % canonicalClimateCurve.length] ?? 1,
-            )
+          ? shiftHarmonicCurveHalfYear(canonicalClimateCurve)
           : canonicalClimateCurve
         : undefined;
       const latitudeDonors = capDonorPool(
@@ -597,7 +602,7 @@ export function buildFallbackProxyAssignments(
         if (directRegions.length) return directRegions.map((donor) => donor.curve);
         const m49 = m49ForIso3(iso3);
         const curve = m49 == null ? undefined : seasonality.countries[String(m49)];
-        return curve?.length ? [curve] : [];
+        return isHarmonicCurve(curve) ? [curve] : [];
       });
       const neighborCurve = meanCurve(neighborCurves);
       const neighborSummary: FallbackProxyAssignment["neighbor"] = {
