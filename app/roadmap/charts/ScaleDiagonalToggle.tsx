@@ -2,6 +2,7 @@
 
 import { useSkin } from "../SkinContext";
 import { mixRgb, rgbCss } from "../palette";
+import { useDict } from "../I18nContext";
 
 interface ScaleDiagonalToggleProps {
   id: string;
@@ -15,6 +16,7 @@ interface ScaleDiagonalToggleProps {
 // control explains the choice it is offering.
 export default function ScaleDiagonalToggle({ id, logOn, onToggle }: ScaleDiagonalToggleProps) {
   const { skin } = useSkin();
+  const t = useDict().charts.densityMap;
   const active = rgbCss(skin.hiRGB);
   // The inactive half is the same hue almost all the way to paper: present enough to read as the
   // other option, quiet enough that the active half is unambiguous.
@@ -27,7 +29,7 @@ export default function ScaleDiagonalToggle({ id, logOn, onToggle }: ScaleDiagon
       aria-pressed={logOn}
       onClick={() => onToggle(!logOn)}
     >
-      <span className="sr-only">Logarithmic colour scale</span>
+      <span className="sr-only">{t.scaleSpoken}</span>
       <span
         className="scale-diagonal-half is-log"
         style={{ background: logOn ? active : inactive }}
@@ -45,7 +47,7 @@ export default function ScaleDiagonalToggle({ id, logOn, onToggle }: ScaleDiagon
         </defs>
         <text className="scale-diagonal-label" style={{ fill: logOn ? skin.paper : active }}>
           <textPath href={`#${id}-log-path`} startOffset="50%" textAnchor="middle">
-            Logarithmic
+            {t.scaleLog}
           </textPath>
         </text>
         <text
@@ -53,7 +55,7 @@ export default function ScaleDiagonalToggle({ id, logOn, onToggle }: ScaleDiagon
           style={{ fill: logOn ? active : skin.paper }}
         >
           <textPath href={`#${id}-linear-path`} startOffset="50%" textAnchor="middle">
-            Linear
+            {t.scaleLinear}
           </textPath>
         </text>
       </svg>

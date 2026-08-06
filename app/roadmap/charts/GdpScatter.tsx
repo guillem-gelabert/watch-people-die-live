@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import * as d3 from "d3";
 import { strength } from "../chartHelpers";
+import { useDict } from "../I18nContext";
 import AmplitudeScatter, { type AmplitudePoint } from "./AmplitudeScatter";
 import { PROXY } from "./chartFrame";
 import type { CountryFeature, SeasonalityData, SeasonalityProxies } from "../types";
@@ -20,6 +21,7 @@ const fmtAxisUsd = (value: d3.NumberValue) => `$${d3.format("~s")(value)}`;
 // three on a log axis: GDP per capita spans three orders of magnitude across reporting countries,
 // and on a linear axis every country but a handful would pile up against the left edge.
 export default function GdpScatter({ unified, proxies, features }: GdpScatterProps) {
+  const t = useDict().charts.gdpScatter;
   const points = useMemo<AmplitudePoint[]>(() => {
     if (!unified || !proxies || !features) return [];
     const nameById = new Map(features.map((f) => [Number(f.id), f.properties?.name ?? ""]));
@@ -42,11 +44,11 @@ export default function GdpScatter({ unified, proxies, features }: GdpScatterPro
       id="gdp-scatter-chart"
       proxyIndex={PROXY.gdp}
       points={points}
-      xLabel="income per head (log scale)"
+      xLabel={t.xLabel}
       xLog
       formatValue={fmtUsd}
       formatTick={fmtAxisUsd}
-      ariaLabel="Scatter plot of seasonal mortality amplitude against GDP per capita on a logarithmic scale"
+      ariaLabel={t.aria}
     />
   );
 }

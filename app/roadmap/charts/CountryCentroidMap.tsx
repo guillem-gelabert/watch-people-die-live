@@ -7,6 +7,8 @@ import { showTooltip, hideTooltip } from "../tooltip";
 import { fitProjection, GRATICULE_WIDTH, insideViewport, type Bbox } from "./basemap";
 import { useFigureWidth } from "./useFigureSize";
 import type { CountryFeature, DeathsPerYearById } from "../types";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 
 interface Dart {
   id: number;
@@ -64,6 +66,9 @@ export default function CountryCentroidMap({
   features,
   deathsPerYearById,
 }: CountryCentroidMapProps) {
+  const d = useDict();
+  const t = d.charts.countryCentroidMap;
+  const unknown = d.charts.common.unknown;
   const ref = useRef<SVGSVGElement | null>(null);
   const [sizeRef, measured] = useFigureWidth<SVGSVGElement>();
   // Square, at exactly the width the column gave it: the column's own max-width is the bound, so
@@ -89,7 +94,7 @@ export default function CountryCentroidMap({
       const deathsPerYear = deathsPerYearById.get(Number(feature.id)) ?? 0;
       const xy = projection(d3.geoCentroid(feature));
       return {
-        name: feature.properties?.name ?? "Unknown",
+        name: feature.properties?.name ?? unknown,
         deathsPerYear,
         xy,
         visible: insideViewport(xy, width, height),
@@ -216,8 +221,11 @@ export default function CountryCentroidMap({
         }
         const deathsPerYear = deathsPerYearById.get(Number(hit.id));
         const label = deathsPerYear
-          ? `${hit.properties?.name ?? "Unknown"}: ${Math.round(deathsPerYear).toLocaleString()} deaths/yr`
-          : `${hit.properties?.name ?? "Unknown"}: no rate data`;
+          ? fill(t.deathsPerYear, {
+              name: hit.properties?.name ?? unknown,
+              n: Math.round(deathsPerYear).toLocaleString(),
+            })
+          : fill(t.noRate, { name: hit.properties?.name ?? unknown });
         showTooltip(label, event.clientX, event.clientY);
       })
       .on("pointerleave", hideTooltip);
@@ -227,7 +235,7 @@ export default function CountryCentroidMap({
       cancelled = true;
       cancelAnimationFrame(rafId);
     };
-  }, [features, deathsPerYearById, width, height]);
+  }, [features, deathsPerYearById, width, height, t, unknown]);
 
   return (
     <section className="chart-panel wide">
@@ -240,7 +248,7 @@ export default function CountryCentroidMap({
         className="story-figure"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="Europe shaded by death rate, with every death landing on its country's geographic centre"
+        aria-label={t.aria}
       />
     </section>
   );

@@ -8,6 +8,8 @@ import {
   subscribeToDeaths,
   subscribeToHero,
 } from "./stageState";
+import { useDict } from "../roadmap/I18nContext";
+import { fill } from "@/lib/i18n/fill";
 
 interface IslandProps {
   onPausedChange: (paused: boolean) => void;
@@ -22,6 +24,7 @@ interface IslandProps {
 // its own controls, and a button cannot contain buttons.
 export default function Island({ onPausedChange }: IslandProps) {
   const death = useSyncExternalStore(subscribeToDeaths, getLatestDeath, getServerDeath);
+  const t = useDict().globe;
   const [open, setOpen] = useState(false);
   // Whether the reader hit Resume while keeping the card open. Pause is derived from this
   // rather than stored, so the sim can never be left stopped behind a closed island.
@@ -65,13 +68,18 @@ export default function Island({ onPausedChange }: IslandProps) {
     }
   };
 
-  const label = death?.text ?? "Waiting for the first flash";
+  const label = death?.text ?? t.waiting;
   // "Woman 78, breast cancer – Spain" -> drop the country, which the line below states
   // more precisely anyway.
   const headline = death ? label.replace(/\s+–\s+[^–]*$/, "") : "—";
   const where = death
-    ? `${death.country} · ${Math.abs(death.lat).toFixed(1)}° ${death.lat < 0 ? "south" : "north"}, ` +
-      `${Math.abs(death.lon).toFixed(1)}° ${death.lon < 0 ? "west" : "east"}`
+    ? fill(t.where, {
+        country: death.country,
+        lat: Math.abs(death.lat).toFixed(1),
+        ns: death.lat < 0 ? t.south : t.north,
+        lon: Math.abs(death.lon).toFixed(1),
+        ew: death.lon < 0 ? t.west : t.east,
+      })
     : "—";
 
   // #island-wrap's opacity is written by the story's scroll handler, so the pill fades out
@@ -83,7 +91,7 @@ export default function Island({ onPausedChange }: IslandProps) {
         role="button"
         tabIndex={0}
         className={open ? "is-open" : ""}
-        aria-label="Latest death"
+        aria-label={t.latest}
         aria-expanded={open}
         onClick={toggle}
         onKeyDown={(e) => {
@@ -101,7 +109,7 @@ export default function Island({ onPausedChange }: IslandProps) {
         <div id="island-full" aria-hidden={!open}>
           <p id="island-eyebrow">
             <span className="island-dot" />
-            Just now
+            {t.justNow}
           </p>
           <p id="island-big">{headline}</p>
           <p id="island-where">{where}</p>
@@ -113,7 +121,7 @@ export default function Island({ onPausedChange }: IslandProps) {
                 setResumed((r) => !r);
               }}
             >
-              {paused ? "Resume" : "Pause"}
+              {paused ? t.resume : t.pause}
             </button>
             <button
               type="button"
@@ -122,7 +130,7 @@ export default function Island({ onPausedChange }: IslandProps) {
                 close();
               }}
             >
-              Close
+              {t.close}
             </button>
           </div>
         </div>

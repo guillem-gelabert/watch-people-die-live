@@ -2,13 +2,13 @@
 
 import { useMemo } from "react";
 import { usePersonaTables, type CauseTable, type MortalityTable } from "./usePersonaTables";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 
 // The country the example is drawn for. Spain reports its own age/sex table and skews old
 // enough that the modal draw is a recognisable sentence rather than a statistical shrug.
 const SPAIN_M49 = "724";
 const SPAIN = "Spain";
-
-const STEPS = ["Place", "Age", "Sex", "Cause"];
 
 interface Likeliest {
   sex: "m" | "f";
@@ -18,7 +18,11 @@ interface Likeliest {
 
 // The single most likely draw: the heaviest (sex, age band) cell, then the heaviest cause
 // inside it. Not a sample — the mode of the same distribution the globe samples from.
-function likeliest(mortality: MortalityTable, causes: CauseTable): Likeliest | null {
+function likeliest(
+  mortality: MortalityTable,
+  causes: CauseTable,
+  undetermined: string,
+): Likeliest | null {
   const entry = mortality.countries[SPAIN_M49] ?? mortality.global;
   if (!entry) return null;
 
@@ -31,7 +35,7 @@ function likeliest(mortality: MortalityTable, causes: CauseTable): Likeliest | n
   if (best.band < 0) return null;
 
   const cell = (causes.countries[SPAIN_M49] ?? causes.global)?.[best.sex]?.[best.band];
-  let cause = "an undetermined cause";
+  let cause = undetermined;
   if (cell) {
     let top = -1;
     for (const [index, weight] of Object.entries(cell)) {
@@ -55,20 +59,21 @@ function likeliest(mortality: MortalityTable, causes: CauseTable): Likeliest | n
 // point: a cause is only ever drawn from the age and sex that plausibly dies of it.
 export default function PersonaDemo() {
   const { mortality, causes } = usePersonaTables();
+  const t = useDict().charts.personaDemo;
   const draw = useMemo(
-    () => (mortality && causes ? likeliest(mortality, causes) : null),
-    [mortality, causes],
+    () => (mortality && causes ? likeliest(mortality, causes, t.undetermined) : null),
+    [mortality, causes, t.undetermined],
   );
 
   return (
     <div className="persona-demo">
       <div className="persona-chain">
-        {STEPS.map((step, i) => (
+        {t.steps.map((step, i) => (
           <span className="persona-step" key={step}>
-            <span className="persona-step-name" data-last={i === STEPS.length - 1 ? "1" : "0"}>
+            <span className="persona-step-name" data-last={i === t.steps.length - 1 ? "1" : "0"}>
               {step}
             </span>
-            {i < STEPS.length - 1 && (
+            {i < t.steps.length - 1 && (
               <span className="persona-arrow" aria-hidden="true">
                 →
               </span>
@@ -79,16 +84,18 @@ export default function PersonaDemo() {
       {draw ? (
         <>
           <p className="persona-draw">
-            {draw.sex === "f" ? "Woman" : "Man"} {draw.age} · {draw.cause} · {SPAIN}
+            {draw.sex === "f" ? t.woman : t.man} {draw.age} · {draw.cause} · {SPAIN}
           </p>
           <p className="persona-note">
-            The heaviest single cell in {SPAIN}&apos;s table. The cause was drawn from that cell —
-            {draw.sex === "f" ? " women" : " men"} of {draw.age} — and never from the table at
-            large, which is what keeps a twenty-year-old from dying of dementia.
+            {fill(t.note, {
+              country: SPAIN,
+              group: draw.sex === "f" ? t.womenOf : t.menOf,
+              age: draw.age,
+            })}
           </p>
         </>
       ) : (
-        <p className="persona-note">Loading the age, sex and cause tables…</p>
+        <p className="persona-note">{t.loading}</p>
       )}
     </div>
   );

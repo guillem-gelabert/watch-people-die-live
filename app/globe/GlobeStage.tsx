@@ -10,6 +10,7 @@ import Island from "./Island";
 import { useGlobeData } from "./useGlobeData";
 import { makePersona } from "./persona";
 import { publishDeath } from "./stageState";
+import { useDict } from "../roadmap/I18nContext";
 import { FOV } from "./constants";
 import "../globe.css";
 
@@ -33,6 +34,7 @@ interface GlobeStageProps {
 // island subscribes, so a death (roughly twice a second) never re-renders the canvas.
 function GlobeStage({ phaseRef }: GlobeStageProps) {
   const { data: globeData, geo } = useGlobeData();
+  const d = useDict();
   const [loaded, setLoaded] = useState(false);
   // Direction the camera eases toward to center the viewer's location, or null when
   // idle / after the user takes over (cleared by OrbitControls' "start" event).
@@ -45,10 +47,13 @@ function GlobeStage({ phaseRef }: GlobeStageProps) {
     if (globeData && !globeData.error) nameByIdRef.current = globeData.nameById;
   }, [globeData]);
 
-  const onPushDeath = useCallback((m49: number, lon: number, lat: number) => {
-    const country = nameByIdRef.current.get(m49) || "Unknown";
-    publishDeath({ ...makePersona(m49, country), lon, lat, at: performance.now() });
-  }, []);
+  const onPushDeath = useCallback(
+    (m49: number, lon: number, lat: number) => {
+      const country = nameByIdRef.current.get(m49) || d.charts.common.unknown;
+      publishDeath({ ...makePersona(m49, country, d.globe), lon, lat, at: performance.now() });
+    },
+    [d],
+  );
 
   const onPausedChange = useCallback((paused: boolean) => {
     pausedRef.current = paused;

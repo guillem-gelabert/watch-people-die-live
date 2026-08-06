@@ -8,14 +8,20 @@ import MiniEarth from "./MiniEarth";
 import Section from "./Section";
 import { parseSky, skinFromSky, skinToCssVars } from "./palette";
 import { SkinProvider } from "./SkinContext";
+import { I18nProvider } from "./I18nContext";
+import LanguageSwitcher from "./LanguageSwitcher";
 import RoadmapMarkdown, { roadmapSections, type SectionHeadingKind } from "./roadmapMarkdown";
 import { ProxyGuessProvider } from "./proxy/ProxyGuessContext";
 import { prepareReveals, prepareTypers, runReveals, runTypers, type Typer } from "./storyMotion";
 import { useStorySlots } from "./storySlots";
+import type { Dictionary } from "@/lib/i18n/en";
+import type { Locale } from "@/lib/i18n/config";
 import "./roadmap.css";
 
 interface StoryClientProps {
   markdown: string;
+  locale: Locale;
+  dictionary: Dictionary;
 }
 
 // How far the reader has to travel before the globe has fully left. Expressed in
@@ -37,7 +43,7 @@ const CHAPTER_CLASS: Record<SectionHeadingKind, string> = {
 // count rather than per section, so the rule survives a retitle.
 const SHORT_CHAPTER = 3;
 
-export default function StoryClient({ markdown }: StoryClientProps) {
+export default function StoryClient({ markdown, locale, dictionary }: StoryClientProps) {
   const sections = useMemo(() => roadmapSections(markdown), [markdown]);
   const slotsByKey = useStorySlots();
   const [skyIndex, setSkyIndex] = useState(0);
@@ -207,12 +213,14 @@ export default function StoryClient({ markdown }: StoryClientProps) {
         ...(skinToCssVars(active.sky, active.skin) as CSSProperties),
       }}
     >
+      <LanguageSwitcher />
+
       <div id="story-stage" ref={stageRef}>
         <GlobeStage phaseRef={phaseRef} />
         {/* Hero line and cue in one box: transparent, over the globe's lower edge, and the only
             thing in the stage that takes a gesture — see #story-hero for why. */}
         <div id="story-hero">
-          <h1>Every flash is a death.</h1>
+          <h1>{dictionary.chrome.hero}</h1>
           <div id="story-cue-wrap">
             {/* The cue is the invitation to start reading, so it does what it invites. */}
             <button
@@ -222,7 +230,7 @@ export default function StoryClient({ markdown }: StoryClientProps) {
                 window.scrollTo({ top: window.innerHeight * 1.05, behavior: "smooth" })
               }
             >
-              What? <span aria-hidden="true">↓</span>
+              {dictionary.chrome.cue} <span aria-hidden="true">↓</span>
             </button>
           </div>
         </div>
@@ -236,7 +244,7 @@ export default function StoryClient({ markdown }: StoryClientProps) {
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         >
           <MiniEarth />
-          Globe
+          {dictionary.chrome.globe}
         </button>
       </div>
 
@@ -247,8 +255,10 @@ export default function StoryClient({ markdown }: StoryClientProps) {
   );
 
   return (
-    <SkinProvider value={active}>
-      <ProxyGuessProvider>{body}</ProxyGuessProvider>
-    </SkinProvider>
+    <I18nProvider locale={locale} dictionary={dictionary}>
+      <SkinProvider value={active}>
+        <ProxyGuessProvider>{body}</ProxyGuessProvider>
+      </SkinProvider>
+    </I18nProvider>
   );
 }

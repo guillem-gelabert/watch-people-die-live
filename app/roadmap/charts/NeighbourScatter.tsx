@@ -3,6 +3,8 @@
 import { useMemo } from "react";
 import * as d3 from "d3";
 import { strength } from "../chartHelpers";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 import AmplitudeScatter, { type AmplitudePoint } from "./AmplitudeScatter";
 import { PROXY } from "./chartFrame";
 import type {
@@ -32,6 +34,7 @@ export default function NeighbourScatter({
   regions,
   regionNeighbors,
 }: NeighbourScatterProps) {
+  const t = useDict().charts.neighbourScatter;
   const { points, rings, excluded } = useMemo(() => {
     if (!unified || !features || !neighborsByM49) {
       return { points: [] as AmplitudePoint[], rings: [] as AmplitudePoint[], excluded: 0 };
@@ -90,16 +93,12 @@ export default function NeighbourScatter({
       proxyIndex={PROXY.neighbour}
       points={points}
       rings={rings}
-      xLabel="mean amplitude of neighbours (%)"
-      formatValue={(v) => `neighbours ${v.toFixed(1)}%`}
+      xLabel={t.xLabel}
+      formatValue={(v) => fill(t.value, { v: v.toFixed(1) })}
       formatTick={(v) => `${v}%`}
-      ariaLabel="Scatter plot of a unit's seasonal mortality amplitude against the mean amplitude of its bordering neighbours"
-      footnote={
-        excluded
-          ? `${excluded} countries are missing from this chart entirely: no country they border reports a monthly curve, so the proxy has nothing to borrow from.`
-          : undefined
-      }
-      ringLabel="Rings are measured Admin-1 regions against their own bordering regions."
+      ariaLabel={t.aria}
+      footnote={excluded ? fill(t.footnote, { n: excluded }) : undefined}
+      ringLabel={t.ringLabel}
     />
   );
 }

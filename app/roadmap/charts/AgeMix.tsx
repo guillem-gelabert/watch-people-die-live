@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { useFigureWidth } from "./useFigureSize";
 import { useSkin } from "../SkinContext";
 import { harmony, marks } from "../palette";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 import {
   bandLabel,
   usePersonaTables,
@@ -96,6 +98,7 @@ function buildModel(mortality: MortalityTable, causes: CauseTable): Model | null
 // deaths; the segments inside it are that band's own cause mix — which is the argument for
 // sampling age before cause rather than the other way round.
 export default function AgeMix() {
+  const t = useDict().charts.ageMix;
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
   const { skin, sky } = useSkin();
   const { mortality, causes } = usePersonaTables();
@@ -115,7 +118,7 @@ export default function AgeMix() {
     return (
       <section className="chart-panel">
         <p className="chart-status" aria-live="polite">
-          Loading deaths by age and cause…
+          {t.loading}
         </p>
       </section>
     );
@@ -137,7 +140,7 @@ export default function AgeMix() {
         viewBox={`0 0 ${WIDTH} ${height}`}
         role="img"
         aria-label={model.bands
-          .map((b) => `${b.label}: ${(b.share * 100).toFixed(0)}% of deaths`)
+          .map((b) => fill(t.ariaBand, { label: b.label, share: (b.share * 100).toFixed(0) }))
           .join("; ")}
       >
         {model.causes.map((cause, i) => {

@@ -6,6 +6,8 @@ import { useFigureWidth } from "./useFigureSize";
 import { useSkin } from "../SkinContext";
 import { mapColor } from "../palette";
 import type { SubnationalCdr } from "../types";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 
 interface NationalVsRegionalBarsProps {
   subnational: SubnationalCdr | null;
@@ -63,6 +65,7 @@ interface Block {
 // country. Each block is one country's national figure as a dashed line, with four of its own
 // regions measured against it — every one of them wrong, in one direction or the other.
 export default function NationalVsRegionalBars({ subnational }: NationalVsRegionalBarsProps) {
+  const t = useDict().charts.nationalVsRegional;
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
   const { skin } = useSkin();
   const above = mapColor("#ff3b30", skin);
@@ -97,7 +100,7 @@ export default function NationalVsRegionalBars({ subnational }: NationalVsRegion
     return (
       <section className="chart-panel wide">
         <p className="chart-status" aria-live="polite">
-          Loading regional death rates…
+          {t.loading}
         </p>
       </section>
     );
@@ -117,19 +120,20 @@ export default function NationalVsRegionalBars({ subnational }: NationalVsRegion
 
   return (
     <section className="chart-panel wide">
-      <h4 className="chart-title">National guess against regional truth</h4>
-      <p className="chart-copy">Deaths per 100,000, six regions of two countries.</p>
+      <h4 className="chart-title">{t.title}</h4>
+      <p className="chart-copy">{t.copy}</p>
       <svg
         ref={sizeRef}
         className="story-figure"
         viewBox={`0 0 ${WIDTH} ${Math.max(MIN_HEIGHT, y)}`}
         role="img"
         aria-label={drawn
-          .map(
-            (b) =>
-              `${b.label}: national rate ${Math.round(b.national)} per 100,000; regions ${b.rows
-                .map((r) => `${r.name} ${Math.round(r.rate)}`)
-                .join(", ")}`,
+          .map((b) =>
+            fill(t.ariaBlock, {
+              label: b.label,
+              national: Math.round(b.national),
+              regions: b.rows.map((r) => `${r.name} ${Math.round(r.rate)}`).join(", "),
+            }),
           )
           .join(". ")}
       >
@@ -138,7 +142,7 @@ export default function NationalVsRegionalBars({ subnational }: NationalVsRegion
             <text className="bars-country" x={6} y={block.top + 8}>
               {block.label}
               <tspan className="bars-national" dx={7}>
-                national {Math.round(block.national)}
+                {fill(t.national, { n: Math.round(block.national) })}
               </tspan>
             </text>
             {/* The national figure as a line rather than a bar: it is the claim the regions are
@@ -173,10 +177,7 @@ export default function NationalVsRegionalBars({ subnational }: NationalVsRegion
           </g>
         ))}
       </svg>
-      <p className="chart-note-copy">
-        The national rate is wrong for every single region — too low for half of them and too high
-        for the rest.
-      </p>
+      <p className="chart-note-copy">{t.note}</p>
     </section>
   );
 }

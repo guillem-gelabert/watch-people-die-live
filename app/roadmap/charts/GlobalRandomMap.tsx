@@ -9,6 +9,7 @@ import { buildLandMask, buildPopulatedMask, classify, convergenceShares } from "
 import { bumpDart, setDartLimits } from "./dartTallyState";
 import { useFigureWidth } from "./useFigureSize";
 import { useSkin } from "../SkinContext";
+import { useDict } from "../I18nContext";
 import type { CountryFeature, DensityGrid } from "../types";
 
 interface Dart {
@@ -44,6 +45,7 @@ const BBOX: Bbox = [
 // page itself and only the ocean is inked, so every dart that misses is a dart you can see
 // missing. Each mark is also counted by the tally below (see dartTallyState).
 export default function GlobalRandomMap({ features, grid }: GlobalRandomMapProps) {
+  const t = useDict().charts.globalRandomMap;
   const { sky } = useSkin();
   const ref = useRef<SVGSVGElement | null>(null);
   const [sizeRef, measured] = useFigureWidth<SVGSVGElement>();
@@ -203,7 +205,7 @@ export default function GlobalRandomMap({ features, grid }: GlobalRandomMapProps
         className="story-figure"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="South America and the Pacific, with crosshairs falling at random points at the global mortality rate"
+        aria-label={t.aria}
       />
     </section>
   );

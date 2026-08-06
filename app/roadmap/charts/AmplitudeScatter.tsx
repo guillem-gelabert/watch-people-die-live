@@ -15,6 +15,7 @@ import {
 } from "./chartFrame";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
 import { useSkin } from "../SkinContext";
+import { useDict } from "../I18nContext";
 import { proxyMarks } from "../palette";
 
 export interface AmplitudePoint {
@@ -71,6 +72,7 @@ export default function AmplitudeScatter({
   ringLabel,
   onRingColor,
 }: AmplitudeScatterProps) {
+  const { amplitudeAxis } = useDict().charts.common;
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
   const HEIGHT = figureHeight(WIDTH, SHAPE);
@@ -224,8 +226,9 @@ export default function AmplitudeScatter({
     }
     appendAxisTitle(g, { x: innerW / 2, y: innerH + 28, text: xLabel });
     // 12px from the svg's own left edge, which is outside this group's translated origin.
-    appendAxisTitle(g, { x: 12 - m.left, y: innerH / 2, text: "Amplitude", rotate: true });
+    appendAxisTitle(g, { x: 12 - m.left, y: innerH / 2, text: amplitudeAxis, rotate: true });
   }, [
+    amplitudeAxis,
     points,
     rings,
     xLabel,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { en } from "@/lib/i18n/en";
 import {
   buildClimateSubclassPerformance,
   buildCohortPerformance,
@@ -49,6 +50,7 @@ const validation = {
 describe("buildCohortPerformance", () => {
   it("reports overlapping climate, island, and sparse-donor cohorts", () => {
     const cohorts = buildCohortPerformance(
+      en,
       validation,
       {
         meta: { source: "test" },
@@ -85,6 +87,7 @@ describe("buildCohortPerformance", () => {
 describe("validation performance breakdowns", () => {
   it("uses disjoint absolute-latitude bands", () => {
     const bands = buildLatitudePerformance(
+      en,
       validation,
       new Map([
         [1, 5],
@@ -106,7 +109,7 @@ describe("validation performance breakdowns", () => {
   });
 
   it("groups every country by its Köppen–Geiger sub-class", () => {
-    const subclasses = buildClimateSubclassPerformance(validation, {
+    const subclasses = buildClimateSubclassPerformance(en, validation, {
       meta: { source: "test" },
       byM49: {
         1: { kgClass: "Af" },

@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
-import { KG_FAMILY_KEYS, correlationRatio, fmtPlainPct, strength } from "../chartHelpers";
+import {
+  KG_FAMILY_KEYS,
+  correlationRatio,
+  fmtPlainPct,
+  kgFamilyName,
+  strength,
+} from "../chartHelpers";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
 import { useSkin } from "../SkinContext";
 import { showTooltip, hideTooltip } from "../tooltip";
@@ -18,6 +24,7 @@ import {
   quantileByRank,
 } from "./chartFrame";
 import { proxyMarks } from "../palette";
+import { useDict } from "../I18nContext";
 import type {
   CountryFeature,
   SeasonalityData,
@@ -61,6 +68,7 @@ export default function KoppenGeigerScatter({
   features,
   regions,
 }: KoppenGeigerScatterProps) {
+  const d = useDict();
   const { sky } = useSkin();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
@@ -232,10 +240,11 @@ export default function KoppenGeigerScatter({
         .attr("x", (x(family.key) ?? 0) + bw / 2)
         .attr("y", innerH + 15)
         .attr("text-anchor", "middle")
-        .text(family.name);
+        .text(kgFamilyName(d, family.key));
     }
-    appendAxisTitle(g, { x: innerW / 2, y: innerH + 33, text: "Köppen-Geiger zone" });
+    appendAxisTitle(g, { x: innerW / 2, y: innerH + 33, text: d.charts.koppenScatter.axisTitle });
   }, [
+    d,
     unified,
     proxies,
     features,
@@ -253,8 +262,13 @@ export default function KoppenGeigerScatter({
     <>
       <SeriesChips
         series={[
-          { key: "countries", label: "Countries", color: countryColor, on: showCountries },
-          { key: "regions", label: "Regions", color: regionColor, on: showRegions },
+          {
+            key: "countries",
+            label: d.charts.common.countries,
+            color: countryColor,
+            on: showCountries,
+          },
+          { key: "regions", label: d.charts.common.regions, color: regionColor, on: showRegions },
         ]}
         onToggle={(key, on) => (key === "countries" ? setShowCountries(on) : setShowRegions(on))}
       />
@@ -267,7 +281,7 @@ export default function KoppenGeigerScatter({
         className="story-figure"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
-        aria-label="Strip scatter plot of seasonal mortality amplitude grouped by dominant Köppen–Geiger climate family, with each country as a filled dot and each measured region as a ring"
+        aria-label={d.charts.koppenScatter.aria}
       />
     </>
   );

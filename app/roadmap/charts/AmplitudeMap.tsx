@@ -14,6 +14,8 @@ import { useFigureWidth } from "./useFigureSize";
 import { useSkin } from "../SkinContext";
 import { harmony } from "../palette";
 import { appendMapPlate, fitRegionProjection, type Bbox } from "./basemap";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 import type {
   Admin1Feature,
   CountryFeature,
@@ -70,6 +72,9 @@ export default function AmplitudeMap({
   admin1Features,
   appliedFallbacks,
 }: AmplitudeMapProps) {
+  const dict = useDict();
+  const t = dict.charts.amplitudeMap;
+  const unknown = dict.charts.common.unknown;
   const ref = useRef<SVGSVGElement | null>(null);
   const { sky } = useSkin();
   const [legend, setLegend] = useState<AmpLegend | null>(null);
@@ -161,19 +166,19 @@ export default function AmplitudeMap({
       .attr("stroke-linejoin", "round")
       .attr("d", (d) => path(d.feature))
       .on("pointermove", (event, d) => {
-        const name = d.feature.properties?.name ?? "Unknown";
+        const name = d.feature.properties?.name ?? unknown;
         const source =
           d.estimate.source === "observed"
-            ? "observed"
+            ? t.sourceObserved
             : d.estimate.source === "own-regions"
-              ? `calculated from ${d.estimate.donorNames.length} measured regions`
+              ? fill(t.sourceOwnRegions, { n: d.estimate.donorNames.length })
               : d.estimate.source === "bordering-countries"
-                ? `calculated from bordering countries: ${d.estimate.donorNames.join(", ")}`
+                ? fill(t.sourceBorderingCountries, { donors: d.estimate.donorNames.join(", ") })
                 : d.estimate.source === "climate"
-                  ? `estimated from climate: ${d.estimate.donorNames[0]}`
-                  : `calculated from latitude fallback: ${d.estimate.donorNames[0]}`;
+                  ? fill(t.sourceClimate, { donor: d.estimate.donorNames[0] ?? "" })
+                  : fill(t.sourceLatitude, { donor: d.estimate.donorNames[0] ?? "" });
         showTooltip(
-          `${name}: ${fmtPlainPct(d.amplitude)} (${source})`,
+          fill(t.tooltip, { name, amplitude: fmtPlainPct(d.amplitude), source }),
           event.clientX,
           event.clientY,
         );
@@ -202,12 +207,19 @@ export default function AmplitudeMap({
       .on("pointermove", (event, d) => {
         const note =
           d.region.measurement === "climate-modeled"
-            ? ` · ${d.appliedFallback?.proxy.toLowerCase() ?? "climate"} estimate${d.appliedFallback?.overridden ? " (manual override)" : ""}`
+            ? fill(t.regionEstimate, {
+                proxy: d.appliedFallback?.proxy.toLowerCase() ?? "climate",
+              }) + (d.appliedFallback?.overridden ? t.regionOverride : "")
             : d.region.imputed
-              ? ` · imputed from ${d.region.imputedFrom?.join(", ")}`
+              ? fill(t.regionImputed, { donors: d.region.imputedFrom?.join(", ") ?? "" })
               : "";
         showTooltip(
-          `${d.region.name} (${d.region.country}): ${fmtPlainPct(d.amplitude)} amplitude${note}`,
+          fill(t.regionTooltip, {
+            name: d.region.name,
+            country: d.region.country,
+            amplitude: fmtPlainPct(d.amplitude),
+            note,
+          }),
           event.clientX,
           event.clientY,
         );
@@ -222,6 +234,8 @@ export default function AmplitudeMap({
         .join(", ")})`,
     });
   }, [
+    t,
+    unknown,
     seasonality,
     features,
     neighborsByM49,
@@ -244,7 +258,7 @@ export default function AmplitudeMap({
         className="story-figure"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="Map of Africa with every country colored by observed or spatially estimated seasonal mortality amplitude, with measured Admin-1 regions colored by their own finer amplitude"
+        aria-label={t.aria}
       />
       {legend && (
         <div className="amplitude-legend" aria-hidden="true">
@@ -252,7 +266,7 @@ export default function AmplitudeMap({
             <span>0%</span>
             <span className="amplitude-legend-bar" style={{ background: legend.gradient }} />
             <span>{legend.maxLabel}</span>
-            <span className="amplitude-legend-caption">monthly deviation strength</span>
+            <span className="amplitude-legend-caption">{t.legendCaption}</span>
           </div>
         </div>
       )}

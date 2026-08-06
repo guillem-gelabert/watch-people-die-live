@@ -8,6 +8,8 @@ import { useSkin } from "../SkinContext";
 import { mapColor } from "../palette";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { ConflictsPayload, CountryFeature } from "../types";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 
 interface ConflictMapProps {
   conflicts: ConflictsPayload | null;
@@ -54,6 +56,7 @@ function sharePlotted(cells: ConflictsPayload["cells"]): string {
 // its ordinary mortality, so this is the layer that puts a war into the feed without touching
 // the crude death rate underneath it.
 export default function ConflictMap({ conflicts, features }: ConflictMapProps) {
+  const t = useDict().charts.conflictMap;
   const ref = useRef<SVGSVGElement | null>(null);
   const [sizeRef, width] = useFigureWidth<HTMLDivElement>();
   const height = figureHeight(width, { aspect: ASPECT, min: MIN_HEIGHT, max: MAX_HEIGHT });
@@ -160,17 +163,22 @@ export default function ConflictMap({ conflicts, features }: ConflictMapProps) {
         .attr("rx", 3)
         .attr("fill", skin.paper)
         .attr("fill-opacity", 0.85);
-      text.append("title").text(`${fatalities.toLocaleString()} fatalities in the window`);
+      text.append("title").text(fill(t.plateTitle, { n: fatalities.toLocaleString() }));
     }
-  }, [conflicts, features, width, height, skin, sky]);
+  }, [conflicts, features, width, height, skin, sky, t]);
 
   const cells = conflicts?.cells ?? [];
   const drawn = cells.filter((c) => c[2] >= FLOOR).length;
   const note = cells.length
-    ? `${conflicts!.eventCount.toLocaleString()} fatal events over ${conflicts!.window.days} days. ` +
-      `Showing the ${drawn.toLocaleString()} of ${cells.length.toLocaleString()} cells carrying at ` +
-      `least ${FLOOR} deaths a year — together ${sharePlotted(cells)}% of the window's fatalities.`
-    : "No conflict data available — the layer is off.";
+    ? fill(t.note, {
+        events: conflicts!.eventCount.toLocaleString(),
+        days: conflicts!.window.days,
+        drawn: drawn.toLocaleString(),
+        total: cells.length.toLocaleString(),
+        floor: FLOOR,
+        share: sharePlotted(cells),
+      })
+    : t.noData;
 
   return (
     <div ref={sizeRef}>
@@ -180,10 +188,10 @@ export default function ConflictMap({ conflicts, features }: ConflictMapProps) {
         width={width}
         height={height}
         role="img"
-        aria-label={`Map of conflict fatalities over the trailing year. ${note}`}
+        aria-label={fill(t.aria, { note })}
       />
       <p className="chart-note-copy">
-        These cells fire on top of their ordinary mortality, not instead of it. {note}
+        {t.lead} {note}
       </p>
     </div>
   );

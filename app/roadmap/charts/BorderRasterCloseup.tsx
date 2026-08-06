@@ -6,6 +6,8 @@ import { showTooltip, hideTooltip } from "../tooltip";
 import { parseColor } from "../palette";
 import { projectCell, ringPath } from "./basemap";
 import type { CountryFeature, DensityGrid, NeighborsByM49 } from "../types";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 
 // Fixed viewBox: same aspect for every panel so a responsive grid gives every box the
 // same height. Equirectangular maps lon/lat linearly, so cell squareness now depends on
@@ -121,6 +123,9 @@ export default function BorderRasterCloseup({
   colorBy = "country",
   neighborsByM49,
 }: BorderRasterCloseupProps) {
+  const dict = useDict();
+  const t = dict.charts.borderRaster;
+  const UNKNOWN = dict.charts.common.unknown;
   // Country mode gets four vivid hues to separate ownership; density mode gets one, because it
   // is showing a quantity and a second hue would imply a second variable.
   //
@@ -192,7 +197,7 @@ export default function BorderRasterCloseup({
     const inWindow = (lon: number, lat: number) =>
       lon >= oLon0 && lon <= oLon1 && lat >= oLat0 && lat <= oLat1;
 
-    const nameById = new Map(features.map((f) => [Number(f.id), f.properties?.name ?? "Unknown"]));
+    const nameById = new Map(features.map((f) => [Number(f.id), f.properties?.name ?? UNKNOWN]));
 
     // "country" mode: a four-colouring of whichever countries own a density cell in the window.
     // Every country's borders are drawn (and cropped) regardless, so no membership sampling is
@@ -266,12 +271,12 @@ export default function BorderRasterCloseup({
       .filter((b): b is BorderModel => b !== null);
 
     return { width, height, cells, borders, nameById };
-  }, [features, grid, bbox, zoom, colorBy, neighborsByM49, countryHues, densityHue]);
+  }, [features, grid, bbox, zoom, colorBy, neighborsByM49, countryHues, densityHue, UNKNOWN]);
 
   if (!model) {
     return (
       <section className="chart-panel">
-        <div className="chart-status">Loading…</div>
+        <div className="chart-status">{t.loading}</div>
       </section>
     );
   }
@@ -289,11 +294,11 @@ export default function BorderRasterCloseup({
     const vectorName = vectorHit?.feature.properties?.name;
     const place =
       rasterName && vectorName && rasterName !== vectorName
-        ? `raster: ${rasterName} / vector: ${vectorName} (mismatch)`
-        : rasterName || vectorName || "Unknown";
+        ? fill(t.mismatch, { raster: rasterName, vector: vectorName })
+        : rasterName || vectorName || UNKNOWN;
     const text =
       colorBy === "density"
-        ? `${Math.round(cell.pop).toLocaleString()} people/cell — ${place}`
+        ? fill(t.peoplePerCell, { n: Math.round(cell.pop).toLocaleString(), place })
         : place;
     showTooltip(text, event.clientX, event.clientY);
   };
@@ -306,7 +311,7 @@ export default function BorderRasterCloseup({
         viewBox={`0 0 ${width} ${height}`}
         preserveAspectRatio="xMidYMid meet"
         role="img"
-        aria-label={`Close-up of vector country borders overlapping rastered density cells near ${title}`}
+        aria-label={fill(t.aria, { title })}
       >
         <defs>
           <clipPath id={clipId}>
@@ -339,7 +344,7 @@ export default function BorderRasterCloseup({
                 key={b.key}
                 d={b.d}
                 onPointerMove={(e) =>
-                  showTooltip(b.feature.properties?.name ?? "Unknown", e.clientX, e.clientY)
+                  showTooltip(b.feature.properties?.name ?? UNKNOWN, e.clientX, e.clientY)
                 }
                 onPointerLeave={hideTooltip}
                 style={{ pointerEvents: "stroke" }}

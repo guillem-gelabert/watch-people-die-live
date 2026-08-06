@@ -2,34 +2,61 @@
 
 import { useEffect, useRef } from "react";
 
-// How far the reader has to keep pulling before the page goes back to the globe. Short enough
-// to discover by accident, long enough that the last paragraph can still be scrolled to
-// comfortably without triggering it.
-const THRESHOLD = 104;
+import { useDict } from "./I18nContext";
+
+// How far the reader has to travel before the bar is full. Long: going back to the top is a
+// hundred screens of scroll undone, and the old 104px could be reached by overshooting the last
+// paragraph. This is a gesture you have to mean.
+const THRESHOLD = 260;
+// The elastic constant. The bar fills against a spring rather than linearly — the first half of
+// the travel fills three-quarters of it, and the last quarter of the bar costs half the pull. The
+// resistance is the whole point: it is what makes the end of the gesture feel like a decision
+// rather than a distance.
+const SOFTNESS = THRESHOLD / 2.2;
+const FULL_STRAIN = 1 - Math.exp(-THRESHOLD / SOFTNESS);
+// The bar has to sit at full stretch this long before a wheel pull fires. A trackpad flick is
+// over in about 150ms, so this is what a flick cannot buy.
+const HOLD_MS = 320;
+// A mouse wheel arrives in discrete deltas with no "end" event, so accumulated pull leaks back at
+// this rate. Keeping the bar full means keeping the wheel turning.
+const LEAK_PER_SECOND = 520;
 // The bar is drawn at a fixed width rather than a percentage so it reads as a gauge filling up
 // rather than a layout that stretches.
 const BAR_WIDTH = 118;
-// A mouse wheel arrives in discrete deltas with no "end" event, so an idle gap stands in for
-// letting go. Just longer than the gap between two flicks of the same gesture.
-const WHEEL_DECAY_MS = 320;
 
-// The end of the story: an upward pull at the very bottom fills a bar and sends the reader back
-// to the globe they started on. Touch and wheel share one progress value so a trackpad gets the
-// same gesture as a thumb.
+// Travel in pixels to how full the bar looks, on the spring.
+function strain(travel: number): number {
+  if (travel <= 0) return 0;
+  return Math.min(1, (1 - Math.exp(-travel / SOFTNESS)) / FULL_STRAIN);
+}
+
+// The end of the story: a long upward pull at the very bottom fills a bar and sends the reader
+// back to the globe they started on. Touch and wheel share one progress value so a trackpad gets
+// the same gesture as a thumb.
 export default function PullToGlobe() {
   const hintRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLSpanElement>(null);
   const arrowRef = useRef<HTMLSpanElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
+  // The three states of the label are written straight into the node by the gesture, which runs
+  // outside React. The effect closes over them and re-arms if the language changes, which costs
+  // one listener swap on an event that happens at most twice a session.
+  const copy = useDict().chrome.pull;
 
   useEffect(() => {
     const hint = hintRef.current;
     if (!hint) return;
 
+    // Raw travel, before the spring. Touch sets it absolutely from where the finger started;
+    // wheel accumulates into it and it leaks back out.
     let pull = 0;
     let startY: number | null = null;
     let fired = false;
-    let decay: ReturnType<typeof setTimeout> | undefined;
+    // When the wheel pull last reached full stretch, so the hold can be timed. -1 means it is
+    // not at full stretch.
+    let fullSince = -1;
+    let raf = 0;
+    let lastTick = 0;
     let releaseTimer: ReturnType<typeof setTimeout> | undefined;
 
     const atEnd = () =>
@@ -38,12 +65,14 @@ export default function PullToGlobe() {
     const paint = (k: number) => {
       hint.style.transform = `translateY(${(-16 * k).toFixed(1)}px)`;
       hint.style.setProperty("--pull-strength", k.toFixed(3));
+      hint.dataset.ready = k >= 1 ? "1" : "0";
       if (barRef.current) barRef.current.style.width = `${Math.round(k * BAR_WIDTH)}px`;
       if (arrowRef.current) {
         arrowRef.current.style.transform = `translateY(${(-6 * k).toFixed(1)}px) scale(${(1 + 0.25 * k).toFixed(2)})`;
       }
       if (labelRef.current) {
-        labelRef.current.textContent = k >= 1 ? "Release for the globe" : "Pull up for the globe";
+        labelRef.current.textContent =
+          k >= 1 ? copy.ready : k > 0.55 ? copy.keepPulling : copy.idle;
       }
     };
 
@@ -51,6 +80,7 @@ export default function PullToGlobe() {
       if (fired) return;
       fired = true;
       pull = 0;
+      fullSince = -1;
       paint(1);
       releaseTimer = setTimeout(() => {
         paint(0);
@@ -59,9 +89,38 @@ export default function PullToGlobe() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
+    // One loop, running only while there is pull to bleed off, so an idle page costs nothing.
+    const tick = (now: number) => {
+      raf = 0;
+      const dt = lastTick ? Math.min(0.1, (now - lastTick) / 1000) : 0;
+      lastTick = now;
+      if (startY == null) pull = Math.max(0, pull - LEAK_PER_SECOND * dt);
+      const k = strain(pull);
+      paint(k);
+      if (k >= 1) {
+        if (fullSince < 0) fullSince = now;
+        else if (now - fullSince >= HOLD_MS) {
+          fire();
+          return;
+        }
+      } else {
+        fullSince = -1;
+      }
+      if (pull > 0) raf = requestAnimationFrame(tick);
+      else lastTick = 0;
+    };
+
+    const run = () => {
+      if (!raf) {
+        lastTick = 0;
+        raf = requestAnimationFrame(tick);
+      }
+    };
+
     const onTouchStart = (e: TouchEvent) => {
       startY = e.touches[0]?.clientY ?? null;
       pull = 0;
+      fullSince = -1;
     };
 
     const onTouchMove = (e: TouchEvent) => {
@@ -73,33 +132,27 @@ export default function PullToGlobe() {
       if (!atEnd() || travelled <= 0) {
         startY = y;
         pull = 0;
+        fullSince = -1;
         paint(0);
         return;
       }
       pull = travelled;
-      paint(Math.min(1, pull / THRESHOLD));
+      run();
     };
 
     const onTouchEnd = () => {
-      if (pull >= THRESHOLD) fire();
-      else paint(0);
+      const wasFull = strain(pull) >= 1;
       startY = null;
-      pull = 0;
+      // Releasing at full stretch is deliberate enough on its own — the hold is what a wheel
+      // needs, because a wheel has no release.
+      if (wasFull) fire();
+      else run();
     };
 
     const onWheel = (e: WheelEvent) => {
       if (fired || !atEnd() || e.deltaY <= 0) return;
-      pull = Math.min(THRESHOLD * 1.4, pull + e.deltaY);
-      paint(Math.min(1, pull / THRESHOLD));
-      clearTimeout(decay);
-      if (pull >= THRESHOLD) {
-        fire();
-        return;
-      }
-      decay = setTimeout(() => {
-        pull = 0;
-        paint(0);
-      }, WHEEL_DECAY_MS);
+      pull = Math.min(THRESHOLD * 1.6, pull + e.deltaY);
+      run();
     };
 
     window.addEventListener("touchstart", onTouchStart, { passive: true });
@@ -111,10 +164,10 @@ export default function PullToGlobe() {
       window.removeEventListener("touchmove", onTouchMove);
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("wheel", onWheel);
-      clearTimeout(decay);
+      if (raf) cancelAnimationFrame(raf);
       clearTimeout(releaseTimer);
     };
-  }, []);
+  }, [copy]);
 
   return (
     <div id="pull-hint" ref={hintRef}>
@@ -127,7 +180,7 @@ export default function PullToGlobe() {
           ↑
         </span>
         <span id="pull-label" ref={labelRef}>
-          Pull up for the globe
+          {copy.idle}
         </span>
         <span id="pull-track" aria-hidden="true">
           <span id="pull-bar" ref={barRef} />

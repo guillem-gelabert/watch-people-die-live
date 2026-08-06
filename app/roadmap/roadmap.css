@@ -72,7 +72,7 @@ body {
   .cc-label,
   .cc-status,
   .chart-toggle button,
-  .ewma-preset,
+  .ewma-slider-note,
   .ewma-readout,
   .ewma-readout-aside,
   .dart-tally-cell,
@@ -1599,6 +1599,18 @@ body {
   font-weight: 700;
 }
 
+/* Today's bar is hollow: the fourteen solid ones are counted deaths, this one is a number the
+   sliders produced. */
+.ewma-today-bar {
+  fill-opacity: 0.14;
+  stroke-width: 1.6;
+  stroke-dasharray: 3 2.5;
+}
+
+.ewma-today-tick {
+  font-weight: 700;
+}
+
 .ewma-controls {
   display: flex;
   flex-direction: column;
@@ -1606,33 +1618,57 @@ body {
   margin-top: 12px;
 }
 
-/* Three presets, equal width, one of them always on. */
-.ewma-presets {
+/* Two sliders side by side where there is room, stacked where there is not. */
+.ewma-sliders {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+
+.ewma-slider {
   display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ewma-slider-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
   gap: 8px;
 }
 
-.ewma-preset {
-  flex: 1;
-  padding: 10px 8px;
-  border: 1px solid var(--rule);
-  border-radius: 10px;
-  background: none;
-  color: var(--mute);
+.ewma-slider-name {
   font:
-    600 11.5px/1.3 var(--font-public-sans),
+    700 8.5px/1 var(--font-public-sans),
     sans-serif;
-  cursor: pointer;
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease,
-    color 0.2s ease;
+  color: var(--mute);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
 }
 
-.ewma-preset[aria-pressed="true"] {
-  border-color: var(--data);
-  background: var(--tile);
+.ewma-slider-value {
+  font:
+    600 12px/1 var(--font-public-sans),
+    sans-serif;
   color: var(--data);
+  font-variant-numeric: tabular-nums;
+}
+
+.ewma-slider input[type="range"] {
+  width: 100%;
+  height: 18px;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--data);
+  cursor: pointer;
+}
+
+.ewma-slider-note {
+  color: var(--muted);
+  font-family: var(--font-libre-baskerville), Georgia, serif;
+  font-size: 10.5px;
+  line-height: 1.5;
 }
 
 .ewma-readout {
@@ -1893,6 +1929,52 @@ footer {
   top: 0;
   z-index: 6;
   height: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Language switch. Fixed in the opposite corner from the way back to the globe,
+   because it is the one control that has to be reachable from the first screen
+   and from the last. Three links, not a select: each language is a real URL.
+   --------------------------------------------------------------------------- */
+
+#story-lang {
+  position: fixed;
+  z-index: 7;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+
+  /* Its own translucent chip rather than the section skin: it sits over the night sky at the
+     top of the page and over whatever colour the reader has scrolled into further down, and it
+     has to stay legible on both without repainting on every sky change. */
+  background: rgb(20 16 26 / 34%);
+  backdrop-filter: blur(7px);
+}
+
+.story-lang-link {
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: rgb(255 255 255 / 62%);
+  font:
+    700 10px/1 var(--font-public-sans),
+    sans-serif;
+  letter-spacing: 0.08em;
+  text-decoration: none;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+.story-lang-link:hover {
+  color: #fff;
+}
+
+.story-lang-link[aria-current="true"] {
+  background: rgb(255 255 255 / 92%);
+  color: #14101a;
 }
 
 /* Just outside the column where there is room for it, and back in the corner overlapping the copy
@@ -2505,13 +2587,30 @@ footer {
   transition: width 0.1s linear;
 }
 
+/* Full stretch, hold and it goes. The pulse is what says the bar is not just full but counting:
+   there is a hold left to serve, and the gesture is not over. */
+#pull-hint[data-ready="1"] #pull-track {
+  background: rgb(255 255 255 / 34%);
+}
+
+#pull-hint[data-ready="1"] #pull-bar {
+  animation: pull-ready 0.32s ease-in-out infinite alternate;
+}
+
+@keyframes pull-ready {
+  to {
+    opacity: 0.45;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .story {
     transition: none;
   }
 
   .story-cue span,
-  .chat-type.is-typing::after {
+  .chat-type.is-typing::after,
+  #pull-hint[data-ready="1"] #pull-bar {
     animation: none;
   }
 
@@ -2685,9 +2784,18 @@ footer {
   font-size: 27px;
 }
 
-/* A row being dragged keeps the closed hand for as long as it is held. */
-.proxy-strip[data-in-modal="1"]:active {
+/* A row being dragged keeps the closed hand for as long as it is held — by pointer, where
+   :active covers it, and by keyboard, where dnd-kit's flag is the only signal. */
+.proxy-strip[data-in-modal="1"]:active,
+.proxy-strip[data-dragging="1"] {
   cursor: grabbing;
+}
+
+/* dnd-kit makes each row a focusable drag handle, so it needs a focus ring the design never had
+   to draw. Inset, because the row clips its own overflow. */
+.proxy-strip[data-in-modal="1"]:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2.5px #fff;
 }
 
 /* The controls only appear once the whole stack has folded: while a write-up is open the case
@@ -2903,5 +3011,174 @@ footer {
   .proxy-scrim,
   .proxy-modal {
     animation-duration: 0.01ms;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   The scorecard: the reader's guess marked against the ranking the five charts
+   above it actually produce. One row per proxy, ordered by the data, with the
+   reader's own placement riding alongside as a chip.
+   --------------------------------------------------------------------------- */
+
+.scorecard-verdict {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 14px;
+  margin-bottom: 14px;
+}
+
+.scorecard-score {
+  display: flex;
+  min-width: 84px;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  gap: 1px;
+  text-align: center;
+}
+
+.scorecard-score-value {
+  font:
+    400 42px/0.9 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  color: var(--ink);
+}
+
+.scorecard-score-label {
+  font:
+    600 8.5px/1.25 var(--font-public-sans),
+    sans-serif;
+  color: var(--mute);
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.scorecard-verdict-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.story-section .scorecard-verdict-line {
+  margin: 0;
+  font:
+    400 19px/1.15 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.story-section .scorecard-verdict-note,
+.story-section .scorecard-skipped {
+  margin: 5px 0 0;
+  color: var(--mute);
+  font-family: var(--font-libre-baskerville), Georgia, serif;
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.story-section .scorecard-skipped {
+  margin: 0 0 12px;
+  text-align: center;
+}
+
+.scorecard-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  margin: 0;
+  gap: 9px;
+  list-style: none;
+}
+
+.story-section .scorecard-row {
+  display: grid;
+  align-items: center;
+  padding: 0;
+  margin: 0;
+  gap: 4px 9px;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+}
+
+.scorecard-rank {
+  font:
+    400 19px/1 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  color: var(--mute);
+}
+
+.scorecard-name {
+  min-width: 0;
+  font:
+    400 19px/1.05 var(--font-bebas-neue),
+    Impact,
+    sans-serif;
+  letter-spacing: 0;
+}
+
+/* The bar spans the two content columns on its own line: at 19px the proxy titles are already
+   as wide as a phone column, and a bar sharing that line would have nothing left to grow into. */
+.scorecard-track {
+  overflow: hidden;
+  height: 7px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--mute) 26%, transparent);
+  grid-column: 2;
+}
+
+.scorecard-bar {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.scorecard-value {
+  align-self: end;
+  font:
+    600 10px/1 var(--font-public-sans),
+    sans-serif;
+  color: var(--mute);
+  font-variant-numeric: tabular-nums;
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.scorecard-chip {
+  justify-self: start;
+  padding: 3px 7px;
+  border-radius: 999px;
+  font:
+    700 8.5px/1 var(--font-public-sans),
+    sans-serif;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  grid-column: 2 / -1;
+}
+
+/* Right, one place out, further out. Hue does the sorting and the wording repeats it, so the
+   three do not depend on colour alone. */
+.scorecard-chip[data-delta="hit"] {
+  background: color-mix(in srgb, var(--ink) 88%, transparent);
+  color: var(--paper);
+}
+
+.scorecard-chip[data-delta="near"] {
+  background: color-mix(in srgb, var(--mute) 30%, transparent);
+  color: var(--ink);
+}
+
+.scorecard-chip[data-delta="miss"] {
+  box-shadow: inset 0 0 0 1.2px color-mix(in srgb, var(--mute) 55%, transparent);
+  color: var(--mute);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scorecard-bar {
+    transition: none;
   }
 }

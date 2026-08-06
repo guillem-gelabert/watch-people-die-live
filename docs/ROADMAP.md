@@ -165,6 +165,12 @@ Those are claims about error and skill, so here they are measured. Every country
 
 :::
 
+## So how did your ranking do?
+
+You put the five in an order before any of this was on screen. Here is the order the charts above actually produce, and where your guess landed against it.
+
+[proxy scorecard]
+
 ## Bordering regions, not just bordering countries
 
 Adjacent regions inside the same country track each other even more tightly than bordering countries do. That agreement is why the nearest-region reconstruction beats every other region-level proxy. Two Russian regions, Ingushetia and Chukotka, had unusable raw weekly data — zero-rate weeks or excessive spike noise — and are imputed from the average of their nearest good neighbours rather than shown as-is or dropped.
@@ -236,11 +242,11 @@ So the weights to halve the impact every 4 days look like this:
 
 Then we do a weighted average using these weights. Which gives us 28.4.
 
+Both of those choices — how fast a day's influence decays, and how hard the extremes get pulled in before any of it is averaged — are mine, not the data's. So here they are as two sliders, over the real trailing fortnight. Drag them and watch the last bar move: that is the number the globe fires against today.
+
 [widget to update half life, curve smoothness, and see prediction]
 
 [map of conflict fatalities]
-
-[what the rate model assumes]
 
 ### who · Who · #d9dbdd · chapter
 

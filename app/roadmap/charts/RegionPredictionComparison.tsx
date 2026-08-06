@@ -2,6 +2,8 @@
 
 import * as d3 from "d3";
 import type { SubnationalLoo } from "../types";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 
 interface RegionPredictionComparisonProps {
   subnationalLoo: SubnationalLoo | null;
@@ -20,26 +22,30 @@ export default function RegionPredictionComparison({
   subnationalLoo,
   regionCount,
 }: RegionPredictionComparisonProps) {
+  const d = useDict();
+  const t = d.charts.regionPrediction;
   if (!subnationalLoo || subnationalLoo.comparison.length === 0) return null;
 
   return (
     <section className="chart-panel wide">
-      <h4 className="chart-title">Predictions vs. Measured Curve (region)</h4>
+      <h4 className="chart-title">{t.title}</h4>
       <p className="chart-copy">
-        The same leave-one-out test, run over {subnationalLoo.meta.nRegions ?? regionCount} observed
-        Admin-1 regions instead of countries. {subnationalLoo.meta.note}
+        {fill(t.copy, {
+          n: subnationalLoo.meta.nRegions ?? regionCount,
+          note: subnationalLoo.meta.note,
+        })}
       </p>
 
       <div className="loo-summary">
         <table className="loo-summary-table">
           <thead>
             <tr>
-              <th scope="col">Method</th>
+              <th scope="col">{d.charts.common.method}</th>
               <th scope="col" className="num">
-                Country median RMSE
+                {t.colCountryRmse}
               </th>
               <th scope="col" className="num">
-                Region median RMSE
+                {t.colRegionRmse}
               </th>
             </tr>
           </thead>
@@ -51,7 +57,7 @@ export default function RegionPredictionComparison({
                 <tr key={row.proxy} className={best ? "best" : undefined}>
                   <th scope="row">
                     {row.proxy}
-                    {best && <span className="best-tag"> · best</span>}
+                    {best && <span className="best-tag">{d.charts.common.best}</span>}
                   </th>
                   <td className="num">{fmtRmse(row.country)}</td>
                   <td className="num">{fmtRmse(row.region)}</td>

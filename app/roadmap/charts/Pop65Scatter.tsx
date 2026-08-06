@@ -2,6 +2,8 @@
 
 import { useMemo } from "react";
 import { strength } from "../chartHelpers";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 import AmplitudeScatter, { type AmplitudePoint } from "./AmplitudeScatter";
 import { PROXY } from "./chartFrame";
 import type { CountryFeature, SeasonalityData, SeasonalityProxies } from "../types";
@@ -17,6 +19,7 @@ interface Pop65ScatterProps {
 // along as dot opacity, because the obvious objection to this proxy is that old countries are
 // mostly rich countries — and the reader can see that in the same frame.
 export default function Pop65Scatter({ unified, proxies, features }: Pop65ScatterProps) {
+  const t = useDict().charts.pop65Scatter;
   const points = useMemo<AmplitudePoint[]>(() => {
     if (!unified || !proxies || !features) return [];
     const nameById = new Map(features.map((f) => [Number(f.id), f.properties?.name ?? ""]));
@@ -39,11 +42,11 @@ export default function Pop65Scatter({ unified, proxies, features }: Pop65Scatte
       id="pop65-scatter-chart"
       proxyIndex={PROXY.pop65}
       points={points}
-      xLabel="share over 65 (%)"
-      formatValue={(v) => `${v.toFixed(1)}% over 65`}
+      xLabel={t.xLabel}
+      formatValue={(v) => fill(t.value, { v: v.toFixed(1) })}
       formatTick={(v) => `${v}%`}
-      ariaLabel="Scatter plot of seasonal mortality amplitude against the share of population aged 65 and over"
-      footnote="Dot opacity carries income per head: the darker the dot, the richer the country."
+      ariaLabel={t.aria}
+      footnote={t.footnote}
     />
   );
 }

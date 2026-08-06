@@ -7,6 +7,7 @@ import { showTooltip, hideTooltip } from "../tooltip";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
 import { useSkin } from "../SkinContext";
 import { mapColor } from "../palette";
+import { useDict } from "../I18nContext";
 import type {
   CountryFeature,
   NeighborsByM49,
@@ -41,6 +42,7 @@ export default function RegionNeighbourScatter({
   features,
   neighborsByM49,
 }: RegionNeighbourScatterProps) {
+  const t = useDict().charts.regionNeighbourScatter;
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
   const HEIGHT = figureHeight(WIDTH, SHAPE);
@@ -186,7 +188,7 @@ export default function RegionNeighbourScatter({
         className="story-figure"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
-        aria-label="Scatter plot of each measured Admin-1 region's seasonal amplitude against the mean amplitude of its bordering measured regions, with countries overlaid as grey outlines"
+        aria-label={t.aria}
       />
       <div
         className="chart-legend"

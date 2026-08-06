@@ -9,6 +9,7 @@ import {
   openRand,
   subscribeRand,
 } from "./randExplainer";
+import { useDict } from "./I18nContext";
 
 // How much of the viewport the opened sheet takes, matching the design's 8% top inset and
 // 80% height.
@@ -42,6 +43,7 @@ export function RandPill({ children }: { children: ReactNode }) {
 export default function RandModal({ children }: { children: ReactNode }) {
   const { origin, open } = useSyncExternalStore(subscribeRand, getRandState, getServerRandState);
   const innerRef = useRef<HTMLDivElement>(null);
+  const d = useDict();
 
   // Once it has shrunk back into the pill, take it out of the DOM.
   useEffect(() => {
@@ -90,13 +92,13 @@ export default function RandModal({ children }: { children: ReactNode }) {
         data-open={open ? "1" : "0"}
         role="dialog"
         aria-modal="true"
-        aria-label="What randomly means here"
+        aria-label={d.rand.label}
         style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
       >
         <div className="rand-inner" ref={innerRef}>
           {children}
           <button type="button" className="rand-close" onClick={closeRand}>
-            Close
+            {d.rand.close}
           </button>
         </div>
       </div>

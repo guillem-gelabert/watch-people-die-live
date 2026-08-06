@@ -15,6 +15,8 @@ import {
 import ScaleDiagonalToggle from "./ScaleDiagonalToggle";
 import { useCanvasScale, useFigureWidth } from "./useFigureSize";
 import type { CountryFeature, DensityGrid, DeathsPerYearById } from "../types";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 
 interface Dot {
   xy: [number, number];
@@ -68,6 +70,9 @@ const CELL_OVERLAP = 0.25;
 // on one of those cells, picked in proportion to how many people are in it, instead of on its
 // country's single centroid.
 export default function DensityMap({ grid, features, deathsPerYearById }: DensityMapProps) {
+  const d = useDict();
+  const t = d.charts.densityMap;
+  const unknown = d.charts.common.unknown;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [logScale, setLogScale] = useState(true);
   const [sizeRef, measured] = useFigureWidth<HTMLDivElement>();
@@ -372,7 +377,7 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
         const hit = features.find((f) => d3.geoContains(f, lonLat));
         showTooltip(
           hit
-            ? `${hit.properties?.name ?? "Unknown"}: ${people} people/cell`
+            ? fill(t.peoplePerCell, { name: hit.properties?.name ?? unknown, n: people })
             : `${people} people/cell`,
           event.clientX,
           event.clientY,
@@ -387,7 +392,7 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", hideTooltip);
     };
-  }, [grid, features, deathsPerYearById, logScale, projection, width, height]);
+  }, [grid, features, deathsPerYearById, logScale, projection, width, height, t, unknown]);
 
   return (
     <section className="chart-panel wide">
@@ -401,7 +406,7 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
           width={width}
           height={height}
           role="img"
-          aria-label="South, central and east Asia shaded by population per grid cell, with deaths landing on cells in proportion to their population"
+          aria-label={t.aria}
         />
         {/* The graticule, over the cells and in the section's own colour: vector so it stays crisp
             over a canvas that is redrawn at device resolution, and non-scaling-stroke so its width is

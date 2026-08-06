@@ -1,3 +1,6 @@
+import { fill } from "@/lib/i18n/fill";
+import type { Dictionary } from "@/lib/i18n/en";
+
 // Generates a short, plausible persona for one (synthetic) death, e.g.
 //   "Woman 78, breast cancer – Spain"
 //
@@ -45,6 +48,15 @@ interface SamplePersonasData {
   mortality?: MortalityData;
   causes?: CauseData;
 }
+
+// The words the sentence is assembled from, in the reader's language. The cause is not among
+// them: it comes from the Global Burden of Disease export, which is an English taxonomy of some
+// three hundred labels, and a hand-translation of it would be a medical claim rather than a
+// string.
+export type PersonaWords = Pick<
+  Dictionary["globe"],
+  "persona" | "baby" | "girl" | "boy" | "woman" | "man"
+>;
 
 export interface Persona {
   sex: Sex;
@@ -214,10 +226,10 @@ function sampleAge(m49: number | undefined, sex: Sex): { age: number; idx: numbe
 }
 
 // "Woman"/"Man" for adults; softer labels for the young so a line never reads oddly.
-function sexLabel(sex: Sex, age: number): string {
-  if (age < 1) return "Baby";
-  if (age < 15) return sex === "f" ? "Girl" : "Boy";
-  return sex === "f" ? "Woman" : "Man";
+function sexLabel(words: PersonaWords, sex: Sex, age: number): string {
+  if (age < 1) return words.baby;
+  if (age < 15) return sex === "f" ? words.girl : words.boy;
+  return sex === "f" ? words.woman : words.man;
 }
 
 // Cause from the best available cause data; current GBD export is global and sex-specific.
@@ -242,11 +254,15 @@ function pickCause(m49: number | undefined, sex: Sex, bandIdx: number, age: numb
 
 // Build one persona for a death in country `m49` (display name like "Spain").
 // `m49` may be omitted/unknown — then the global distribution (or the tables) is used.
-export function makePersona(m49: number | undefined, country: string): Persona {
+export function makePersona(
+  m49: number | undefined,
+  country: string,
+  words: PersonaWords,
+): Persona {
   const sex = sampleSex(m49);
   const { age, idx } = sampleAge(m49, sex);
   const cause = pickCause(m49, sex, idx, age);
-  const who = sexLabel(sex, age);
-  const text = `${who} ${age}, ${cause} – ${country}`;
+  const who = sexLabel(words, sex, age);
+  const text = fill(words.persona, { who, age, cause, country });
   return { sex, age, cause, country, text };
 }

@@ -8,7 +8,9 @@ import type {
   SmoothingDemoPoint,
 } from "../types";
 import { MONTHS } from "../chartHelpers";
-import { selectSmoothingSeries, smoothingMode, SMOOTHING_MODES } from "./smoothingDemo";
+import { selectSmoothingSeries, smoothingMode, smoothingModes } from "./smoothingDemo";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 
 const WIDTH = 760;
 const HEIGHT = 330;
@@ -62,14 +64,17 @@ export default function SmoothingExplainer({ data }: { data: SmoothingDemoData |
     () => (data ? Object.values(data.countries).sort((a, b) => a.name.localeCompare(b.name)) : []),
     [data],
   );
-  const mode = smoothingMode(selected, order);
+  const d = useDict();
+  const t = d.charts.smoothing;
+  const modes = smoothingModes(d);
+  const mode = smoothingMode(d, selected, order);
   const series = useMemo(
     () => (data && countryCode ? selectSmoothingSeries(data, countryCode, selected, order) : null),
     [countryCode, data, order, selected],
   );
 
   if (!data || !country || !series) {
-    return <p className="chart-status">Loading the smoothing comparison…</p>;
+    return <p className="chart-status">{t.loading}</p>;
   }
 
   const yDomain = country.yDomain;
@@ -79,15 +84,12 @@ export default function SmoothingExplainer({ data }: { data: SmoothingDemoData |
       <div className="smoothing-heading">
         <div>
           <h4 className="chart-title" id={`${chartId}-title`}>
-            One series, many resolutions
+            {t.title}
           </h4>
-          <p className="chart-copy">
-            Every view uses the same complete non-COVID weekly observations and the same mean-1
-            scale.
-          </p>
+          <p className="chart-copy">{t.copy}</p>
         </div>
         <label className="smoothing-country" htmlFor={countryControlId}>
-          <span>Country</span>
+          <span>{t.country}</span>
           <select
             id={countryControlId}
             value={countryCode}
@@ -102,12 +104,8 @@ export default function SmoothingExplainer({ data }: { data: SmoothingDemoData |
         </label>
       </div>
 
-      <div
-        className="smoothing-controls"
-        role="group"
-        aria-label="Observation cadence and smoothing method"
-      >
-        {SMOOTHING_MODES.map((candidate) => (
+      <div className="smoothing-controls" role="group" aria-label={t.cadenceGroup}>
+        {modes.map((candidate) => (
           <button
             type="button"
             key={candidate.key}
@@ -122,8 +120,8 @@ export default function SmoothingExplainer({ data }: { data: SmoothingDemoData |
       </div>
 
       {selected === "harmonic" ? (
-        <div className="smoothing-order" role="group" aria-label="Harmonic order">
-          <span>Order</span>
+        <div className="smoothing-order" role="group" aria-label={t.orderGroup}>
+          <span>{t.order}</span>
           {data.meta.harmonicOrders.map((candidate) => (
             <button
               type="button"
@@ -144,7 +142,12 @@ export default function SmoothingExplainer({ data }: { data: SmoothingDemoData |
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="story-figure smoothing-chart"
         role="img"
-        aria-label={`${mode.label} view of ${country.name}'s seasonal mortality multiplier. Values range from ${yDomain[0]} to ${yDomain[1]}, with annual average at 1.`}
+        aria-label={fill(t.aria, {
+          mode: mode.label,
+          country: country.name,
+          lo: yDomain[0],
+          hi: yDomain[1],
+        })}
       >
         {yTicks(yDomain).map((tick) => {
           const [, y] = coordinates([0, tick], yDomain);
@@ -191,21 +194,25 @@ export default function SmoothingExplainer({ data }: { data: SmoothingDemoData |
 
       <dl className="smoothing-copy" id={explanationId} aria-live="polite">
         <div>
-          <dt>How it works</dt>
+          <dt>{t.how}</dt>
           <dd>{mode.how}</dd>
         </div>
         <div>
-          <dt>Good for</dt>
+          <dt>{t.goodFor}</dt>
           <dd>{mode.goodFor}</dd>
         </div>
         <div>
-          <dt>Watch out</dt>
+          <dt>{t.watchOut}</dt>
           <dd>{mode.watchOut}</dd>
         </div>
       </dl>
       <p className="smoothing-source">
-        {data.meta.source}. {country.name}: {country.years[0]}–{country.years.at(-1)}; 2020–2022
-        excluded.
+        {fill(t.source, {
+          source: data.meta.source,
+          country: country.name,
+          from: country.years[0] ?? "",
+          to: country.years.at(-1) ?? "",
+        })}
       </p>
     </section>
   );

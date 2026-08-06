@@ -1,4 +1,6 @@
 import type { LooPerCountry, LooValidation, NeighborsByM49, SeasonalityProxies } from "../types";
+import { fill } from "@/lib/i18n/fill";
+import type { Dictionary } from "@/lib/i18n/en";
 
 const MONTH_DAYS = [31, 28.2425, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
@@ -12,14 +14,10 @@ export interface CohortPerformance {
   bestMethod: CohortMethod | null;
 }
 
-const methodLabels: Record<CohortMethod, string> = {
-  latitude: "Latitude",
-  climate: "Climate",
-  neighbor: "Neighbour",
-};
-
-export function cohortMethodLabel(method: CohortMethod | null): string {
-  return method ? methodLabels[method] : "—";
+export function cohortMethodLabel(d: Dictionary, method: CohortMethod | null): string {
+  const t = d.charts.cohorts;
+  if (!method) return t.none;
+  return method === "latitude" ? t.latitude : method === "climate" ? t.climate : t.neighbour;
 }
 
 function weightedRmse(actual: number[], predicted: number[]): number | null {
@@ -77,10 +75,12 @@ function summarize(label: string, definition: string, members: LooPerCountry[]):
 // local donor coverage. "Data-poor" is limited to donor coverage, not mortality registration
 // completeness, because only countries with an observed curve can appear in this validation set.
 export function buildCohortPerformance(
+  d: Dictionary,
   looValidation: LooValidation,
   proxies: SeasonalityProxies | null,
   neighborsByM49: NeighborsByM49 | null,
 ): CohortPerformance[] {
+  const t = d.charts.cohorts;
   const entries = looValidation.perCountry;
   const validationIds = new Set(entries.map((entry) => entry.m49));
   const familyOf = (entry: LooPerCountry) => proxies?.byM49[String(entry.m49)]?.kgFamily;
@@ -89,28 +89,28 @@ export function buildCohortPerformance(
 
   return [
     summarize(
-      "Tropical",
-      "Population-weighted Köppen–Geiger tropical climate (family A).",
+      t.tropical,
+      t.tropicalNote,
       entries.filter((entry) => familyOf(entry) === "A"),
     ),
     summarize(
-      "Temperate",
-      "Population-weighted Köppen–Geiger temperate or continental climate (families C or D).",
+      t.temperate,
+      t.temperateNote,
       entries.filter((entry) => ["C", "D"].includes(familyOf(entry) ?? "")),
     ),
     summarize(
-      "Polar",
-      "Population-weighted Köppen–Geiger polar climate (family E).",
+      t.polar,
+      t.polarNote,
       entries.filter((entry) => familyOf(entry) === "E"),
     ),
     summarize(
-      "Island",
-      "No land-border neighbour in the country topology.",
+      t.island,
+      t.islandNote,
       entries.filter((entry) => (neighborsByM49?.get(entry.m49) ?? []).length === 0),
     ),
     summarize(
-      "Data-poor",
-      "Fewer than two bordering countries with a measured curve in this validation set.",
+      t.dataPoor,
+      t.dataPoorNote,
       entries.filter((entry) => validationNeighbors(entry).length < 2),
     ),
   ];
@@ -124,49 +124,62 @@ const LATITUDE_BANDS = [
   { label: "60°+", minimum: 60, maximum: Number.POSITIVE_INFINITY },
 ];
 
-const KOPPEN_GEIGER_NAMES: Record<string, { family: string; subclass: string }> = {
-  Af: { family: "Tropical", subclass: "rainforest" },
-  Am: { family: "Tropical", subclass: "monsoon" },
-  Aw: { family: "Tropical", subclass: "savanna" },
-  BWh: { family: "Arid", subclass: "hot desert" },
-  BWk: { family: "Arid", subclass: "cold desert" },
-  BSh: { family: "Arid", subclass: "hot semi-arid" },
-  BSk: { family: "Arid", subclass: "cold semi-arid" },
-  Csa: { family: "Temperate", subclass: "hot-summer Mediterranean" },
-  Csb: { family: "Temperate", subclass: "warm-summer Mediterranean" },
-  Csc: { family: "Temperate", subclass: "cold-summer Mediterranean" },
-  Cwa: { family: "Temperate", subclass: "dry-winter hot-summer" },
-  Cwb: { family: "Temperate", subclass: "dry-winter warm-summer" },
-  Cwc: { family: "Temperate", subclass: "dry-winter cold-summer" },
-  Cfa: { family: "Temperate", subclass: "humid subtropical" },
-  Cfb: { family: "Temperate", subclass: "oceanic" },
-  Cfc: { family: "Temperate", subclass: "subpolar oceanic" },
-  Dsa: { family: "Cold", subclass: "dry-summer hot-summer" },
-  Dsb: { family: "Cold", subclass: "dry-summer warm-summer" },
-  Dsc: { family: "Cold", subclass: "dry-summer subarctic" },
-  Dsd: { family: "Cold", subclass: "dry-summer extremely cold" },
-  Dwa: { family: "Cold", subclass: "dry-winter hot-summer" },
-  Dwb: { family: "Cold", subclass: "dry-winter warm-summer" },
-  Dwc: { family: "Cold", subclass: "dry-winter subarctic" },
-  Dwd: { family: "Cold", subclass: "dry-winter extremely cold" },
-  Dfa: { family: "Cold", subclass: "hot-summer humid continental" },
-  Dfb: { family: "Cold", subclass: "warm-summer humid continental" },
-  Dfc: { family: "Cold", subclass: "subarctic" },
-  Dfd: { family: "Cold", subclass: "extremely cold subarctic" },
-  ET: { family: "Polar", subclass: "tundra" },
-  EF: { family: "Polar", subclass: "ice cap" },
+// Which family each Köppen code belongs to, as the sub-class table prints it. The words for both
+// halves are in the dictionary — this is only the code-to-family mapping, which is the taxonomy
+// itself and does not change with the language.
+const KOPPEN_GEIGER_FAMILY: Record<string, "A" | "B" | "C" | "cold" | "E"> = {
+  Af: "A",
+  Am: "A",
+  Aw: "A",
+  BWh: "B",
+  BWk: "B",
+  BSh: "B",
+  BSk: "B",
+  Csa: "C",
+  Csb: "C",
+  Csc: "C",
+  Cwa: "C",
+  Cwb: "C",
+  Cwc: "C",
+  Cfa: "C",
+  Cfb: "C",
+  Cfc: "C",
+  Dsa: "cold",
+  Dsb: "cold",
+  Dsc: "cold",
+  Dsd: "cold",
+  Dwa: "cold",
+  Dwb: "cold",
+  Dwc: "cold",
+  Dwd: "cold",
+  Dfa: "cold",
+  Dfb: "cold",
+  Dfc: "cold",
+  Dfd: "cold",
+  ET: "E",
+  EF: "E",
 };
 
+function koppenLabel(d: Dictionary, code: string): string | null {
+  const family = KOPPEN_GEIGER_FAMILY[code];
+  const subclass = d.charts.kgSubclasses[code as keyof Dictionary["charts"]["kgSubclasses"]];
+  if (!family || !subclass) return null;
+  const familyName = family === "cold" ? d.charts.kgCold : d.charts.kgFamilies[family];
+  return `${familyName} — ${subclass}`;
+}
+
 export function buildLatitudePerformance(
+  d: Dictionary,
   looValidation: LooValidation,
   latitudeByM49: ReadonlyMap<number, number>,
 ): CohortPerformance[] {
   return LATITUDE_BANDS.map(({ label, minimum, maximum }) =>
     summarize(
       label,
-      `Absolute country-centroid latitude ${minimum}°–${
-        Number.isFinite(maximum) ? `${maximum}°` : "90°"
-      }.`,
+      fill(d.charts.cohorts.latitudeBandNote, {
+        from: minimum,
+        to: Number.isFinite(maximum) ? maximum : 90,
+      }),
       looValidation.perCountry.filter((entry) => {
         const latitude = Math.abs(latitudeByM49.get(entry.m49) ?? Number.NaN);
         return latitude >= minimum && latitude < maximum;
@@ -176,6 +189,7 @@ export function buildLatitudePerformance(
 }
 
 export function buildClimateSubclassPerformance(
+  d: Dictionary,
   looValidation: LooValidation,
   proxies: SeasonalityProxies | null,
 ): CohortPerformance[] {
@@ -190,12 +204,12 @@ export function buildClimateSubclassPerformance(
   return [...entriesBySubclass.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([subclass, members]) => {
-      const names = KOPPEN_GEIGER_NAMES[subclass];
+      const label = koppenLabel(d, subclass);
       return summarize(
-        names ? `${names.family} — ${names.subclass}` : "Unclassified",
-        names
-          ? `Population-weighted Köppen–Geiger climate sub-class ${subclass}.`
-          : "No population-weighted Köppen–Geiger sub-class is available in the proxy data.",
+        label ?? d.charts.cohorts.unclassified,
+        label
+          ? fill(d.charts.cohorts.subclassNote, { code: subclass })
+          : d.charts.cohorts.unclassifiedNote,
         members,
       );
     });

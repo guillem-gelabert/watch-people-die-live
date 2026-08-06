@@ -1,5 +1,6 @@
 import * as d3 from "d3";
 import { harmony, marks, skinFromSky, type Rgb } from "./palette";
+import type { Dictionary } from "@/lib/i18n/en";
 import { isHarmonicCurve, sampleHarmonicCurve, type HarmonicCurve } from "@/lib/seasonal-curve";
 
 export const MONTHS = [
@@ -75,20 +76,27 @@ export function correlationRatio(groups: Map<string, number[]>): number | null {
 
 // The five Köppen–Geiger families, tropics → poles. Shared by the climate-zone scatter and
 // the latitude-correlation scatter, so a family reads as the same colour in both.
+// Keys only: the family's name is copy and lives in the dictionary (see kgFamilyName).
 export const KG_FAMILY_KEYS = [
-  { key: "A", name: "Tropical" },
-  { key: "B", name: "Arid" },
-  { key: "C", name: "Temperate" },
-  { key: "D", name: "Continental" },
-  { key: "E", name: "Polar" },
+  { key: "A" },
+  { key: "B" },
+  { key: "C" },
+  { key: "D" },
+  { key: "E" },
 ] as const;
 
 // Colours are generated from the section's sky rather than fixed, so the families sit in
 // whatever palette is on screen. Five distinct hues from the analogous scheme, then through
 // marks() because these land on transparent SVG over the sky itself.
-export function kgFamilies(sky: Rgb): { key: string; name: string; color: string }[] {
+export function kgFamilies(sky: Rgb): { key: string; color: string }[] {
   const cols = marks(harmony(KG_FAMILY_KEYS.length, sky, true), sky);
   return KG_FAMILY_KEYS.map((f, i) => ({ ...f, color: cols[i] as string }));
+}
+
+// A Köppen–Geiger family's name in the reader's language. The key (A–E) is the identity; the
+// word beside it is copy, so it comes from the dictionary rather than from the key table.
+export function kgFamilyName(d: Dictionary, key: string): string {
+  return d.charts.kgFamilies[key as keyof Dictionary["charts"]["kgFamilies"]] ?? key;
 }
 
 // Colour for a country's Köppen–Geiger family, or the section's muted tone when unmapped.

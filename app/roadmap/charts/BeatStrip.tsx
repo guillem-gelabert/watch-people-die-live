@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSkin } from "../SkinContext";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 import { REAL_MEAN_GAP_MS, expGap, formatMeanGap } from "../chartHelpers";
 import { mapColor } from "../palette";
 
@@ -45,6 +47,7 @@ function restingBeat(): Beat {
 // shape — which is the whole argument of the section.
 export default function BeatStrip({ mode, meanMs = REAL_MEAN_GAP_MS }: BeatStripProps) {
   const { skin } = useSkin();
+  const t = useDict().charts.beatStrip;
   const [beats, setBeats] = useState<Beat[]>(() => Array.from({ length: BARS }, restingBeat));
 
   // The design's two fixed blues for the alternating cycles and its red for an on-rate beat, each
@@ -79,8 +82,8 @@ export default function BeatStrip({ mode, meanMs = REAL_MEAN_GAP_MS }: BeatStrip
         tone: onRate ? "hot" : cycle % 2 === 0 ? "a" : "b",
         title:
           mode === "poisson"
-            ? `${Math.round(gapMs)} ms since the previous death${onRate ? " — on the average rate" : ""}`
-            : `${formatMeanGap(meanMs)} — always`,
+            ? fill(t.sincePrevious, { ms: Math.round(gapMs) }) + (onRate ? t.onRate : "")
+            : fill(t.always, { gap: formatMeanGap(meanMs) }),
       };
       setBeats((prev) => prev.map((b, i) => (i === at ? next : b)));
 
@@ -99,12 +102,9 @@ export default function BeatStrip({ mode, meanMs = REAL_MEAN_GAP_MS }: BeatStrip
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [mode, meanMs]);
+  }, [mode, meanMs, t]);
 
-  const label =
-    mode === "poisson"
-      ? "Gaps between deaths drawn from the real distribution: most are short, a few are long"
-      : `A beat every ${formatMeanGap(meanMs)}, the annual average`;
+  const label = mode === "poisson" ? t.poisson : fill(t.metronome, { gap: formatMeanGap(meanMs) });
 
   return (
     <section className="chart-panel wide" aria-label={label}>

@@ -13,6 +13,8 @@ import {
   type Bbox,
 } from "./basemap";
 import { useFigureWidth } from "./useFigureSize";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 import type {
   Admin1Feature,
   CountryFeature,
@@ -94,6 +96,7 @@ export default function SubnationalChoroplethMap({
   nutsCountries,
   nutsIso2ToIso3,
 }: SubnationalChoroplethMapProps) {
+  const t = useDict().charts.subnationalMap;
   const ref = useRef<SVGSVGElement | null>(null);
   const [sizeRef, measured] = useFigureWidth<SVGSVGElement>();
   // Square, at exactly the width the column gave it: the column's own max-width is the bound, so
@@ -333,7 +336,7 @@ export default function SubnationalChoroplethMap({
         className="story-figure"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label="Map of Japan's prefectures shaded by crude death rate, showing large differences within one country"
+        aria-label={t.aria}
       />
       {!loading && (
         <div className="choropleth-legend" aria-hidden="true">
@@ -343,12 +346,12 @@ export default function SubnationalChoroplethMap({
               <span key={c} style={{ background: c }} />
             ))}
           </span>
-          <span>{Math.round(domain[1])}+ per 100k</span>
+          <span>{fill(t.legendMax, { max: Math.round(domain[1]) })}</span>
         </div>
       )}
       {loading && (
         <p className="chart-status" aria-live="polite">
-          Loading subnational death rates…
+          {t.loading}
         </p>
       )}
     </section>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useSkin } from "../SkinContext";
+import { useDict } from "../I18nContext";
 
 export interface SeriesChip {
   key: string;
@@ -22,10 +23,11 @@ interface SeriesChipsProps {
 // and disabling the control says so before they try.
 export default function SeriesChips({ series, onToggle }: SeriesChipsProps) {
   const { skin } = useSkin();
+  const d = useDict();
   const lastOn = series.filter((s) => s.on).length <= 1;
 
   return (
-    <div className="series-chips" role="group" aria-label="Layers">
+    <div className="series-chips" role="group" aria-label={d.charts.common.layers}>
       {series.map((s) => {
         const locked = s.on && lastOn;
         return (

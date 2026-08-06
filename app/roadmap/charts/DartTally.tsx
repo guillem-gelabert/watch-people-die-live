@@ -1,23 +1,32 @@
 "use client";
 
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 import { useDartTally } from "./dartTallyState";
-
-// What each bucket means, spelled out for the two that need it. "Ocean" explains itself.
-const DEFINITIONS: Record<string, string | undefined> = {
-  Uninhabited:
-    "Land with no populated cell in the 0.5° grid the model samples — about 55 km across.",
-  Inhabited: "Land with at least one populated cell in the grid, however sparsely.",
-};
 
 // The running score of the dart map above: of every death placed at a uniformly random point on
 // Earth, where did it actually land? The arrow shows what the running count is converging to,
 // sampled from the same two tests the map classifies with.
 export default function DartTally() {
   const tally = useDartTally();
+  const t = useDict().charts.dartTally;
+  // "Ocean" explains itself; the other two need a sentence, so only they carry one.
   const rows = [
-    { label: "Ocean", count: tally.ocean, limit: tally.limits?.ocean },
-    { label: "Uninhabited", count: tally.uninhabited, limit: tally.limits?.uninhabited },
-    { label: "Inhabited", count: tally.inhabited, limit: tally.limits?.inhabited },
+    { key: "ocean", label: t.ocean, count: tally.ocean, limit: tally.limits?.ocean },
+    {
+      key: "uninhabited",
+      label: t.uninhabited,
+      definition: t.uninhabitedNote,
+      count: tally.uninhabited,
+      limit: tally.limits?.uninhabited,
+    },
+    {
+      key: "inhabited",
+      label: t.inhabited,
+      definition: t.inhabitedNote,
+      count: tally.inhabited,
+      limit: tally.limits?.inhabited,
+    },
   ];
   const total = tally.ocean + tally.uninhabited + tally.inhabited;
 
@@ -25,24 +34,23 @@ export default function DartTally() {
     <div className="dart-tally">
       {rows.map((row) => {
         const share = total ? Math.round((row.count / total) * 100) : 0;
-        const definition = DEFINITIONS[row.label];
         // One sentence per tile for assistive tech: read in the order it means something,
         // rather than as three loose numbers in visual order.
         const spoken = total
-          ? `${row.label}: ${row.count} of ${total} deaths, ${share} per cent` +
-            (row.limit != null ? `, converging to ${row.limit} per cent` : "")
-          : `${row.label}: counting`;
+          ? fill(t.spoken, { label: row.label, count: row.count, total, share }) +
+            (row.limit != null ? fill(t.spokenLimit, { limit: row.limit }) : "")
+          : fill(t.counting, { label: row.label });
         return (
-          <div className="dart-tally-cell" key={row.label} aria-label={spoken} role="group">
+          <div className="dart-tally-cell" key={row.key} aria-label={spoken} role="group">
             <span className="dart-tally-count" aria-hidden="true">
               {row.count}
             </span>
             <span className="dart-tally-share" aria-hidden="true">
-              {total ? `${share}%` : "—"}
-              {row.limit != null && total ? ` → ${row.limit}%` : ""}
+              {total ? `${share}%` : "\u2014"}
+              {row.limit != null && total ? ` \u2192 ${row.limit}%` : ""}
             </span>
-            {definition ? (
-              <abbr className="dart-tally-label" title={definition}>
+            {row.definition ? (
+              <abbr className="dart-tally-label" title={row.definition}>
                 {row.label}
               </abbr>
             ) : (

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 import type { ProxyDef } from "./proxyDefs";
 
 interface ProxyStripProps {
@@ -14,8 +16,11 @@ interface ProxyStripProps {
   controlsShown: boolean;
   // In the modal the strips are a fixed, roomier height and the write-up is behind the ⓘ.
   inModal: boolean;
-  onMove?: (direction: -1 | 1) => void;
-  onPointerDown?: (event: React.PointerEvent<HTMLDivElement>) => void;
+  // Everything dnd-kit needs to own this row: the node it measures, the props that make it a
+  // keyboard-operable drag handle, and whether it is the row currently being carried.
+  dragRef?: (node: HTMLElement | null) => void;
+  dragProps?: Record<string, unknown>;
+  isDragging?: boolean;
   style?: CSSProperties;
 }
 
@@ -35,10 +40,12 @@ export default function ProxyStrip({
   progress,
   controlsShown,
   inModal,
-  onMove,
-  onPointerDown,
+  dragRef,
+  dragProps,
+  isDragging,
   style,
 }: ProxyStripProps) {
+  const d = useDict();
   const paragraphRef = useRef<HTMLParagraphElement | null>(null);
   const tipRef = useRef<HTMLSpanElement | null>(null);
   const [tipOpen, setTipOpen] = useState(false);
@@ -77,8 +84,10 @@ export default function ProxyStrip({
       data-proxy={def.index}
       data-folded={folded ? "1" : "0"}
       data-in-modal={inModal ? "1" : "0"}
+      data-dragging={isDragging ? "1" : "0"}
       style={{ background: color, color: ink, ...style }}
-      onPointerDown={onPointerDown}
+      ref={dragRef}
+      {...dragProps}
     >
       <div className="proxy-strip-row">
         <span className="proxy-strip-rank">{rank}</span>
@@ -95,34 +104,17 @@ export default function ProxyStrip({
             type="button"
             className="proxy-strip-info"
             aria-expanded={tipOpen}
+            // The row above is a drag handle listening for pointer and key events, so both have to
+            // stop here or reading the case for a proxy would start dragging it.
             onPointerDown={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
             onClick={(e) => {
               e.stopPropagation();
               setTipOpen((v) => !v);
             }}
           >
-            i<span className="sr-only"> — the case for {def.title}</span>
+            i<span className="sr-only">{fill(d.proxy.infoLabel, { title: def.title })}</span>
           </button>
-          {onMove ? (
-            <>
-              <button
-                type="button"
-                className="sr-only"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => onMove(-1)}
-              >
-                Move {def.title} up
-              </button>
-              <button
-                type="button"
-                className="sr-only"
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={() => onMove(1)}
-              >
-                Move {def.title} down
-              </button>
-            </>
-          ) : null}
         </span>
       </div>
       <p

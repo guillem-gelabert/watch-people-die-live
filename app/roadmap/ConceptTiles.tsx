@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 
-import { CONCEPT_TILE_SETS } from "./conceptTileDefs";
+import { useDict } from "./I18nContext";
+import { conceptTiles } from "./conceptTileDefs";
 
 interface ConceptTilesProps {
-  // Which of the two sets to show — see conceptTileDefs.ts.
-  set: keyof typeof CONCEPT_TILE_SETS | string;
+  // Which set to show — see conceptTileDefs.ts.
+  set: string;
 }
 
 // A two-column grid of expandable asides. Closed, the three read as a contents list for what the
@@ -17,8 +18,9 @@ interface ConceptTilesProps {
 // wrapping both: a collapsed body inside the button would be read out as part of the button's own
 // label. Closed bodies are `inert`, so only the visible card is reachable.
 export default function ConceptTiles({ set }: ConceptTilesProps) {
+  const d = useDict();
   const [open, setOpen] = useState<string | null>(null);
-  const items = CONCEPT_TILE_SETS[set];
+  const items = conceptTiles(d, set);
 
   if (!items) return null;
 

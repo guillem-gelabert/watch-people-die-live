@@ -17,6 +17,7 @@ import { figureHeight, useFigureWidth } from "./useFigureSize";
 import { useSkin } from "../SkinContext";
 import { proxyMarks } from "../palette";
 import partidoLatitudeData from "../../../data/argentina-partido-latitudes.json";
+import { useDict } from "../I18nContext";
 import type {
   Admin1Feature,
   CountryFeature,
@@ -68,6 +69,7 @@ export default function LatitudeScatter({
   regions,
   admin1Features,
 }: LatitudeScatterProps) {
+  const d = useDict();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
   const HEIGHT = figureHeight(WIDTH, SHAPE);
@@ -263,8 +265,13 @@ export default function LatitudeScatter({
     <>
       <SeriesChips
         series={[
-          { key: "countries", label: "Countries", color: countryColor, on: showCountries },
-          { key: "regions", label: "Regions", color: regionColor, on: showRegions },
+          {
+            key: "countries",
+            label: d.charts.common.countries,
+            color: countryColor,
+            on: showCountries,
+          },
+          { key: "regions", label: d.charts.common.regions, color: regionColor, on: showRegions },
         ]}
         onToggle={(key, on) => (key === "countries" ? setShowCountries(on) : setShowRegions(on))}
       />
@@ -277,7 +284,7 @@ export default function LatitudeScatter({
         className="story-figure"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         role="img"
-        aria-label="Scatter plot of absolute latitude against seasonal mortality amplitude, with each country as a filled dot and each measured region as a ring"
+        aria-label={d.charts.latitudeScatter.aria}
       />
     </>
   );

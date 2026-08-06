@@ -1,6 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useDict } from "../I18nContext";
+import { fill } from "@/lib/i18n/fill";
 import { useProxyRank } from "./ProxyGuessContext";
 
 interface ProxyFigureProps {
@@ -13,6 +15,7 @@ interface ProxyFigureProps {
 // markdown so it can carry the reader's own ranking for this proxy — the payoff for having guessed
 // before seeing the data. Nothing appears if they skipped.
 export default function ProxyFigure({ proxyIndex, title, children }: ProxyFigureProps) {
+  const d = useDict();
   const rank = useProxyRank(proxyIndex);
   return (
     <section className="proxy-figure">
@@ -20,8 +23,8 @@ export default function ProxyFigure({ proxyIndex, title, children }: ProxyFigure
         {title}
         {rank != null ? (
           <span className="proxy-rank-note">
-            Your #{rank}
-            <span className="sr-only"> ranking for this proxy</span>
+            {fill(d.proxy.rankNote, { n: rank })}
+            <span className="sr-only">{d.proxy.rankNoteSr}</span>
           </span>
         ) : null}
       </h3>

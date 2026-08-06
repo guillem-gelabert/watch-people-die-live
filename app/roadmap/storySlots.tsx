@@ -6,6 +6,7 @@ import ConceptTiles from "./ConceptTiles";
 import PullToGlobe from "./PullToGlobe";
 import ProxyFigure from "./proxy/ProxyFigure";
 import ProxyRankingCard from "./proxy/ProxyRankingCard";
+import ProxyScorecard from "./proxy/ProxyScorecard";
 import AgeMix from "./charts/AgeMix";
 import AmplitudeMap from "./charts/AmplitudeMap";
 import BeatStrip from "./charts/BeatStrip";
@@ -30,6 +31,7 @@ import RegionPredictionComparison from "./charts/RegionPredictionComparison";
 import SmoothingExplainer from "./charts/SmoothingExplainer";
 import SubnationalChoroplethMap from "./charts/SubnationalChoroplethMap";
 import { PROXY } from "./charts/chartFrame";
+import { useDict } from "./I18nContext";
 import { useRoadmapData } from "./useRoadmapData";
 
 // The two crops the design uses: West Africa, where the borders are straight lines a grid can
@@ -53,6 +55,7 @@ type SlotsBySection = Record<string, Record<string, ReactNode>>;
 // the whole map in one place means adding a figure is a two-line change rather than a new
 // component plus a new prop on the composition root.
 export function useStorySlots(): SlotsBySection {
+  const d = useDict();
   const {
     features,
     neighborsByM49,
@@ -99,15 +102,12 @@ export function useStorySlots(): SlotsBySection {
 
       "where-country": {
         "[Benelux Westafrika maps density/borders]": (
-          <div
-            className="chart-grid density-cluster"
-            aria-label="Vector border and raster density close-up"
-          >
+          <div className="chart-grid density-cluster" aria-label={d.panels.densityClusterLabel}>
             <BorderRasterCloseup
               features={features}
               grid={grid}
               bbox={WEST_AFRICA_BBOX}
-              title="West Africa"
+              title={d.panels.westAfrica}
               id="border-raster-closeup-west-africa"
               colorBy="country"
               neighborsByM49={neighborsByM49}
@@ -116,7 +116,7 @@ export function useStorySlots(): SlotsBySection {
               features={features}
               grid={grid}
               bbox={BENELUX_BBOX}
-              title="Benelux"
+              title={d.panels.benelux}
               id="border-raster-closeup-benelux"
               colorBy="density"
             />
@@ -152,7 +152,7 @@ export function useStorySlots(): SlotsBySection {
         "[smoothing explainer]": <SmoothingExplainer data={smoothingDemo} />,
         "[proxy ranking card]": <ProxyRankingCard />,
         "[latitude scatter]": (
-          <ProxyFigure proxyIndex={PROXY.latitude} title="Latitude correlation">
+          <ProxyFigure proxyIndex={PROXY.latitude} title={d.panels.figureLatitude}>
             <LatitudeScatter
               unified={unified}
               features={features}
@@ -162,7 +162,7 @@ export function useStorySlots(): SlotsBySection {
           </ProxyFigure>
         ),
         "[koppen scatter]": (
-          <ProxyFigure proxyIndex={PROXY.climate} title="Amplitude by climate zone">
+          <ProxyFigure proxyIndex={PROXY.climate} title={d.panels.figureClimate}>
             <KoppenGeigerScatter
               unified={unified}
               proxies={proxies}
@@ -172,17 +172,17 @@ export function useStorySlots(): SlotsBySection {
           </ProxyFigure>
         ),
         "[pop65 scatter]": (
-          <ProxyFigure proxyIndex={PROXY.pop65} title="Amplitude vs. population 65+">
+          <ProxyFigure proxyIndex={PROXY.pop65} title={d.panels.figurePop65}>
             <Pop65Scatter unified={unified} proxies={proxies} features={features} />
           </ProxyFigure>
         ),
         "[gdp scatter]": (
-          <ProxyFigure proxyIndex={PROXY.gdp} title="Amplitude vs. GDP per capita">
+          <ProxyFigure proxyIndex={PROXY.gdp} title={d.panels.figureGdp}>
             <GdpScatter unified={unified} proxies={proxies} features={features} />
           </ProxyFigure>
         ),
         "[neighbour scatter]": (
-          <ProxyFigure proxyIndex={PROXY.neighbour} title="Amplitude vs. neighbouring countries">
+          <ProxyFigure proxyIndex={PROXY.neighbour} title={d.panels.figureNeighbour}>
             <NeighbourScatter
               unified={unified}
               features={features}
@@ -215,6 +215,14 @@ export function useStorySlots(): SlotsBySection {
             regionCount={regions?.length ?? 0}
           />
         ),
+        "[proxy scorecard]": (
+          <ProxyScorecard
+            unified={unified}
+            proxies={proxies}
+            features={features}
+            neighborsByM49={neighborsByM49}
+          />
+        ),
         "[amplitude map]": (
           <AmplitudeMap
             seasonality={activeSeasonality}
@@ -230,17 +238,15 @@ export function useStorySlots(): SlotsBySection {
       who: {
         "[sampling order]": (
           <section className="chart-panel">
-            <h4 className="chart-title">Sampling order</h4>
+            <h4 className="chart-title">{d.panels.samplingOrder}</h4>
             <PersonaDemo />
           </section>
         ),
         "[deaths by age and cause]": (
-          <div className="chart-grid" aria-label="Deaths by age band and cause">
+          <div className="chart-grid" aria-label={d.panels.deathsByAgeCauseLabel}>
             <section className="chart-panel wide">
-              <h4 className="chart-title">Deaths by age, and what they die of</h4>
-              <p className="chart-copy">
-                Share of deaths in each age band, and the cause mix within it.
-              </p>
+              <h4 className="chart-title">{d.panels.deathsByAgeCauseTitle}</h4>
+              <p className="chart-copy">{d.panels.deathsByAgeCauseCopy}</p>
               <AgeMix />
             </section>
           </div>
@@ -254,34 +260,27 @@ export function useStorySlots(): SlotsBySection {
 
       conflicts: {
         "[widget to update half life, curve smoothness, and see prediction]": (
-          <div
-            className="chart-grid"
-            aria-label="Robust exponentially-weighted moving average of conflict fatalities"
-          >
+          <div className="chart-grid" aria-label={d.panels.ewmaLabel}>
             <section className="chart-panel wide">
-              <h4 className="chart-title">
-                Monthly fatalities, and the weighted mean the globe uses
-              </h4>
-              <p className="chart-copy">
-                Bars are reported fatalities; the line is the exponentially weighted mean.
-              </p>
+              <h4 className="chart-title">{d.panels.ewmaTitle}</h4>
+              <p className="chart-copy">{d.panels.ewmaCopy}</p>
               <ConflictEwmaWidget dailyStack={conflicts?.dailyStack} />
             </section>
           </div>
         ),
         "[map of conflict fatalities]": (
-          <div className="chart-grid" aria-label="Conflict fatalities on the sampling grid">
+          <div className="chart-grid" aria-label={d.panels.conflictMapLabel}>
             <section className="chart-panel wide">
-              <h4 className="chart-title">Where the trailing year&apos;s fatalities are</h4>
-              <p className="chart-copy">ACLED fatal events aggregated onto the sampling grid.</p>
+              <h4 className="chart-title">{d.panels.conflictMapTitle}</h4>
+              <p className="chart-copy">{d.panels.conflictMapCopy}</p>
               <ConflictMap conflicts={conflicts} features={features} />
             </section>
           </div>
         ),
-        "[what the rate model assumes]": <ConceptTiles set="rate" />,
       },
     }),
     [
+      d,
       features,
       neighborsByM49,
       activeSeasonality,
