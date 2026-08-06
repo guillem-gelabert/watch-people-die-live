@@ -13,13 +13,19 @@ let el: HTMLDivElement | null = null;
 // viewport.
 function ensureEl(): HTMLDivElement {
   const host = document.querySelector(".story") ?? document.body;
-  el ??= document.createElement("div");
-  el.className = "chart-tooltip";
-  // Checked on every use, not just on creation. The parent is load-bearing here — it is the only
-  // thing putting the palette in scope — so any node that ended up somewhere else has to be moved
-  // rather than left to render with nothing to resolve against. That covers a first tooltip shown
-  // before the story mounted, a story remounted underneath it, and a hot reload that kept this
-  // module's state while replacing the container.
+  // The class is set once, at creation, and never touched again — `showTooltip` adds `visible` to
+  // this same list and then calls `moveTooltip`, which comes back through here. Re-assigning
+  // className on every call therefore stripped `visible` a moment after it was added, and the
+  // tooltip sat on the page fully built and permanently at opacity 0.
+  if (!el) {
+    el = document.createElement("div");
+    el.className = "chart-tooltip";
+  }
+  // The parent, unlike the class, is checked on every use. It is load-bearing — the only thing
+  // putting the palette in scope — so a node that ended up elsewhere has to be moved rather than
+  // left to render with nothing to resolve against. That covers a first tooltip shown before the
+  // story mounted, a story remounted underneath it, and a hot reload that kept this module's state
+  // while replacing the container.
   if (el.parentElement !== host) host.appendChild(el);
   return el;
 }
