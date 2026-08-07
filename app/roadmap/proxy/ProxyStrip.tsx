@@ -56,6 +56,11 @@ export default function ProxyStrip({
   // The title clips to one line just before the write-up finishes leaving, so the row is already
   // a single line by the time it is the only thing left.
   const folded = inModal || progress > 0.5;
+  // Vertical centring waits for the strip to stop moving. Centred any earlier, the row is being
+  // centred in a box whose height changes every frame, so the title creeps upward under the
+  // reader's scroll instead of the box simply closing around it. In the modal the height is fixed
+  // from the first frame, so there is nothing to wait for.
+  const settled = inModal || progress > 0.999;
 
   // The tooltip and the paragraph are the same words; closing on any outside pointer keeps a tap
   // on another strip's ⓘ from leaving two open. Scrolling closes it too — it is anchored to a row
@@ -83,6 +88,7 @@ export default function ProxyStrip({
       className="proxy-strip"
       data-proxy={def.index}
       data-folded={folded ? "1" : "0"}
+      data-settled={settled ? "1" : "0"}
       data-in-modal={inModal ? "1" : "0"}
       data-dragging={isDragging ? "1" : "0"}
       style={{ background: color, color: ink, ...style }}

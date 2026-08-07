@@ -33,7 +33,7 @@ export const en = {
     pull: {
       idle: "Pull up for the globe",
       keepPulling: "Keep pulling",
-      ready: "Hold it — going back",
+      ready: "Let go for the globe",
     },
   },
 

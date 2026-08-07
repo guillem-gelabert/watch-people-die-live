@@ -29,7 +29,7 @@ export const ca: Dictionary = {
     pull: {
       idle: "Estira amunt cap al globus",
       keepPulling: "Continua estirant",
-      ready: "Aguanta — hi tornem",
+      ready: "Deixa anar i hi tornem",
     },
   },
 

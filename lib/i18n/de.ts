@@ -29,7 +29,7 @@ export const de: Dictionary = {
     pull: {
       idle: "Nach oben ziehen zum Globus",
       keepPulling: "Weiterziehen",
-      ready: "Halten — es geht zurück",
+      ready: "Loslassen für den Globus",
     },
   },
 

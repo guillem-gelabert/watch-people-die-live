@@ -14,11 +14,12 @@ const THRESHOLD = 260;
 // rather than a distance.
 const SOFTNESS = THRESHOLD / 2.2;
 const FULL_STRAIN = 1 - Math.exp(-THRESHOLD / SOFTNESS);
-// The bar has to sit at full stretch this long before a wheel pull fires. A trackpad flick is
-// over in about 150ms, so this is what a flick cannot buy.
-const HOLD_MS = 320;
-// A mouse wheel arrives in discrete deltas with no "end" event, so accumulated pull leaks back at
-// this rate. Keeping the bar full means keeping the wheel turning.
+// A mouse wheel arrives in discrete deltas with no "end" event, so a gap this long stands in for
+// letting go. Just longer than the pause between two deltas of one continuous scroll, and shorter
+// than anything a reader would experience as a wait.
+const RELEASE_MS = 150;
+// Below full stretch, an unfed pull leaks back at this rate: a trackpad flick that stops short
+// unwinds instead of banking progress towards the next one.
 const LEAK_PER_SECOND = 520;
 // The bar is drawn at a fixed width rather than a percentage so it reads as a gauge filling up
 // rather than a layout that stretches.
@@ -52,9 +53,12 @@ export default function PullToGlobe() {
     let pull = 0;
     let startY: number | null = null;
     let fired = false;
-    // When the wheel pull last reached full stretch, so the hold can be timed. -1 means it is
-    // not at full stretch.
-    let fullSince = -1;
+    // Full stretch reached, waiting to be let go of. Nothing happens on the way here — the pull
+    // is the reader saying they want to leave, and the release is them meaning it. Once armed the
+    // bar stops leaking, so the decision keeps until they act on it either way.
+    let armed = false;
+    // When the wheel last moved, which is the only thing a wheel has in place of a release.
+    let lastWheel = 0;
     let raf = 0;
     let lastTick = 0;
     let releaseTimer: ReturnType<typeof setTimeout> | undefined;
@@ -80,7 +84,7 @@ export default function PullToGlobe() {
       if (fired) return;
       fired = true;
       pull = 0;
-      fullSince = -1;
+      armed = false;
       paint(1);
       releaseTimer = setTimeout(() => {
         paint(0);
@@ -89,24 +93,24 @@ export default function PullToGlobe() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
-    // One loop, running only while there is pull to bleed off, so an idle page costs nothing.
+    // One loop, running only while there is something to animate, so an idle page costs nothing.
     const tick = (now: number) => {
       raf = 0;
       const dt = lastTick ? Math.min(0.1, (now - lastTick) / 1000) : 0;
       lastTick = now;
-      if (startY == null) pull = Math.max(0, pull - LEAK_PER_SECOND * dt);
-      const k = strain(pull);
+      // Only an unarmed pull decays. Armed, the bar holds at full while it waits to be released.
+      if (!armed && startY == null) pull = Math.max(0, pull - LEAK_PER_SECOND * dt);
+      const k = armed ? 1 : strain(pull);
+      if (k >= 1) armed = true;
       paint(k);
-      if (k >= 1) {
-        if (fullSince < 0) fullSince = now;
-        else if (now - fullSince >= HOLD_MS) {
-          fire();
-          return;
-        }
-      } else {
-        fullSince = -1;
+      // A wheel has no touchend, so its release is the deltas stopping. A finger's release is
+      // handled where it happens, in onTouchEnd, and never here — while it is still down,
+      // startY says so.
+      if (armed && startY == null && now - lastWheel >= RELEASE_MS) {
+        fire();
+        return;
       }
-      if (pull > 0) raf = requestAnimationFrame(tick);
+      if (armed || pull > 0) raf = requestAnimationFrame(tick);
       else lastTick = 0;
     };
 
@@ -120,7 +124,7 @@ export default function PullToGlobe() {
     const onTouchStart = (e: TouchEvent) => {
       startY = e.touches[0]?.clientY ?? null;
       pull = 0;
-      fullSince = -1;
+      armed = false;
     };
 
     const onTouchMove = (e: TouchEvent) => {
@@ -132,7 +136,7 @@ export default function PullToGlobe() {
       if (!atEnd() || travelled <= 0) {
         startY = y;
         pull = 0;
-        fullSince = -1;
+        armed = false;
         paint(0);
         return;
       }
@@ -141,17 +145,17 @@ export default function PullToGlobe() {
     };
 
     const onTouchEnd = () => {
-      const wasFull = strain(pull) >= 1;
       startY = null;
-      // Releasing at full stretch is deliberate enough on its own — the hold is what a wheel
-      // needs, because a wheel has no release.
-      if (wasFull) fire();
+      // The whole gesture lands here: at full stretch the release is the decision, and short of
+      // it the bar unwinds and nothing has happened.
+      if (armed || strain(pull) >= 1) fire();
       else run();
     };
 
     const onWheel = (e: WheelEvent) => {
       if (fired || !atEnd() || e.deltaY <= 0) return;
       pull = Math.min(THRESHOLD * 1.6, pull + e.deltaY);
+      lastWheel = performance.now();
       run();
     };
 

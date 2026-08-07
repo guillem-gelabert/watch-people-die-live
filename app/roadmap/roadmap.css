@@ -2736,6 +2736,11 @@ footer {
 .proxy-strip[data-folded="1"] {
   display: flex;
   flex-direction: column;
+}
+
+/* Only once the strip has reached its folded height. While it is still shrinking the row stays
+   where the padding puts it, at the top, and the box closes around it. */
+.proxy-strip[data-settled="1"] {
   justify-content: center;
 }
 
