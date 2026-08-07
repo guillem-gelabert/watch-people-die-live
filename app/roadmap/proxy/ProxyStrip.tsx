@@ -16,11 +16,12 @@ interface ProxyStripProps {
   controlsShown: boolean;
   // In the modal the strips are a fixed, roomier height and the write-up is behind the ⓘ.
   inModal: boolean;
-  // Everything dnd-kit needs to own this row: the node it measures, the props that make it a
-  // keyboard-operable drag handle, and whether it is the row currently being carried.
-  dragRef?: (node: HTMLElement | null) => void;
-  dragProps?: Record<string, unknown>;
-  isDragging?: boolean;
+  // Reordering without a pointer. SortableJS handles drags and nothing else, so these two are the
+  // only way a keyboard or a screen reader can rank anything; absent outside the modal, where
+  // there is no ranking to change yet.
+  onMove?: (direction: -1 | 1) => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   style?: CSSProperties;
 }
 
@@ -40,9 +41,9 @@ export default function ProxyStrip({
   progress,
   controlsShown,
   inModal,
-  dragRef,
-  dragProps,
-  isDragging,
+  onMove,
+  canMoveUp = false,
+  canMoveDown = false,
   style,
 }: ProxyStripProps) {
   const d = useDict();
@@ -90,10 +91,7 @@ export default function ProxyStrip({
       data-folded={folded ? "1" : "0"}
       data-settled={settled ? "1" : "0"}
       data-in-modal={inModal ? "1" : "0"}
-      data-dragging={isDragging ? "1" : "0"}
       style={{ background: color, color: ink, ...style }}
-      ref={dragRef}
-      {...dragProps}
     >
       <div className="proxy-strip-row">
         <span className="proxy-strip-rank">{rank}</span>
@@ -110,8 +108,8 @@ export default function ProxyStrip({
             type="button"
             className="proxy-strip-info"
             aria-expanded={tipOpen}
-            // The row above is a drag handle listening for pointer and key events, so both have to
-            // stop here or reading the case for a proxy would start dragging it.
+            // The sortable container filters this button, and stopping the pointer here keeps an
+            // information tap from being interpreted as the beginning of a row drag.
             onPointerDown={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
             onClick={(e) => {
@@ -121,6 +119,28 @@ export default function ProxyStrip({
           >
             i<span className="sr-only">{fill(d.proxy.infoLabel, { title: def.title })}</span>
           </button>
+          {onMove ? (
+            <>
+              <button
+                type="button"
+                className="proxy-strip-move"
+                disabled={!canMoveUp}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => onMove(-1)}
+              >
+                {fill(d.proxy.moveUp, { title: def.title })}
+              </button>
+              <button
+                type="button"
+                className="proxy-strip-move"
+                disabled={!canMoveDown}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={() => onMove(1)}
+              >
+                {fill(d.proxy.moveDown, { title: def.title })}
+              </button>
+            </>
+          ) : null}
         </span>
       </div>
       <p

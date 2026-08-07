@@ -60,6 +60,8 @@ export const de: Dictionary = {
     reorder: "Indikatoren neu ordnen",
     infoLabel: " — was für {title} spricht",
     currentOrder: "Aktuelle Reihenfolge, bester zuerst: {order}",
+    moveUp: "{title} nach oben",
+    moveDown: "{title} nach unten",
     rankNote: "Dein Platz {n}",
     rankNoteSr: " in deiner Reihung dieses Indikators",
     modal: {
@@ -77,13 +79,9 @@ export const de: Dictionary = {
     },
     dnd: {
       instructions:
-        "Drücke Leertaste oder Eingabe, um diesen Indikator aufzunehmen. Mit den Pfeiltasten " +
-        "nach oben und unten verschiebst du ihn in der Reihung, mit Leertaste oder Eingabe legst " +
-        "du ihn ab, mit Escape brichst du ab.",
-      pickedUp: "{title} aufgenommen. Steht auf Platz {rank} von {total}.",
-      over: "{title} käme auf Platz {rank}.",
+        "Zieh eine Zeile, um sie zu verschieben, oder nutze die Schaltflächen nach oben und nach " +
+        "unten an jedem Indikator, um die fünf ohne Zeigegerät zu reihen.",
       dropped: "{title} steht jetzt auf Platz {rank} von {total}.",
-      cancelled: "{title} abgelegt. Die Reihung ist unverändert.",
     },
     defs: [
       {

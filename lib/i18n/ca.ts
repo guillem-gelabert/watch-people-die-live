@@ -60,6 +60,8 @@ export const ca: Dictionary = {
     reorder: "Reordena els indicadors",
     infoLabel: " — l'argument a favor de {title}",
     currentOrder: "Ordre actual, del millor al pitjor: {order}",
+    moveUp: "Puja {title}",
+    moveDown: "Baixa {title}",
     rankNote: "El teu núm. {n}",
     rankNoteSr: " a la teva classificació d'indicadors",
     modal: {
@@ -77,13 +79,9 @@ export const ca: Dictionary = {
     },
     dnd: {
       instructions:
-        "Prem espai o retorn per agafar aquest indicador. Fes servir les fletxes amunt i avall " +
-        "per moure'l per la classificació, espai o retorn per deixar-lo anar, i escapada per " +
-        "cancel·lar.",
-      pickedUp: "Has agafat {title}. Ocupa la posició {rank} de {total}.",
-      over: "{title} passaria a la posició {rank}.",
+        "Arrossega una fila per moure-la, o fes servir els botons de pujar i baixar de cada " +
+        "indicador per classificar els cinc sense apuntador.",
       dropped: "{title} ara ocupa la posició {rank} de {total}.",
-      cancelled: "Has deixat anar {title}. La classificació no ha canviat.",
     },
     defs: [
       {

@@ -136,8 +136,8 @@ export default function ProxyRankingCard() {
     };
   }, [modalOpen]);
 
-  // Escape closes without submitting, like the scrim. Not while a drag is in flight: there,
-  // escape belongs to dnd-kit, which uses it to put the row back.
+  // Escape closes without submitting, like the scrim. It remains with the modal while SortableJS
+  // is dragging because SortableJS has no separate keyboard drag cancellation to reserve it for.
   useEffect(() => {
     if (!modalOpen) return;
     const onKey = (e: KeyboardEvent) => {

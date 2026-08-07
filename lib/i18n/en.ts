@@ -66,6 +66,8 @@ export const en = {
     reorder: "Reorder the proxies",
     infoLabel: " — the case for {title}",
     currentOrder: "Current order, best first: {order}",
+    moveUp: "Move {title} up",
+    moveDown: "Move {title} down",
     rankNote: "Your #{n}",
     rankNoteSr: " ranking for this proxy",
     modal: {
@@ -82,12 +84,9 @@ export const en = {
     },
     dnd: {
       instructions:
-        "Press space or enter to pick up this proxy. Use the up and down arrow keys to move it " +
-        "through the ranking, space or enter to drop it, and escape to cancel.",
-      pickedUp: "Picked up {title}. It is ranked {rank} of {total}.",
-      over: "{title} would be ranked {rank}.",
+        "Drag a row to move it, or use each proxy's move up and move down buttons to rank the " +
+        "five without a pointer.",
       dropped: "{title} is now ranked {rank} of {total}.",
-      cancelled: "Dropped {title}. The ranking is unchanged.",
     },
     defs: [
       {

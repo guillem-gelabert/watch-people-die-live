@@ -2799,18 +2799,25 @@ footer {
   font-size: 27px;
 }
 
-/* A row being dragged keeps the closed hand for as long as it is held — by pointer, where
-   :active covers it, and by keyboard, where dnd-kit's flag is the only signal. */
+/* SortableJS marks the picked-up row and its floating fallback with these classes. Keep the lift
+   inside the row: scaling the full-width card made both it and the translucent placeholder spill
+   past the modal slot and then get cut by its scrollport. */
 .proxy-strip[data-in-modal="1"]:active,
-.proxy-strip[data-dragging="1"] {
+.proxy-strip.proxy-sortable-chosen,
+.proxy-strip.proxy-sortable-drag {
   cursor: grabbing;
 }
 
-/* dnd-kit makes each row a focusable drag handle, so it needs a focus ring the design never had
-   to draw. Inset, because the row clips its own overflow. */
-.proxy-strip[data-in-modal="1"]:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2.5px #fff;
+.proxy-strip.proxy-sortable-drag {
+  z-index: 3;
+  box-shadow:
+    inset 0 0 0 2px rgb(255 255 255 / 72%),
+    inset 0 -8px 18px rgb(20 16 26 / 12%);
+}
+
+.proxy-strip.proxy-sortable-ghost {
+  opacity: 0.32;
+  box-shadow: inset 0 0 0 2px rgb(255 255 255 / 70%);
 }
 
 /* The controls only appear once the whole stack has folded: while a write-up is open the case
@@ -2827,6 +2834,50 @@ footer {
 .proxy-strip-controls[data-shown="1"] {
   opacity: 1;
   pointer-events: auto;
+}
+
+/* The two nudge buttons are the keyboard's only way into the ranking, and the design has no room
+   for them: SortableJS's drag is the whole visible affordance. So they are hidden exactly the way
+   a skip link is — out of the layout until something focuses them, then a real, visible target.
+   That serves a screen reader and a sighted keyboard user with one control instead of hiding a
+   focus stop nobody can see. */
+.proxy-strip-move {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  margin: -1px;
+  background: none;
+  color: inherit;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.proxy-strip-move:focus-visible {
+  position: static;
+  width: auto;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  margin: 0;
+  background: rgb(255 255 255 / 92%);
+  clip-path: none;
+  color: #14101a;
+  cursor: pointer;
+  font:
+    700 10px/1 var(--font-public-sans),
+    sans-serif;
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* At either end of the ranking the move is impossible; the button stays in the tab order and says
+   so, rather than vanishing and shifting every other stop by one. */
+.proxy-strip-move:disabled {
+  cursor: default;
+  opacity: 0.45;
 }
 
 .proxy-strip-info {
@@ -2973,7 +3024,10 @@ footer {
 }
 
 .proxy-modal-slot {
-  overflow-y: auto;
+  /* `overflow-y: auto` also creates a horizontal scrollport. A small inline gutter keeps the
+     full-width ghost's rounded sides inside that clip without narrowing the dialog itself. */
+  overflow: hidden auto;
+  padding-inline: 4px;
   margin: 20px 0 0;
 }
 
