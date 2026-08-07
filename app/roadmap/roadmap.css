@@ -741,20 +741,30 @@ body {
 
 .dart-tally-label {
   display: block;
+  padding: 0;
+  border: 0;
   margin-top: 4px;
+  background: none;
   font:
     400 10.5px/1.35 var(--font-libre-baskerville),
     Georgia,
     serif;
   color: var(--mute);
+  text-align: left;
   text-decoration: none;
 }
 
 /* Only the two buckets that need defining carry the dotted hint. */
-.dart-tally-label[title] {
+.dart-tally-label.has-definition {
   text-decoration: underline dotted;
   text-underline-offset: 3px;
   cursor: help;
+}
+
+.dart-tally-label.has-definition:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
 }
 
 /* The two beat strips in First light: one bar per death. The metronome holds every bar at its

@@ -1,6 +1,7 @@
 "use client";
 
 import { useDict } from "../I18nContext";
+import { hideTooltip, moveTooltip, showTooltip } from "../tooltip";
 import { fill } from "@/lib/i18n/fill";
 import { useDartTally } from "./dartTallyState";
 
@@ -50,9 +51,33 @@ export default function DartTally() {
               {row.limit != null && total ? ` \u2192 ${row.limit}%` : ""}
             </span>
             {row.definition ? (
-              <abbr className="dart-tally-label" title={row.definition}>
+              <button
+                type="button"
+                className="dart-tally-label has-definition"
+                aria-label={`${row.label}: ${row.definition}`}
+                onPointerEnter={(event) =>
+                  showTooltip(row.definition, event.clientX, event.clientY)
+                }
+                onPointerMove={(event) => moveTooltip(event.clientX, event.clientY)}
+                onPointerLeave={(event) => {
+                  if (event.pointerType !== "touch") hideTooltip();
+                }}
+                onFocus={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  showTooltip(row.definition, rect.left + rect.width / 2, rect.bottom);
+                }}
+                onClick={(event) => {
+                  event.currentTarget.focus();
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  showTooltip(row.definition, rect.left + rect.width / 2, rect.bottom);
+                }}
+                onBlur={hideTooltip}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") event.currentTarget.blur();
+                }}
+              >
                 {row.label}
-              </abbr>
+              </button>
             ) : (
               <span className="dart-tally-label">{row.label}</span>
             )}
