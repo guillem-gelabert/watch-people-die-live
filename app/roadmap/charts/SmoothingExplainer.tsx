@@ -83,9 +83,9 @@ export default function SmoothingExplainer({ data }: { data: SmoothingDemoData |
     <section className="chart-panel wide smoothing-demo" aria-labelledby={`${chartId}-title`}>
       <div className="smoothing-heading">
         <div>
-          <h4 className="chart-title" id={`${chartId}-title`}>
+          <h3 className="chart-title" id={`${chartId}-title`}>
             {t.title}
-          </h4>
+          </h3>
           <p className="chart-copy">{t.copy}</p>
         </div>
         <label className="smoothing-country" htmlFor={countryControlId}>

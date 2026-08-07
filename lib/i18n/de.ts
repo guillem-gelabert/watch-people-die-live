@@ -34,6 +34,7 @@ export const de: Dictionary = {
   },
 
   globe: {
+    canvasLabel: "Ein Globus der Erde. Jedes Aufblitzen ist ein modellierter Todesfall.",
     waiting: "Warten auf das erste Aufblitzen",
     latest: "Letzter Todesfall",
     justNow: "Gerade eben",

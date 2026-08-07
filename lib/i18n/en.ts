@@ -38,6 +38,9 @@ export const en = {
   },
 
   globe: {
+    // What the canvas is, for a reader who cannot see it. The globe draws no text of its own, so
+    // without this the opening screen is an unnamed graphic taking up the whole viewport.
+    canvasLabel: "A globe of the Earth. Each flash on it is one modelled death.",
     waiting: "Waiting for the first flash",
     latest: "Latest death",
     justNow: "Just now",

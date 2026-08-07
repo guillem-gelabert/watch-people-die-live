@@ -91,7 +91,12 @@ export default function Island({ onPausedChange }: IslandProps) {
         role="button"
         tabIndex={0}
         className={open ? "is-open" : ""}
-        aria-label={t.latest}
+        // Named from the text the reader can actually see, prefixed by what the thing is. An
+        // `aria-label` of "Latest death" alone read as a different control from the one on screen
+        // — WCAG's Label in Name asks that a name spoken aloud contain the words next to it, so
+        // that "tap "Woman 78"" means something. The prefix carries the framing the pill's own
+        // words leave out, and the second id follows whichever line is showing.
+        aria-labelledby={`island-role ${open ? "island-big" : "island-text"}`}
         aria-expanded={open}
         onClick={toggle}
         onKeyDown={(e) => {
@@ -101,12 +106,22 @@ export default function Island({ onPausedChange }: IslandProps) {
           }
         }}
       >
-        <div id="island-mini" aria-hidden={open}>
+        <span id="island-role" className="globe-sr-only">
+          {t.latest}
+        </span>
+
+        <div id="island-mini" aria-hidden={open} inert={open}>
           <span id="island-pulse" className="island-dot" />
           <span id="island-text">{label}</span>
         </div>
 
-        <div id="island-full" aria-hidden={!open}>
+        {/* `inert` alongside `aria-hidden`, and it is the half that was missing: the collapsed
+            card is hidden from the accessibility tree but its Pause and Close buttons kept their
+            place in the tab order, so tabbing off the pill landed on two controls a sighted
+            reader could not see and a screen reader would not announce. `inert` takes the whole
+            subtree out of focus as well as out of the tree, which is what "hidden" has to mean
+            for something still painted on the page. */}
+        <div id="island-full" aria-hidden={!open} inert={!open}>
           <p id="island-eyebrow">
             <span className="island-dot" />
             {t.justNow}

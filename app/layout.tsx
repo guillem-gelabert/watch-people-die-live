@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Libre_Baskerville, Public_Sans } from "next/font/google";
 import type { ReactNode } from "react";
+import { SITE_URL } from "@/lib/site";
 
 // Display face for headings, chapter titles and the proxy strips. Single weight by design.
 const bebasNeue = Bebas_Neue({
@@ -30,7 +31,14 @@ const publicSans = Public_Sans({
 // Nothing here depends on the reader's language, and everything that once did — title,
 // description, the social cards, the canonical and the hreflang set — now comes from the page's
 // own generateMetadata, which is the only place that can see `?lang=`.
+//
+// `metadataBase` is the exception, and it belongs here because it is the same for every language.
+// generateMetadata writes its canonical, its hreflang set and its card image as site-relative
+// paths; without a base Next emits them relative, and a relative `rel=canonical` or `hreflang` is
+// not resolvable by a crawler that arrived from anywhere else. This is what turns all of them
+// absolute in one place.
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   applicationName: "Watch People Die Live",
 };
 

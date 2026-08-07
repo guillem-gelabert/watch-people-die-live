@@ -74,7 +74,7 @@ export default function ProxyScorecard({
 
   return (
     <section className="chart-panel wide proxy-scorecard">
-      <h4 className="chart-title">{answered ? s.titleScored : s.titleSkipped}</h4>
+      <h3 className="chart-title">{answered ? s.titleScored : s.titleSkipped}</h3>
       <p className="chart-copy">{s.intro}</p>
 
       {answered ? (

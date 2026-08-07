@@ -1,0 +1,37 @@
+# Watch People Die Live
+
+> A real-time statistical mortality globe. Every flash on the globe is one modelled death, placed
+> on a population-density grid weighted by that country's death rate. The people are
+> representative personas assembled from public demographic data — not records of identifiable
+> individuals, and not reports of deaths that have happened.
+
+The site is a single scrolling data story with a live 3D globe at the top. It explains how the
+model is built, in this order: **Where** a death is placed (global rate, then country rate, then
+sub-national region), **When** it happens (seasonality, and the search for a usable proxy for it),
+**Who** it happens to (age, sex, cause), conflict deaths, and what the model still gets wrong.
+
+Published in English, Catalan and German. The language is chosen by a `?lang=` query parameter:
+`/` (English), `/?lang=ca`, `/?lang=de`. All three are the same story and the same figures.
+
+## Pages
+
+- [The story, in English](https://watchpeopledie.live/): the globe and the full explanation.
+- [La història, en català](https://watchpeopledie.live/?lang=ca)
+- [Die Geschichte, auf Deutsch](https://watchpeopledie.live/?lang=de)
+
+## What the data is
+
+- Crude death rate by country: World Bank.
+- Population density: a baked grid, joined to country death rates offline. The globe samples the
+  combined grid at runtime rather than computing the join in the browser.
+- Deaths by age, sex and cause: UN Data Portal and WHO cause-of-death shares.
+- Seasonality: sub-national monthly mortality where it exists, with a climate-zone fallback where
+  it does not.
+- Conflict deaths: ACLED.
+
+## Please read before citing
+
+Every persona is synthetic. The globe does not know that anyone in particular has died; it draws
+from rates. A flash means "a death of roughly this kind is statistically due about now, somewhere
+in this region", and nothing more specific than that. Numbers on the page are modelled estimates,
+not counts, and should be attributed to the model rather than to the underlying sources.

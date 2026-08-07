@@ -113,7 +113,12 @@ function GlobeStage({ phaseRef }: GlobeStageProps) {
         <div className="spinner" />
       </div>
 
-      <div id="globe" aria-label="3D globe of real-time deaths">
+      {/* `role="img"` because the label needs somewhere to live: `aria-label` on a bare div is
+          prohibited and gets dropped, so the whole opening screen was reaching the accessibility
+          tree as an unnamed box. img is the honest role for a canvas that presents a picture and
+          takes only a rotation. The label is translated — the story is published in three
+          languages and this was the one string still hardcoded in English. */}
+      <div id="globe" role="img" aria-label={d.globe.canvasLabel}>
         <Canvas
           camera={cameraProps}
           scene={sceneProps}

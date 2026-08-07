@@ -145,7 +145,7 @@ export default function PredictionComparison({
 
   return (
     <section className="chart-panel wide">
-      <h4 className="chart-title">{t.title}</h4>
+      <h3 className="chart-title">{t.title}</h3>
       <p className="chart-copy">{fill(t.copy, { n: looValidation.meta.nCountries })}</p>
 
       <div className="loo-summary">

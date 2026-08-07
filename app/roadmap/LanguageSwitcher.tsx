@@ -10,6 +10,13 @@ import { useI18n } from "./I18nContext";
 //
 // `scroll={false}` because switching language mid-story should not throw the reader back to the
 // globe — the section they were reading is the same section in the other file.
+//
+// `prefetch={false}` because these three sit in the corner of the opening screen, so Next was
+// prefetching all of them the moment the globe appeared. Each one is a full RSC payload of the
+// whole story — the server rereads the markdown and re-renders every section for it — and the
+// trace showed five of them going out during the load of a page almost nobody switches away from.
+// The switch is a deliberate act with a navigation's worth of patience behind it; it does not
+// need to be instant, and it should not be paid for by every reader who never touches it.
 export default function LanguageSwitcher() {
   const { locale, d } = useI18n();
 
@@ -20,6 +27,7 @@ export default function LanguageSwitcher() {
           key={code}
           href={localeHref(code)}
           scroll={false}
+          prefetch={false}
           hrefLang={code}
           lang={code}
           className="story-lang-link"

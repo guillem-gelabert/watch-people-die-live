@@ -34,6 +34,7 @@ export const ca: Dictionary = {
   },
 
   globe: {
+    canvasLabel: "Un globus terraqüi. Cada llampec és una mort modelada.",
     waiting: "Esperant el primer llampec",
     latest: "Última mort",
     justNow: "Ara mateix",

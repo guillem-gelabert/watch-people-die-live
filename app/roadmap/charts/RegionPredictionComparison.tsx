@@ -28,7 +28,7 @@ export default function RegionPredictionComparison({
 
   return (
     <section className="chart-panel wide">
-      <h4 className="chart-title">{t.title}</h4>
+      <h3 className="chart-title">{t.title}</h3>
       <p className="chart-copy">
         {fill(t.copy, {
           n: subnationalLoo.meta.nRegions ?? regionCount,

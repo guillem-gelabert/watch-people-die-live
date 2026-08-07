@@ -238,14 +238,14 @@ export function useStorySlots(): SlotsBySection {
       who: {
         "[sampling order]": (
           <section className="chart-panel">
-            <h4 className="chart-title">{d.panels.samplingOrder}</h4>
+            <h3 className="chart-title">{d.panels.samplingOrder}</h3>
             <PersonaDemo />
           </section>
         ),
         "[deaths by age and cause]": (
           <div className="chart-grid" aria-label={d.panels.deathsByAgeCauseLabel}>
             <section className="chart-panel wide">
-              <h4 className="chart-title">{d.panels.deathsByAgeCauseTitle}</h4>
+              <h3 className="chart-title">{d.panels.deathsByAgeCauseTitle}</h3>
               <p className="chart-copy">{d.panels.deathsByAgeCauseCopy}</p>
               <AgeMix />
             </section>
@@ -262,7 +262,7 @@ export function useStorySlots(): SlotsBySection {
         "[widget to update half life, curve smoothness, and see prediction]": (
           <div className="chart-grid" aria-label={d.panels.ewmaLabel}>
             <section className="chart-panel wide">
-              <h4 className="chart-title">{d.panels.ewmaTitle}</h4>
+              <h3 className="chart-title">{d.panels.ewmaTitle}</h3>
               <p className="chart-copy">{d.panels.ewmaCopy}</p>
               <ConflictEwmaWidget dailyStack={conflicts?.dailyStack} />
             </section>
@@ -271,7 +271,7 @@ export function useStorySlots(): SlotsBySection {
         "[map of conflict fatalities]": (
           <div className="chart-grid" aria-label={d.panels.conflictMapLabel}>
             <section className="chart-panel wide">
-              <h4 className="chart-title">{d.panels.conflictMapTitle}</h4>
+              <h3 className="chart-title">{d.panels.conflictMapTitle}</h3>
               <p className="chart-copy">{d.panels.conflictMapCopy}</p>
               <ConflictMap conflicts={conflicts} features={features} />
             </section>

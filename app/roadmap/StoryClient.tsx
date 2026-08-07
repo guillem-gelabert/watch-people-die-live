@@ -248,9 +248,14 @@ export default function StoryClient({ markdown }: StoryClientProps) {
         </button>
       </div>
 
-      <div id="story-flow" ref={flowRef}>
+      {/* <main> rather than a div, and this is the only landmark on the page: the story had none,
+          so "skip to the content" had nothing to skip to and a screen reader's landmark list was
+          empty on a page that is 24,000px of content. The flow is the right element to carry it —
+          the stage above is the globe and the title, the rail is a way back to them, and this is
+          everything a reader came to read. */}
+      <main id="story-flow" ref={flowRef}>
         {flow}
-      </div>
+      </main>
     </div>
   );
 
