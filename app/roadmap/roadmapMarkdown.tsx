@@ -193,6 +193,13 @@ function renderLines(
     // Block math: a `$$` line opens (optionally followed by a caption title on the same line),
     // a `$$` line closes and may carry the caption that reads under the formula, KaTeX renders
     // what's between. Both labels ride on the fence lines so the TeX itself stays untouched.
+    //
+    // That convention is ours, not CommonMark's, and Prettier does not share it: a closing fence
+    // carrying a caption is content to its parser, so it reads the whole run as one unterminated
+    // math block and appends a bare `$$` at the end of the file to balance it. Reformatting the
+    // story puts that line back every time, which is why the empty block below is skipped rather
+    // than treated as an authoring error — the alternative is a white slab at the foot of every
+    // page in every language, which is exactly what it used to be.
     const mathOpen = /^\$\$\s*(.*)$/.exec(trimmed);
     if (mathOpen) {
       flushParagraph();
@@ -210,15 +217,18 @@ function renderLines(
         mathLines.push(lines[index] ?? "");
       }
       index += 1; // skip the closing $$
-      output.push(
-        <Katex
-          key={"math-" + output.length}
-          tex={mathLines.join("\n").trim()}
-          title={title || undefined}
-          {...(caption ? { caption: inline(caption) } : {})}
-          display
-        />,
-      );
+      const tex = mathLines.join("\n").trim();
+      if (tex) {
+        output.push(
+          <Katex
+            key={"math-" + output.length}
+            tex={tex}
+            title={title || undefined}
+            {...(caption ? { caption: inline(caption) } : {})}
+            display
+          />,
+        );
+      }
       continue;
     }
 
