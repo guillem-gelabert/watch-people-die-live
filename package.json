@@ -14,7 +14,7 @@
     "build:density": "tsx scripts/build-density.ts",
     "build:mortality": "tsx scripts/build-mortality.ts",
     "build:causes": "tsx scripts/build-causes.ts",
-    "build:favicon": "tsx scripts/build-favicon.ts",
+    "build:favicon": "uv run python scripts/build_favicon.py",
     "build:seasonality-subnational": "uv run python -m pipeline build",
     "build:seasonality-fallbacks": "node --import tsx scripts/build-seasonality-fallbacks.ts",
     "build:seasonality-validation": "node --import tsx scripts/build-seasonality-validation.ts",
