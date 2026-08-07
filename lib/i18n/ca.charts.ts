@@ -288,6 +288,7 @@ export const chartsCa: ChartsDictionary = {
     loading: "Carregant les defuncions per edat i causa…",
     tail: "Tota la resta",
     ariaBand: "{label}: {share}% de les defuncions",
+    barCaption: "La llargada de la barra és la proporció de defuncions d'aquella franja",
   },
 
   personaDemo: {

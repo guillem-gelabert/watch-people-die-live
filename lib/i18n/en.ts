@@ -275,6 +275,11 @@ export const en = {
     tooltipMore: "+{n} more: {total}",
   },
 
+  // English is the identity map: the labels in data/causes.json are already English. Typed as an
+  // open record so ca.ts and de.ts can fill it, and so an unmapped cause is a miss rather than a
+  // type error — see lib/i18n/causes.ts.
+  causes: {} as Record<string, string>,
+
   charts: chartsEn,
 };
 

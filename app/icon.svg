@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="A planet with one flash on its night side">
+  <defs>
+    <radialGradient id="face" cx="35.74%" cy="32.06%" r="78%">
+      <stop offset="0%" stop-color="rgb(58 86 168)" />
+      <stop offset="62%" stop-color="rgb(11 14 38)" />
+      <stop offset="100%" stop-color="rgb(11 14 38)" />
+    </radialGradient>
+    <radialGradient id="flash" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="rgb(255 122 74)" />
+      <stop offset="35%" stop-color="rgb(255 122 74)" stop-opacity="0.75" />
+      <stop offset="100%" stop-color="rgb(255 122 74)" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="29.44" fill="url(#face)" />
+  <circle cx="32" cy="32" r="28.74" fill="none" stroke="rgb(150 183 255)" stroke-opacity="0.85" stroke-width="1.4" stroke-dasharray="34 58" stroke-dashoffset="20" transform="rotate(-142 32 32)" />
+  <circle cx="49.66" cy="43.19" r="12.80" fill="url(#flash)" />
+  <circle cx="49.66" cy="43.19" r="4.99" fill="rgb(255 122 74)" />
+</svg>

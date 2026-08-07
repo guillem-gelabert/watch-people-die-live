@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { usePersonaTables, type CauseTable, type MortalityTable } from "./usePersonaTables";
 import { useDict } from "../I18nContext";
 import { fill } from "@/lib/i18n/fill";
+import { causeLabel, type CauseLabels } from "@/lib/i18n/causes";
 
 // The country the example is drawn for. Spain reports its own age/sex table and skews old
 // enough that the modal draw is a recognisable sentence rather than a statistical shrug.
@@ -22,6 +23,7 @@ function likeliest(
   mortality: MortalityTable,
   causes: CauseTable,
   undetermined: string,
+  labels: CauseLabels,
 ): Likeliest | null {
   const entry = mortality.countries[SPAIN_M49] ?? mortality.global;
   if (!entry) return null;
@@ -39,12 +41,14 @@ function likeliest(
   if (cell) {
     let top = -1;
     for (const [index, weight] of Object.entries(cell)) {
-      // "Other causes" is a bucket, not a cause — naming it would say nothing.
+      // "Other causes" is a bucket, not a cause — naming it would say nothing. The test is on
+      // the GBD label, never on the translated one: the bucket keeps its English key in every
+      // language, which is the whole reason the key is the identity.
       const label = causes.causes[Number(index)];
       if (!label || label === "other causes") continue;
       if (weight > top) {
         top = weight;
-        cause = label;
+        cause = causeLabel(labels, label);
       }
     }
   }
@@ -59,10 +63,11 @@ function likeliest(
 // point: a cause is only ever drawn from the age and sex that plausibly dies of it.
 export default function PersonaDemo() {
   const { mortality, causes } = usePersonaTables();
-  const t = useDict().charts.personaDemo;
+  const d = useDict();
+  const t = d.charts.personaDemo;
   const draw = useMemo(
-    () => (mortality && causes ? likeliest(mortality, causes, t.undetermined) : null),
-    [mortality, causes, t.undetermined],
+    () => (mortality && causes ? likeliest(mortality, causes, t.undetermined, d.causes) : null),
+    [mortality, causes, t.undetermined, d.causes],
   );
 
   return (

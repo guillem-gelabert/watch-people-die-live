@@ -1,5 +1,6 @@
 import type { Dictionary } from "./en";
 import { chartsDe } from "./de.charts";
+import { causesDe } from "./de.causes";
 
 // German. The story addresses its reader directly throughout, so this uses "du" rather than
 // "Sie" — a personal project talking to one person, not a report.
@@ -277,6 +278,8 @@ export const de: Dictionary = {
     tooltipDeaths: "{country}: {n} Tote",
     tooltipMore: "+{n} weitere: {total}",
   },
+
+  causes: causesDe,
 
   charts: chartsDe,
 };

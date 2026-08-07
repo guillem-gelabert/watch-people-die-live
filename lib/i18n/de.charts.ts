@@ -295,6 +295,7 @@ export const chartsDe: ChartsDictionary = {
     loading: "Sterbefälle nach Alter und Ursache werden geladen…",
     tail: "Alles Übrige",
     ariaBand: "{label}: {share} % der Sterbefälle",
+    barCaption: "Die Balkenlänge ist der Anteil dieser Altersgruppe an allen Sterbefällen",
   },
 
   personaDemo: {

@@ -6,6 +6,7 @@ import { useSkin } from "../SkinContext";
 import { harmony, marks } from "../palette";
 import { useDict } from "../I18nContext";
 import { fill } from "@/lib/i18n/fill";
+import { causeLabel, type CauseLabels } from "@/lib/i18n/causes";
 import {
   bandLabel,
   usePersonaTables,
@@ -16,8 +17,6 @@ import {
 // Named causes shown separately; everything else is summed into the tail. Four is what fits in
 // one legend row on a phone, and past the fourth the segments are too thin to compare anyway.
 const NAMED_CAUSES = 4;
-const TAIL = "Everything else";
-
 const LEFT = 46;
 const RIGHT = 14;
 // Room for the "18%" printed past the end of a bar.
@@ -43,7 +42,12 @@ interface Model {
 // Age bands with their cause mixes, from the same two tables a persona is drawn from. Sexes are
 // summed: the figure is about age carrying the cause, and splitting it by sex here would ask the
 // reader to hold six series in their head instead of five.
-function buildModel(mortality: MortalityTable, causes: CauseTable): Model | null {
+function buildModel(
+  mortality: MortalityTable,
+  causes: CauseTable,
+  labels: CauseLabels,
+  tail: string,
+): Model | null {
   const entry = mortality.global;
   const causeEntry = causes.global;
   if (!entry || !causeEntry) return null;
@@ -90,7 +94,7 @@ function buildModel(mortality: MortalityTable, causes: CauseTable): Model | null
 
   return {
     bands,
-    causes: [...named.map((i) => causes.causes[i] ?? "unknown"), TAIL],
+    causes: [...named.map((i) => causeLabel(labels, causes.causes[i] ?? "")), tail],
   };
 }
 
@@ -98,14 +102,15 @@ function buildModel(mortality: MortalityTable, causes: CauseTable): Model | null
 // deaths; the segments inside it are that band's own cause mix — which is the argument for
 // sampling age before cause rather than the other way round.
 export default function AgeMix() {
-  const t = useDict().charts.ageMix;
+  const d = useDict();
+  const t = d.charts.ageMix;
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
   const { skin, sky } = useSkin();
   const { mortality, causes } = usePersonaTables();
 
   const model = useMemo(
-    () => (mortality && causes ? buildModel(mortality, causes) : null),
-    [mortality, causes],
+    () => (mortality && causes ? buildModel(mortality, causes, d.causes, t.tail) : null),
+    [mortality, causes, d.causes, t.tail],
   );
 
   // One hue per named cause plus a muted tail, all legible against whatever sky is in view.
@@ -192,7 +197,7 @@ export default function AgeMix() {
         })}
 
         <text className="chart-label" x={LEFT} y={height - 8}>
-          Bar length is that band&apos;s share of all deaths
+          {t.barCaption}
         </text>
       </svg>
     </section>

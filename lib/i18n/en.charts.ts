@@ -270,6 +270,7 @@ export const chartsEn = {
     loading: "Loading deaths by age and cause…",
     tail: "Everything else",
     ariaBand: "{label}: {share}% of deaths",
+    barCaption: "Bar length is that band's share of all deaths",
   },
 
   personaDemo: {

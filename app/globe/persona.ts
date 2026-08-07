@@ -1,4 +1,5 @@
 import { fill } from "@/lib/i18n/fill";
+import { causeLabel, type CauseLabels } from "@/lib/i18n/causes";
 import type { Dictionary } from "@/lib/i18n/en";
 
 // Generates a short, plausible persona for one (synthetic) death, e.g.
@@ -56,7 +57,11 @@ interface SamplePersonasData {
 export type PersonaWords = Pick<
   Dictionary["globe"],
   "persona" | "baby" | "girl" | "boy" | "woman" | "man"
->;
+> & {
+  // The GBD cause table, so the sentence can name the cause in the same language as the rest of
+  // it. Keyed by the English label the data file uses; see lib/i18n/causes.ts.
+  causes: CauseLabels;
+};
 
 export interface Persona {
   sex: Sex;
@@ -261,8 +266,15 @@ export function makePersona(
 ): Persona {
   const sex = sampleSex(m49);
   const { age, idx } = sampleAge(m49, sex);
+  // Sampled as the English GBD label, then named: `cause` stays the identity so anything reading
+  // a persona downstream can still match on it, and only `text` is in the reader's language.
   const cause = pickCause(m49, sex, idx, age);
   const who = sexLabel(words, sex, age);
-  const text = fill(words.persona, { who, age, cause, country });
+  const text = fill(words.persona, {
+    who,
+    age,
+    cause: causeLabel(words.causes, cause),
+    country,
+  });
   return { sex, age, cause, country, text };
 }

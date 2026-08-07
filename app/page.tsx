@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { Metadata } from "next";
 import StoryClient from "./roadmap/StoryClient";
+import { I18nProvider } from "./roadmap/I18nContext";
 import { LOCALES, localeHref, resolveLocale, storyFilename } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n";
 
@@ -44,5 +45,9 @@ export default async function Page({ searchParams }: PageProps) {
   // per language and sliced client-side by roadmapSections(). The section keys inside it are
   // shared across all three, because they are what the figures are registered against.
   const markdown = await readFile(join(process.cwd(), "docs", storyFilename(locale)), "utf8");
-  return <StoryClient markdown={markdown} locale={locale} dictionary={getDictionary(locale)} />;
+  return (
+    <I18nProvider locale={locale} dictionary={getDictionary(locale)}>
+      <StoryClient markdown={markdown} />
+    </I18nProvider>
+  );
 }

@@ -8,20 +8,16 @@ import MiniEarth from "./MiniEarth";
 import Section from "./Section";
 import { parseSky, skinFromSky, skinToCssVars } from "./palette";
 import { SkinProvider } from "./SkinContext";
-import { I18nProvider } from "./I18nContext";
+import { useDict } from "./I18nContext";
 import LanguageSwitcher from "./LanguageSwitcher";
 import RoadmapMarkdown, { roadmapSections, type SectionHeadingKind } from "./roadmapMarkdown";
 import { ProxyGuessProvider } from "./proxy/ProxyGuessContext";
 import { prepareReveals, prepareTypers, runReveals, runTypers, type Typer } from "./storyMotion";
 import { useStorySlots } from "./storySlots";
-import type { Dictionary } from "@/lib/i18n/en";
-import type { Locale } from "@/lib/i18n/config";
 import "./roadmap.css";
 
 interface StoryClientProps {
   markdown: string;
-  locale: Locale;
-  dictionary: Dictionary;
 }
 
 // How far the reader has to travel before the globe has fully left. Expressed in
@@ -43,7 +39,11 @@ const CHAPTER_CLASS: Record<SectionHeadingKind, string> = {
 // count rather than per section, so the rule survives a retitle.
 const SHORT_CHAPTER = 3;
 
-export default function StoryClient({ markdown, locale, dictionary }: StoryClientProps) {
+// Rendered under I18nProvider (see app/page.tsx), not around it: useStorySlots() reads the
+// dictionary through the context, and a provider rendered *by* this component would be below
+// the hook that needs it — which is exactly how every chart panel briefly stayed in English.
+export default function StoryClient({ markdown }: StoryClientProps) {
+  const dictionary = useDict();
   const sections = useMemo(() => roadmapSections(markdown), [markdown]);
   const slotsByKey = useStorySlots();
   const [skyIndex, setSkyIndex] = useState(0);
@@ -255,10 +255,8 @@ export default function StoryClient({ markdown, locale, dictionary }: StoryClien
   );
 
   return (
-    <I18nProvider locale={locale} dictionary={dictionary}>
-      <SkinProvider value={active}>
-        <ProxyGuessProvider>{body}</ProxyGuessProvider>
-      </SkinProvider>
-    </I18nProvider>
+    <SkinProvider value={active}>
+      <ProxyGuessProvider>{body}</ProxyGuessProvider>
+    </SkinProvider>
   );
 }

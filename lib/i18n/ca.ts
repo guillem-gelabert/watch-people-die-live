@@ -1,5 +1,6 @@
 import type { Dictionary } from "./en";
 import { chartsCa } from "./ca.charts";
+import { causesCa } from "./ca.causes";
 
 // Catalan. Central variety, with the story's own register kept: first person, direct, and
 // technical where the English is technical.
@@ -274,6 +275,8 @@ export const ca: Dictionary = {
     tooltipDeaths: "{country}: {n} morts",
     tooltipMore: "+{n} més: {total}",
   },
+
+  causes: causesCa,
 
   charts: chartsCa,
 };
