@@ -11,13 +11,6 @@ dependencies = [
     "requests>=2.31",
 ]
 
-# Tooling that is not part of the pipeline itself. Pillow is here for scripts/build_favicon.py,
-# which reads the globe's own Earth texture and writes the site icon.
-[dependency-groups]
-dev = [
-    "pillow>=11.0",
-]
-
 [tool.ruff]
 target-version = "py311"
 extend-exclude = [".ipynb_checkpoints", "archive"]
