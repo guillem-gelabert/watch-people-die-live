@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  chartPaletteToCssVars,
   contrastFix,
   contrastRatio,
   harmony,
@@ -8,11 +9,13 @@ import {
   parseColor,
   parseSky,
   proxyMarks,
+  proxyColors,
   relativeLuminance,
   schemes,
   skinFromSky,
   type Rgb,
 } from "./palette";
+import { curveColors } from "./chartHelpers";
 
 // The ten section skies, in scroll order (design handoff README, "Sections").
 const SKIES = [
@@ -215,6 +218,36 @@ describe("proxyMarks", () => {
     const sky = parseSky("#bcd8ee");
     expect(proxyMarks(3, 2, sky)).toEqual(proxyMarks(3, 2, sky));
     expect(proxyMarks(3, 2, sky)).not.toEqual(proxyMarks(1, 2, sky));
+  });
+});
+
+describe("chartPaletteToCssVars", () => {
+  it("publishes the existing generated palettes into stable CSS-variable slots", () => {
+    for (const hex of SKIES) {
+      const sky = parseSky(hex);
+      const vars = chartPaletteToCssVars(sky);
+
+      proxyColors(sky).forEach((color, index) => {
+        expect(vars[`--proxy-color-${index}`]).toBe(color);
+      });
+      for (let proxy = 0; proxy < 5; proxy += 1) {
+        proxyMarks(proxy, 4, sky).forEach((color, slot) => {
+          expect(vars[`--proxy-mark-${proxy}-${slot}`]).toBe(color);
+        });
+      }
+      curveColors(sky, 14).forEach((color, index) => {
+        expect(vars[`--curve-color-${index}`]).toBe(color);
+      });
+      harmony(7, sky).forEach((color, index) => {
+        expect(vars[`--amplitude-ramp-${index}`]).toBe(color);
+      });
+      marks(harmony(4, sky), sky).forEach((color, index) => {
+        expect(vars[`--cause-color-${index}`]).toBe(color);
+      });
+      marks(harmony(8, sky, true), sky).forEach((color, index) => {
+        expect(vars[`--conflict-color-${index}`]).toBe(color);
+      });
+    }
   });
 });
 

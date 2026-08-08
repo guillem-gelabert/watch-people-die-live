@@ -1,7 +1,5 @@
 "use client";
 
-import { useSkin } from "../SkinContext";
-import { mixRgb, rgbCss } from "../palette";
 import { useDict } from "../I18nContext";
 
 interface ScaleDiagonalToggleProps {
@@ -15,12 +13,11 @@ interface ScaleDiagonalToggleProps {
 // straight across the bottom-right. The two words are drawn the way the two scales behave, so the
 // control explains the choice it is offering.
 export default function ScaleDiagonalToggle({ id, logOn, onToggle }: ScaleDiagonalToggleProps) {
-  const { skin } = useSkin();
   const t = useDict().charts.densityMap;
-  const active = rgbCss(skin.hiRGB);
+  const active = "var(--hi)";
   // The inactive half is the same hue almost all the way to paper: present enough to read as the
   // other option, quiet enough that the active half is unambiguous.
-  const inactive = rgbCss(mixRgb(skin.hiRGB, skin.paperRGB, 0.86));
+  const inactive = "color-mix(in srgb, var(--hi) 14%, var(--paper))";
 
   return (
     <button
@@ -45,14 +42,14 @@ export default function ScaleDiagonalToggle({ id, logOn, onToggle }: ScaleDiagon
           <path id={`${id}-log-path`} d="M6,80 C16,34 36,16 84,8" fill="none" />
           <path id={`${id}-linear-path`} d="M36,96 L96,36" fill="none" />
         </defs>
-        <text className="scale-diagonal-label" style={{ fill: logOn ? skin.paper : active }}>
+        <text className="scale-diagonal-label" style={{ fill: logOn ? "var(--paper)" : active }}>
           <textPath href={`#${id}-log-path`} startOffset="50%" textAnchor="middle">
             {t.scaleLog}
           </textPath>
         </text>
         <text
           className="scale-diagonal-label is-linear"
-          style={{ fill: logOn ? active : skin.paper }}
+          style={{ fill: logOn ? active : "var(--paper)" }}
         >
           <textPath href={`#${id}-linear-path`} startOffset="50%" textAnchor="middle">
             {t.scaleLinear}

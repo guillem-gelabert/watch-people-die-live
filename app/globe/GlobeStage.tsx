@@ -11,6 +11,7 @@ import { useGlobeData } from "./useGlobeData";
 import { makePersona } from "./persona";
 import { publishDeath } from "./stageState";
 import { useDict } from "../roadmap/I18nContext";
+import { useNearViewport, useReducedMotion } from "../roadmap/useNearViewport";
 import { FOV } from "./constants";
 import "../globe.css";
 
@@ -36,6 +37,9 @@ function GlobeStage({ phaseRef }: GlobeStageProps) {
   const { data: globeData, geo } = useGlobeData();
   const d = useDict();
   const [loaded, setLoaded] = useState(false);
+  const globeRef = useRef<HTMLDivElement | null>(null);
+  const globeNear = useNearViewport(globeRef, "0px");
+  const reduceMotion = useReducedMotion();
   // Direction the camera eases toward to center the viewer's location, or null when
   // idle / after the user takes over (cleared by OrbitControls' "start" event).
   const camTarget = useRef<THREE.Vector3 | null>(null);
@@ -118,11 +122,12 @@ function GlobeStage({ phaseRef }: GlobeStageProps) {
           tree as an unnamed box. img is the honest role for a canvas that presents a picture and
           takes only a rotation. The label is translated — the story is published in three
           languages and this was the one string still hardcoded in English. */}
-      <div id="globe" role="img" aria-label={d.globe.canvasLabel}>
+      <div ref={globeRef} id="globe" role="img" aria-label={d.globe.canvasLabel}>
         <Canvas
           camera={cameraProps}
           scene={sceneProps}
           dpr={dpr}
+          frameloop={globeNear ? (reduceMotion ? "demand" : "always") : "never"}
           gl={createRenderer}
           fallback={<div style={{ color: "#fff", padding: 24 }}>WebGL/WebGPU not supported.</div>}
         >

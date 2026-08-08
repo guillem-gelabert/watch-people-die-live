@@ -1,6 +1,5 @@
 "use client";
 
-import { useSkin } from "../SkinContext";
 import { useDict } from "../I18nContext";
 
 export interface SeriesChip {
@@ -22,7 +21,6 @@ interface SeriesChipsProps {
 // The last visible series cannot be switched off. An empty chart is never what the reader wanted,
 // and disabling the control says so before they try.
 export default function SeriesChips({ series, onToggle }: SeriesChipsProps) {
-  const { skin } = useSkin();
   const d = useDict();
   const lastOn = series.filter((s) => s.on).length <= 1;
 
@@ -44,13 +42,13 @@ export default function SeriesChips({ series, onToggle }: SeriesChipsProps) {
               aria-hidden="true"
               style={{
                 background: s.on ? s.color : "transparent",
-                boxShadow: s.on ? "none" : `inset 0 0 0 1.6px ${skin.rule}`,
+                boxShadow: s.on ? "none" : "inset 0 0 0 1.6px var(--rule)",
                 color: s.on ? "#fff" : "transparent",
               }}
             >
               ✓
             </span>
-            <span style={{ color: s.on ? skin.ink : skin.mute }}>{s.label}</span>
+            <span style={{ color: s.on ? "var(--ink)" : "var(--mute)" }}>{s.label}</span>
           </label>
         );
       })}

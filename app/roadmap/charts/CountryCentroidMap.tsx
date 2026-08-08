@@ -9,6 +9,7 @@ import { useFigureWidth } from "./useFigureSize";
 import type { CountryFeature, DeathsPerYearById } from "../types";
 import { useDict } from "../I18nContext";
 import { fill } from "@/lib/i18n/fill";
+import { useNearViewport, useReducedMotion } from "../useNearViewport";
 
 interface Dart {
   id: number;
@@ -70,11 +71,20 @@ export default function CountryCentroidMap({
   const t = d.charts.countryCentroidMap;
   const unknown = d.charts.common.unknown;
   const ref = useRef<SVGSVGElement | null>(null);
+  const near = useNearViewport(ref);
+  const reduceMotion = useReducedMotion();
+  const animate = near && !reduceMotion;
+  const animateRef = useRef(animate);
+  const animationRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const [sizeRef, measured] = useFigureWidth<SVGSVGElement>();
   // Square, at exactly the width the column gave it: the column's own max-width is the bound, so
   // the viewBox always equals the rendered size and nothing is scaled.
   const width = measured;
   const height = width;
+
+  useEffect(() => {
+    animateRef.current = animate;
+  }, [animate]);
 
   useEffect(() => {
     if (!ref.current || !features || !deathsPerYearById || !deathsPerYearById.size) return;
@@ -164,12 +174,12 @@ export default function CountryCentroidMap({
     const dartsG = svg.append("g").attr("class", "dart-marks");
     const darts: Dart[] = [];
     let nextId = 0;
-    let nextAt = performance.now() + expGap(MEAN_GAP_MS);
+    let nextAt = 0;
     let rafId = 0;
-    let cancelled = false;
+    let disposed = false;
 
     function frame(now: number) {
-      if (cancelled) return;
+      if (disposed || rafId === 0) return;
       while (now >= nextAt) {
         const c = pickCountry();
         darts.push({
@@ -203,7 +213,7 @@ export default function CountryCentroidMap({
           g.selectAll("line").attr("stroke", "#ffffff").attr("stroke-width", 1.1);
           g.selectAll("circle").attr("fill", DART);
         });
-      rafId = requestAnimationFrame(frame);
+      if (rafId !== 0) rafId = requestAnimationFrame(frame);
     }
 
     svg
@@ -230,12 +240,33 @@ export default function CountryCentroidMap({
       })
       .on("pointerleave", hideTooltip);
 
-    rafId = requestAnimationFrame(frame);
+    const controller = {
+      start() {
+        if (disposed || rafId !== 0) return;
+        nextAt = performance.now() + expGap(MEAN_GAP_MS);
+        rafId = requestAnimationFrame(frame);
+      },
+      stop() {
+        if (rafId === 0) return;
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      },
+    };
+    animationRef.current = controller;
+    if (animateRef.current) controller.start();
     return () => {
-      cancelled = true;
-      cancelAnimationFrame(rafId);
+      disposed = true;
+      controller.stop();
+      if (animationRef.current === controller) animationRef.current = null;
     };
   }, [features, deathsPerYearById, width, height, t, unknown]);
+
+  useEffect(() => {
+    const animation = animationRef.current;
+    if (!animation) return;
+    if (animate) animation.start();
+    else animation.stop();
+  }, [animate]);
 
   return (
     <section className="chart-panel wide">

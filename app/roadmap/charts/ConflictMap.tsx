@@ -4,8 +4,6 @@ import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import { fitProjection, insideViewport, type Bbox } from "./basemap";
 import { useFigureWidth, figureHeight } from "./useFigureSize";
-import { useSkin } from "../SkinContext";
-import { mapColor } from "../palette";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { ConflictsPayload, CountryFeature } from "../types";
 import { useDict } from "../I18nContext";
@@ -60,7 +58,6 @@ export default function ConflictMap({ conflicts, features }: ConflictMapProps) {
   const ref = useRef<SVGSVGElement | null>(null);
   const [sizeRef, width] = useFigureWidth<HTMLDivElement>();
   const height = figureHeight(width, { aspect: ASPECT, min: MIN_HEIGHT, max: MAX_HEIGHT });
-  const { skin, sky } = useSkin();
 
   useEffect(() => {
     const node = ref.current;
@@ -75,14 +72,14 @@ export default function ConflictMap({ conflicts, features }: ConflictMapProps) {
     svg
       .append("path")
       .attr("d", path({ type: "Sphere" }) ?? "")
-      .attr("fill", skin.tileMuted);
+      .attr("fill", "var(--tile-muted)");
     const landG = svg.append("g");
     for (const f of features) {
       landG
         .append("path")
         .attr("d", path(f) ?? "")
-        .attr("fill", skin.tile)
-        .attr("stroke", skin.rule)
+        .attr("fill", "var(--tile)")
+        .attr("stroke", "var(--rule)")
         .attr("stroke-width", 0.5);
     }
 
@@ -91,7 +88,7 @@ export default function ConflictMap({ conflicts, features }: ConflictMapProps) {
 
     const ceiling = d3.quantile(cells.map((c) => c[2]).sort(d3.ascending), SCALE_QUANTILE) ?? 1;
     const r = d3.scaleSqrt().domain([0, ceiling]).range([0, MAX_R]).clamp(true);
-    const ink = mapColor("#ff3b30", skin);
+    const ink = "var(--red)";
 
     // Heaviest last, so a big cell is never buried under the scatter of small ones around it.
     const dots = svg.append("g");
@@ -161,11 +158,11 @@ export default function ConflictMap({ conflicts, features }: ConflictMapProps) {
         .attr("width", box.width + 6)
         .attr("height", box.height + 2)
         .attr("rx", 3)
-        .attr("fill", skin.paper)
+        .attr("fill", "var(--paper)")
         .attr("fill-opacity", 0.85);
       text.append("title").text(fill(t.plateTitle, { n: fatalities.toLocaleString() }));
     }
-  }, [conflicts, features, width, height, skin, sky, t]);
+  }, [conflicts, features, width, height, t]);
 
   const cells = conflicts?.cells ?? [];
   const drawn = cells.filter((c) => c[2] >= FLOOR).length;

@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useSkin } from "../SkinContext";
+import { useEffect, useRef, useState } from "react";
 import { useDict } from "../I18nContext";
 import { fill } from "@/lib/i18n/fill";
 import { REAL_MEAN_GAP_MS, expGap, formatMeanGap } from "../chartHelpers";
-import { mapColor } from "../palette";
+import { useNearViewport, useReducedMotion } from "../useNearViewport";
 
 // What fits across a phone at a legible width, given the 5px gap between bars — the two trade
 // against each other, since the bars are flex:1 and share whatever the gaps leave. Still long
@@ -46,7 +45,9 @@ function restingBeat(): Beat {
 // and lets the bar's height carry how long that wait was. Same average, completely different
 // shape — which is the whole argument of the section.
 export default function BeatStrip({ mode, meanMs = REAL_MEAN_GAP_MS }: BeatStripProps) {
-  const { skin } = useSkin();
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const near = useNearViewport(sectionRef);
+  const reduceMotion = useReducedMotion();
   const t = useDict().charts.beatStrip;
   const [beats, setBeats] = useState<Beat[]>(() => Array.from({ length: BARS }, restingBeat));
 
@@ -55,16 +56,10 @@ export default function BeatStrip({ mode, meanMs = REAL_MEAN_GAP_MS }: BeatStrip
   // bars are one wide block of solid colour, and a vivid complement at that size fights the
   // copy around it. Bars store which tone they are rather than a colour, so a sky change re-inks
   // the whole strip on the next render without interrupting the beat.
-  const palette = useMemo(
-    () => ({
-      a: mapColor("#2f4bff", skin),
-      b: mapColor("#7c93cf", skin),
-      hot: mapColor("#ff3b30", skin),
-    }),
-    [skin],
-  );
+  const palette = { a: "var(--blue)", b: "var(--data)", hot: "var(--red)" };
 
   useEffect(() => {
+    if (!near || reduceMotion) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let cancelled = false;
     let index = 0;
@@ -102,12 +97,12 @@ export default function BeatStrip({ mode, meanMs = REAL_MEAN_GAP_MS }: BeatStrip
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [mode, meanMs, t]);
+  }, [mode, meanMs, near, reduceMotion, t]);
 
   const label = mode === "poisson" ? t.poisson : fill(t.metronome, { gap: formatMeanGap(meanMs) });
 
   return (
-    <section className="chart-panel wide" aria-label={label}>
+    <section ref={sectionRef} className="chart-panel wide" aria-label={label}>
       <div className={`beat-strip beat-strip-${mode}`} aria-hidden="true">
         {beats.map((b, i) => (
           <span

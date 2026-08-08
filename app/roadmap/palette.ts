@@ -400,6 +400,39 @@ export function skinToCssVars(sky: Rgb, skin: Skin): Record<string, string> {
   };
 }
 
+// Generated chart colours live in the cascade for the same reason as the surface skin above:
+// changing sections should update paint, not rebuild every imperative D3 scene in the document.
+// The curve pool follows curveColors(..., 14) exactly: six distinct marks cycled across the
+// fourteen selectable series.
+export function chartPaletteToCssVars(sky: Rgb): Record<string, string> {
+  const out: Record<string, string> = {};
+
+  proxyColors(sky).forEach((color, index) => {
+    out[`--proxy-color-${index}`] = color;
+  });
+  for (let proxy = 0; proxy < 5; proxy += 1) {
+    proxyMarks(proxy, 4, sky).forEach((color, slot) => {
+      out[`--proxy-mark-${proxy}-${slot}`] = color;
+    });
+  }
+
+  const curvePool = marks(harmony(6, sky), sky);
+  for (let index = 0; index < 14; index += 1) {
+    out[`--curve-color-${index}`] = curvePool[index % curvePool.length] as string;
+  }
+  harmony(7, sky).forEach((color, index) => {
+    out[`--amplitude-ramp-${index}`] = color;
+  });
+  marks(harmony(4, sky), sky).forEach((color, index) => {
+    out[`--cause-color-${index}`] = color;
+  });
+  marks(harmony(8, sky, true), sky).forEach((color, index) => {
+    out[`--conflict-color-${index}`] = color;
+  });
+
+  return out;
+}
+
 function clamp01(n: number): number {
   return Math.min(1, Math.max(0, n));
 }

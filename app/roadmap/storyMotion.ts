@@ -63,18 +63,17 @@ export function prepareReveals(root: HTMLElement): { pending: HTMLElement[]; res
 // touched twice and the work per frame falls to zero once the reader is past everything.
 export function runReveals(pending: HTMLElement[], viewportHeight: number): void {
   const line = viewportHeight * REVEAL_LINE;
-  for (let i = pending.length - 1; i >= 0; i -= 1) {
-    const el = pending[i];
+  while (pending.length) {
+    const el = pending[0];
     if (!el) {
-      pending.splice(i, 1);
+      pending.shift();
       continue;
     }
-    if (el.getBoundingClientRect().top < line) {
-      el.style.opacity = "1";
-      el.style.transform = "none";
-      el.setAttribute("data-rv", "done");
-      pending.splice(i, 1);
-    }
+    if (el.getBoundingClientRect().top >= line) break;
+    el.style.opacity = "1";
+    el.style.transform = "none";
+    el.setAttribute("data-rv", "done");
+    pending.shift();
   }
 }
 
@@ -109,16 +108,15 @@ export function runTypers(
   timers: Set<ReturnType<typeof setTimeout>>,
 ): void {
   const line = viewportHeight * TYPE_LINE;
-  for (let i = pending.length - 1; i >= 0; i -= 1) {
-    const entry = pending[i];
+  while (pending.length) {
+    const entry = pending[0];
     if (!entry) {
-      pending.splice(i, 1);
+      pending.shift();
       continue;
     }
-    if (entry.el.getBoundingClientRect().top < line) {
-      pending.splice(i, 1);
-      typeOut(entry, timers);
-    }
+    if (entry.el.getBoundingClientRect().top >= line) break;
+    pending.shift();
+    typeOut(entry, timers);
   }
 }
 

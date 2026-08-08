@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import { fmtPlainPct, pearson } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
@@ -14,9 +14,7 @@ import {
   olsFit,
 } from "./chartFrame";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
-import { useSkin } from "../SkinContext";
 import { useDict } from "../I18nContext";
-import { proxyMarks } from "../palette";
 
 export interface AmplitudePoint {
   name: string;
@@ -76,12 +74,10 @@ export default function AmplitudeScatter({
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
   const HEIGHT = figureHeight(WIDTH, SHAPE);
-  const { sky } = useSkin();
   // Four colours from this proxy's own anchor: dots, fit, and two in reserve for the reading.
-  const cols = useMemo(() => proxyMarks(proxyIndex, 4, sky), [proxyIndex, sky]);
-  const dotColor = cols[0] as string;
-  const fitColor = cols[1] as string;
-  const ringColor = cols[2] as string;
+  const dotColor = `var(--proxy-mark-${proxyIndex}-0)`;
+  const fitColor = `var(--proxy-mark-${proxyIndex}-1)`;
+  const ringColor = `var(--proxy-mark-${proxyIndex}-2)`;
 
   // Hand the ring colour back so the caller's layer switch can wear it.
   useEffect(() => onRingColor?.(ringColor), [ringColor, onRingColor]);

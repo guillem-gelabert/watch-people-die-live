@@ -3,8 +3,6 @@
 import { useMemo } from "react";
 import * as d3 from "d3";
 import { useFigureWidth } from "./useFigureSize";
-import { useSkin } from "../SkinContext";
-import { mapColor } from "../palette";
 import type { SubnationalCdr } from "../types";
 import { useDict } from "../I18nContext";
 import { fill } from "@/lib/i18n/fill";
@@ -67,9 +65,8 @@ interface Block {
 export default function NationalVsRegionalBars({ subnational }: NationalVsRegionalBarsProps) {
   const t = useDict().charts.nationalVsRegional;
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
-  const { skin } = useSkin();
-  const above = mapColor("#ff3b30", skin);
-  const below = mapColor("#2f4bff", skin);
+  const above = "var(--red)";
+  const below = "var(--blue)";
 
   const blocks = useMemo<Block[]>(() => {
     if (!subnational) return [];

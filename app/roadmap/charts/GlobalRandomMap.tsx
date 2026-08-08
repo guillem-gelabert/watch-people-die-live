@@ -8,8 +8,8 @@ import { fitProjection, GRATICULE_WIDTH, insideViewport, type Bbox } from "./bas
 import { buildLandMask, buildPopulatedMask, classify, convergenceShares } from "./dartField";
 import { bumpDart, setDartLimits } from "./dartTallyState";
 import { useFigureWidth } from "./useFigureSize";
-import { useSkin } from "../SkinContext";
 import { useDict } from "../I18nContext";
+import { useNearViewport, useReducedMotion } from "../useNearViewport";
 import type { CountryFeature, DensityGrid } from "../types";
 
 interface Dart {
@@ -46,18 +46,26 @@ const BBOX: Bbox = [
 // missing. Each mark is also counted by the tally below (see dartTallyState).
 export default function GlobalRandomMap({ features, grid }: GlobalRandomMapProps) {
   const t = useDict().charts.globalRandomMap;
-  const { sky } = useSkin();
   const ref = useRef<SVGSVGElement | null>(null);
+  const near = useNearViewport(ref);
+  const reduceMotion = useReducedMotion();
+  const animate = near && !reduceMotion;
+  const animateRef = useRef(animate);
+  const animationRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const [sizeRef, measured] = useFigureWidth<SVGSVGElement>();
   // Square, at exactly the width the column gave it: the column's own max-width is the bound, so
   // the viewBox always equals the rendered size and nothing is scaled.
   const width = measured;
   const height = width;
 
+  useEffect(() => {
+    animateRef.current = animate;
+  }, [animate]);
+
   // Only the land follows the palette — it is painted in the page's own colour so it disappears
   // into it, leaving the ocean as the only thing inked. The water and the marks stay literal:
   // water that isn't blue stops reading as water, and a dart has to sit clearly on top of both.
-  const land = `rgb(${sky.join(",")})`;
+  const land = "var(--sky)";
 
   const masks = useMemo(() => {
     if (!features || !grid) return null;
@@ -111,9 +119,9 @@ export default function GlobalRandomMap({ features, grid }: GlobalRandomMapProps
     const dartsG = svg.append("g").attr("class", "dart-marks");
     const darts: Dart[] = [];
     let nextId = 0;
-    let nextAt = performance.now() + expGap(REAL_MEAN_GAP_MS);
+    let nextAt = 0;
     let rafId = 0;
-    let cancelled = false;
+    let disposed = false;
 
     const bearingAt = (lon: number, lat: number, xy: [number, number]) => {
       const north = projection([lon, Math.min(90, lat + 0.5)]);
@@ -122,7 +130,7 @@ export default function GlobalRandomMap({ features, grid }: GlobalRandomMapProps
     };
 
     function frame(now: number) {
-      if (cancelled) return;
+      if (disposed || rafId === 0) return;
       // Darts spawn at the real global rate over the whole sphere. Every one is counted; only
       // the ones inside this crop are drawn, so the visible slice shows the true rate for its
       // own share of the planet rather than an inflated one.
@@ -164,7 +172,7 @@ export default function GlobalRandomMap({ features, grid }: GlobalRandomMapProps
           g.selectAll("line").attr("stroke", "#ffffff").attr("stroke-width", 1.1);
           g.selectAll("circle").attr("fill", DART);
         });
-      rafId = requestAnimationFrame(frame);
+      if (rafId !== 0) rafId = requestAnimationFrame(frame);
     }
 
     svg
@@ -187,12 +195,33 @@ export default function GlobalRandomMap({ features, grid }: GlobalRandomMapProps
       })
       .on("pointerleave", hideTooltip);
 
-    rafId = requestAnimationFrame(frame);
+    const controller = {
+      start() {
+        if (disposed || rafId !== 0) return;
+        nextAt = performance.now() + expGap(REAL_MEAN_GAP_MS);
+        rafId = requestAnimationFrame(frame);
+      },
+      stop() {
+        if (rafId === 0) return;
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      },
+    };
+    animationRef.current = controller;
+    if (animateRef.current) controller.start();
     return () => {
-      cancelled = true;
-      cancelAnimationFrame(rafId);
+      disposed = true;
+      controller.stop();
+      if (animationRef.current === controller) animationRef.current = null;
     };
   }, [features, masks, land, width, height]);
+
+  useEffect(() => {
+    const animation = animationRef.current;
+    if (!animation) return;
+    if (animate) animation.start();
+    else animation.stop();
+  }, [animate]);
 
   return (
     <section className="chart-panel wide">

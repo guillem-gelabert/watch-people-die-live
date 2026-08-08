@@ -6,9 +6,8 @@ import GlobeStage from "../globe/GlobeStage";
 import { setHeroActive } from "../globe/stageState";
 import MiniEarth from "./MiniEarth";
 import Section from "./Section";
-import { parseSky, skinFromSky, skinToCssVars } from "./palette";
-import { SkinProvider } from "./SkinContext";
-import { useI18n } from "./I18nContext";
+import { chartPaletteToCssVars, parseSky, skinFromSky, skinToCssVars } from "./palette";
+import { useDict } from "./I18nContext";
 import LanguageSwitcher from "./LanguageSwitcher";
 import RoadmapMarkdown, { roadmapSections, type SectionHeadingKind } from "./roadmapMarkdown";
 import { ProxyGuessProvider } from "./proxy/ProxyGuessContext";
@@ -18,6 +17,13 @@ import "./roadmap.css";
 
 interface StoryClientProps {
   markdown: string;
+}
+
+interface StoryDom {
+  globe: HTMLElement | null;
+  island: HTMLElement | null;
+  back: HTMLElement | null;
+  skyNodes: HTMLElement[];
 }
 
 // How far the reader has to travel before the globe has fully left. Expressed in
@@ -46,10 +52,12 @@ export default function StoryClient({ markdown }: StoryClientProps) {
   const { locale, d: dictionary } = useI18n();
   const sections = useMemo(() => roadmapSections(markdown), [markdown]);
   const slotsByKey = useStorySlots();
-  const [skyIndex, setSkyIndex] = useState(0);
+  const [skyIndex, setSkyIndex] = useState(-1);
+  const skyIndexRef = useRef(-1);
   const phaseRef = useRef(0);
   const stageRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<HTMLDivElement>(null);
+  const storyDomRef = useRef<StoryDom | null>(null);
   // Fire-once queues, drained by the scroll handler below.
   const revealsRef = useRef<HTMLElement[]>([]);
   const typersRef = useRef<Typer[]>([]);
@@ -61,6 +69,14 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     const stage = stageRef.current;
     const flow = flowRef.current;
     if (!stage || !flow) return;
+    const dom =
+      storyDomRef.current ??
+      (storyDomRef.current = {
+        globe: stage.querySelector<HTMLElement>("#globe"),
+        island: stage.querySelector<HTMLElement>("#island-wrap"),
+        back: document.getElementById("story-return"),
+        skyNodes: Array.from(flow.querySelectorAll<HTMLElement>("[data-sky]")),
+      });
 
     const vh = window.innerHeight || 1;
     const phase = Math.min(1, Math.max(0, window.scrollY / (vh * EXIT_SCREENS)));
@@ -72,7 +88,7 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     // reaches the top of the screen. Releasing the pointer matters too: the canvas sets
     // `touch-action: none` for OrbitControls, so a drag on a half-scrolled globe would rotate it
     // instead of carrying on with the scroll.
-    const globe = stage.querySelector<HTMLElement>("#globe");
+    const globe = dom.globe;
     if (globe) {
       globe.style.opacity = String(Math.max(0, 1 - Math.max(0, phase - 0.62) / 0.3));
       globe.style.pointerEvents = phase > 0.35 ? "none" : "auto";
@@ -82,12 +98,12 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     // the stage was pinned and the copy had to be taken off a globe that stayed put; now the whole
     // stage scrolls away, so it leaves on its own, and fading it as well read as the words
     // dissolving before the reader had left them.
-    const island = stage.querySelector<HTMLElement>("#island-wrap");
+    const island = dom.island;
     if (island) island.style.opacity = String(Math.max(0, 1 - phase / 0.28));
     setHeroActive(phase < 0.04);
 
     // The way back to the globe, once it is properly gone.
-    const back = document.getElementById("story-return");
+    const back = dom.back;
     if (back) {
       const shown = phase > 0.86;
       back.style.opacity = shown ? "1" : "0";
@@ -101,16 +117,18 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     // Whichever section has crossed the sky line owns the palette. The last section can be
     // shorter than the line is deep, so the very bottom of the scroll always claims it.
     const line = vh * SKY_LINE;
-    const nodes = flow.querySelectorAll<HTMLElement>("[data-sky]");
-    let next = -1;
-    for (let i = 0; i < nodes.length; i++) {
-      const el = nodes[i];
-      if (el && el.getBoundingClientRect().top <= line) next = i;
-      else break;
+    const nodes = dom.skyNodes;
+    let next = skyIndexRef.current;
+    while (next + 1 < nodes.length && nodes[next + 1]!.getBoundingClientRect().top <= line) {
+      next += 1;
     }
+    while (next >= 0 && nodes[next]!.getBoundingClientRect().top > line) next -= 1;
     const atEnd = window.scrollY >= document.documentElement.scrollHeight - window.innerHeight - 4;
     if (atEnd) next = nodes.length - 1;
-    setSkyIndex(next);
+    if (next !== skyIndexRef.current) {
+      skyIndexRef.current = next;
+      setSkyIndex(next);
+    }
   }, []);
 
   // rAF-throttled: scroll can fire far more often than the compositor paints, and this
@@ -140,6 +158,7 @@ export default function StoryClient({ markdown }: StoryClientProps) {
   useEffect(() => {
     const flow = flowRef.current;
     if (!flow) return;
+    storyDomRef.current = null;
     const timers = typeTimersRef.current;
     const { pending, restore } = prepareReveals(flow);
     revealsRef.current = pending;
@@ -164,8 +183,8 @@ export default function StoryClient({ markdown }: StoryClientProps) {
   }, [activeSky]);
 
   // The sections are built once and reused across sky changes. They do not depend on the active sky
-  // — each only declares its own, and the palette reaches the figures through SkinContext and CSS
-  // variables — so rebuilding this tree ten times a page was rebuilding every section's markdown
+  // — each only declares its own, and the palette reaches the figures through CSS variables — so
+  // rebuilding this tree ten times a page was rebuilding every section's markdown
   // and every figure's element tree to change one background colour. That was ~100ms of main thread
   // per sky change, landing as a stutter in the globe exactly as the cross-fade started. Held apart
   // like this, a sky change re-renders only what actually reads the skin.
@@ -219,6 +238,7 @@ export default function StoryClient({ markdown }: StoryClientProps) {
       style={{
         colorScheme: active.skin.dark ? "dark" : "light",
         ...(skinToCssVars(active.sky, active.skin) as CSSProperties),
+        ...(chartPaletteToCssVars(active.sky) as CSSProperties),
       }}
     >
       <LanguageSwitcher />
@@ -267,9 +287,5 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     </div>
   );
 
-  return (
-    <SkinProvider value={active}>
-      <ProxyGuessProvider>{body}</ProxyGuessProvider>
-    </SkinProvider>
-  );
+  return <ProxyGuessProvider>{body}</ProxyGuessProvider>;
 }

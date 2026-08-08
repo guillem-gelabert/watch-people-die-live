@@ -11,8 +11,6 @@ import {
 import { fmtPlainPct, strength } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import { useFigureWidth } from "./useFigureSize";
-import { useSkin } from "../SkinContext";
-import { harmony } from "../palette";
 import { appendMapPlate, fitRegionProjection, type Bbox } from "./basemap";
 import { useDict } from "../I18nContext";
 import { fill } from "@/lib/i18n/fill";
@@ -76,7 +74,6 @@ export default function AmplitudeMap({
   const t = dict.charts.amplitudeMap;
   const unknown = dict.charts.common.unknown;
   const ref = useRef<SVGSVGElement | null>(null);
-  const { sky } = useSkin();
   const [legend, setLegend] = useState<AmpLegend | null>(null);
   const [sizeRef, measured] = useFigureWidth<SVGSVGElement>();
   // Square, at exactly the width the column gave it: the column's own max-width is the bound, so
@@ -138,10 +135,9 @@ export default function AmplitudeMap({
       ) || 0.001;
     // Shades of the section's own hue rather than a fixed navy-to-red: this is the last map of the
     // seasonality chapter and it has to belong to the same palette as the charts that argued for it.
-    const ramp = harmony(RAMP_STEPS, sky);
     const color = (amplitude: number) => {
       const t = Math.min(1, Math.max(0, amplitude / maxAmp));
-      return ramp[RAMP_STEPS - 1 - Math.round(t * (RAMP_STEPS - 1))] as string;
+      return `var(--amplitude-ramp-${RAMP_STEPS - 1 - Math.round(t * (RAMP_STEPS - 1))})`;
     };
 
     content
@@ -244,7 +240,6 @@ export default function AmplitudeMap({
     appliedFallbacks,
     width,
     height,
-    sky,
   ]);
 
   return (

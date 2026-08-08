@@ -5,8 +5,6 @@ import * as d3 from "d3";
 import { fmtPlainPct, pearson, strength, styleAxis } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
-import { useSkin } from "../SkinContext";
-import { mapColor } from "../palette";
 import { useDict } from "../I18nContext";
 import type {
   CountryFeature,
@@ -46,9 +44,8 @@ export default function RegionNeighbourScatter({
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
   const HEIGHT = figureHeight(WIDTH, SHAPE);
-  const { skin } = useSkin();
   // The dots are .chart-point, which reads --accent; the legend now resolves the same value.
-  const accent = mapColor("#ff3b30", skin);
+  const accent = "var(--red)";
   const legendRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -104,7 +101,7 @@ export default function RegionNeighbourScatter({
       .attr("y1", innerH)
       .attr("x2", x(domainMax))
       .attr("y2", y(domainMax))
-      .attr("stroke", skin.rule)
+      .attr("stroke", "var(--rule)")
       .attr("stroke-width", 1);
 
     g.selectAll("circle.country-pt")
@@ -115,7 +112,7 @@ export default function RegionNeighbourScatter({
       .attr("cy", (d) => y(d.amplitude))
       .attr("r", 3)
       .attr("fill", "none")
-      .attr("stroke", skin.mute)
+      .attr("stroke", "var(--mute)")
       .attr("stroke-width", 0.9)
       .attr("opacity", 0.6);
 
@@ -174,8 +171,8 @@ export default function RegionNeighbourScatter({
     legend.append("span").html(`<span class="swatch" style="color:${accent}"></span>regions`);
     legend
       .append("span")
-      .html(`<span class="swatch" style="color:${skin.mute}"></span>countries (outline)`);
-  }, [regions, regionNeighbors, unified, features, neighborsByM49, skin, accent, WIDTH, HEIGHT]);
+      .html('<span class="swatch" style="color:var(--mute)"></span>countries (outline)');
+  }, [regions, regionNeighbors, unified, features, neighborsByM49, accent, WIDTH, HEIGHT]);
 
   return (
     <>

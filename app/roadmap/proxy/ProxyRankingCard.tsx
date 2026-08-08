@@ -1,9 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useSkin } from "../SkinContext";
 import { useDict } from "../I18nContext";
-import { proxyColors } from "../palette";
 import { fill } from "@/lib/i18n/fill";
 import ProxyStrip from "./ProxyStrip";
 import SortableProxyList from "./SortableProxyList";
@@ -25,7 +23,6 @@ const ASSUMED_NATURAL = 210;
 // point — the five charts that follow are the answer, and they land differently once you have
 // staked something on them.
 export default function ProxyRankingCard() {
-  const { skin, sky } = useSkin();
   const d = useDict();
   const { submit, spent, markSpent } = useProxyGuess();
   const [order, setOrder] = useState<number[]>(() => [...PROXY_INDICES]);
@@ -41,7 +38,7 @@ export default function ProxyRankingCard() {
 
   // Colour is keyed to a proxy's identity, never to where it currently sits, so reordering the
   // list never repaints a single strip.
-  const colors = useMemo(() => proxyColors(sky), [sky]);
+  const colors = useMemo(() => PROXY_INDICES.map((index) => `var(--proxy-color-${index})`), []);
   const defsByIndex = useMemo(() => new Map(proxyDefs(d).map((def) => [def.index, def])), [d]);
 
   const openModal = useCallback(() => setModalOpen(true), []);
@@ -164,7 +161,7 @@ export default function ProxyRankingCard() {
       <div className="proxy-stack" ref={stackRef} style={{ height: `${stackHeight}px` }}>
         <div
           className="proxy-card"
-          style={{ background: skin.tileOpen, color: skin.body }}
+          style={{ background: "var(--tile-open)", color: "var(--body)" }}
           data-hidden={modalOpen ? "1" : "0"}
         >
           <div className="proxy-card-title">{d.proxy.cardTitle}</div>
@@ -210,7 +207,7 @@ export default function ProxyRankingCard() {
               <button
                 type="button"
                 className="proxy-reorder"
-                style={{ background: skin.tile, color: skin.ink }}
+                style={{ background: "var(--tile)", color: "var(--ink)" }}
                 onClick={openModal}
               >
                 {d.proxy.reorder}
@@ -251,7 +248,6 @@ function ProxyRankModal({
   defsByIndex,
   colors,
 }: ModalProps) {
-  const { skin } = useSkin();
   const d = useDict();
 
   return (
@@ -262,15 +258,19 @@ function ProxyRankModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="proxy-modal-heading"
-        style={{ background: skin.paper }}
+        style={{ background: "var(--paper)" }}
       >
         <p className="proxy-modal-eyebrow" style={{ color: "var(--blue)" }}>
           {d.proxy.modal.eyebrow}
         </p>
-        <h3 className="proxy-modal-heading" id="proxy-modal-heading" style={{ color: skin.ink }}>
+        <h3
+          className="proxy-modal-heading"
+          id="proxy-modal-heading"
+          style={{ color: "var(--ink)" }}
+        >
           {d.proxy.modal.heading}
         </h3>
-        <p className="proxy-modal-note" style={{ color: skin.mute }}>
+        <p className="proxy-modal-note" style={{ color: "var(--mute)" }}>
           {d.proxy.modal.instruction}
         </p>
         {/* Strips only. The "Best predictor" / "Worst" rails belong to the card, where the
@@ -285,14 +285,14 @@ function ProxyRankModal({
             onDraggingChange={setDragging}
           />
         </div>
-        <p className="proxy-modal-closing" style={{ color: skin.mute }}>
+        <p className="proxy-modal-closing" style={{ color: "var(--mute)" }}>
           {d.proxy.modal.closing}
         </p>
         <div className="proxy-modal-actions">
           <button
             type="button"
             className="proxy-skip"
-            style={{ background: skin.tile, color: skin.body }}
+            style={{ background: "var(--tile)", color: "var(--body)" }}
             onClick={() => onClose(false)}
           >
             {d.proxy.modal.skip}
@@ -300,7 +300,7 @@ function ProxyRankModal({
           <button
             type="button"
             className="proxy-submit"
-            style={{ background: skin.ink, color: skin.paper }}
+            style={{ background: "var(--ink)", color: "var(--paper)" }}
             onClick={() => onClose(true)}
           >
             {d.proxy.modal.submit}

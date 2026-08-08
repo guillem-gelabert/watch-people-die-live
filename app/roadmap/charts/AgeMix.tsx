@@ -2,8 +2,6 @@
 
 import { useMemo } from "react";
 import { useFigureWidth } from "./useFigureSize";
-import { useSkin } from "../SkinContext";
-import { harmony, marks } from "../palette";
 import { useDict } from "../I18nContext";
 import { fill } from "@/lib/i18n/fill";
 import { causeLabel, type CauseLabels } from "@/lib/i18n/causes";
@@ -105,7 +103,6 @@ export default function AgeMix() {
   const d = useDict();
   const t = d.charts.ageMix;
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
-  const { skin, sky } = useSkin();
   const { mortality, causes } = usePersonaTables();
 
   const model = useMemo(
@@ -114,10 +111,13 @@ export default function AgeMix() {
   );
 
   // One hue per named cause plus a muted tail, all legible against whatever sky is in view.
-  const colors = useMemo(() => {
-    const series = marks(harmony(NAMED_CAUSES, sky), sky);
-    return [...series, skin.mute];
-  }, [sky, skin.mute]);
+  const colors = useMemo(
+    () => [
+      ...Array.from({ length: NAMED_CAUSES }, (_, i) => `var(--cause-color-${i})`),
+      "var(--mute)",
+    ],
+    [],
+  );
 
   if (!model) {
     return (

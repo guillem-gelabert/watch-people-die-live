@@ -17,6 +17,7 @@ import { useCanvasScale, useFigureWidth } from "./useFigureSize";
 import type { CountryFeature, DensityGrid, DeathsPerYearById } from "../types";
 import { useDict } from "../I18nContext";
 import { fill } from "@/lib/i18n/fill";
+import { useNearViewport, useReducedMotion } from "../useNearViewport";
 
 interface Dot {
   xy: [number, number];
@@ -74,12 +75,21 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
   const t = d.charts.densityMap;
   const unknown = d.charts.common.unknown;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const near = useNearViewport(canvasRef);
+  const reduceMotion = useReducedMotion();
+  const animate = near && !reduceMotion;
+  const animateRef = useRef(animate);
+  const animationRef = useRef<{ start: () => void; stop: () => void } | null>(null);
   const [logScale, setLogScale] = useState(true);
   const [sizeRef, measured] = useFigureWidth<HTMLDivElement>();
   const scale = useCanvasScale();
   const side = Math.min(MAX_SIDE, measured);
   const width = Math.round(side * scale);
   const height = width;
+
+  useEffect(() => {
+    animateRef.current = animate;
+  }, [animate]);
 
   // Central meridian and centre track BBOX — a conic left pointed at its old meridian would put
   // India far off-axis and hand it that distortion. Standard parallels sit at a sixth and five
@@ -284,12 +294,12 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
     const dots: Dot[] = [];
     const meanGapMs = REAL_MEAN_GAP_MS;
     const dotLifetimeMs = 20800;
-    let nextAt = performance.now() + expGap(meanGapMs);
-    let rafId: number;
-    let cancelled = false;
+    let nextAt = 0;
+    let rafId = 0;
+    let disposed = false;
 
     function frame(now: number) {
-      if (cancelled) return;
+      if (disposed || rafId === 0) return;
       if (canAnimate) {
         while (now >= nextAt) {
           // Deaths are still placed at each country's real global rate and cell
@@ -302,7 +312,7 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
         }
       }
       draw(now);
-      if (canAnimate) rafId = requestAnimationFrame(frame);
+      if (canAnimate && rafId !== 0) rafId = requestAnimationFrame(frame);
     }
 
     function draw(now: number) {
@@ -343,7 +353,20 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
     }
 
     draw(performance.now());
-    if (canAnimate) rafId = requestAnimationFrame(frame);
+    const controller = {
+      start() {
+        if (disposed || !canAnimate || rafId !== 0) return;
+        nextAt = performance.now() + expGap(meanGapMs);
+        rafId = requestAnimationFrame(frame);
+      },
+      stop() {
+        if (rafId === 0) return;
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      },
+    };
+    animationRef.current = controller;
+    if (animateRef.current) controller.start();
 
     // Hover: the grid cell under the pointer. A cell the grid has no row for reads as zero people
     // rather than as missing — the same treatment it already gets in the fill, where the background
@@ -387,12 +410,20 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
     canvas.addEventListener("pointermove", onPointerMove);
     canvas.addEventListener("pointerleave", hideTooltip);
     return () => {
-      cancelled = true;
-      cancelAnimationFrame(rafId);
+      disposed = true;
+      controller.stop();
+      if (animationRef.current === controller) animationRef.current = null;
       canvas.removeEventListener("pointermove", onPointerMove);
       canvas.removeEventListener("pointerleave", hideTooltip);
     };
   }, [grid, features, deathsPerYearById, logScale, projection, width, height, t, unknown]);
+
+  useEffect(() => {
+    const animation = animationRef.current;
+    if (!animation) return;
+    if (animate) animation.start();
+    else animation.stop();
+  }, [animate]);
 
   return (
     <section className="chart-panel wide">

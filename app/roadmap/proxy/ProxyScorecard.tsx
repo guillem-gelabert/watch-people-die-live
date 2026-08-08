@@ -2,10 +2,8 @@
 
 import { useMemo } from "react";
 import * as d3 from "d3";
-import { useSkin } from "../SkinContext";
 import { useDict } from "../I18nContext";
 import { fill, plural } from "@/lib/i18n/fill";
-import { proxyColors } from "../palette";
 import { proxyDefs } from "./proxyDefs";
 import { useProxyGuess } from "./ProxyGuessContext";
 import { proxyAgreement, scoreGuess } from "./proxyScores";
@@ -51,10 +49,9 @@ export default function ProxyScorecard({
   features,
   neighborsByM49,
 }: ProxyScorecardProps) {
-  const { sky, skin } = useSkin();
   const d = useDict();
   const { guess } = useProxyGuess();
-  const colors = useMemo(() => proxyColors(sky), [sky]);
+  const colors = useMemo(() => [0, 1, 2, 3, 4].map((index) => `var(--proxy-color-${index})`), []);
   const s = d.proxy.scorecard;
 
   const scores = useMemo(
@@ -78,7 +75,7 @@ export default function ProxyScorecard({
       <p className="chart-copy">{s.intro}</p>
 
       {answered ? (
-        <div className="scorecard-verdict" style={{ background: skin.tile }}>
+        <div className="scorecard-verdict" style={{ background: "var(--tile)" }}>
           <p className="scorecard-score">
             <strong className="scorecard-score-value">{verdict.exact}</strong>
             <span className="scorecard-score-label">
@@ -86,7 +83,7 @@ export default function ProxyScorecard({
             </span>
           </p>
           <div className="scorecard-verdict-copy">
-            <p className="scorecard-verdict-line" style={{ color: skin.ink }}>
+            <p className="scorecard-verdict-line" style={{ color: "var(--ink)" }}>
               {verdictLine(d, verdict.exact, verdict.rows.length, verdict.accuracy)}
             </p>
             <p className="scorecard-verdict-note">
@@ -110,7 +107,7 @@ export default function ProxyScorecard({
           return (
             <li className="scorecard-row" key={row.index}>
               <span className="scorecard-rank">{row.truthRank}</span>
-              <span className="scorecard-name" style={{ color: skin.ink }}>
+              <span className="scorecard-name" style={{ color: "var(--ink)" }}>
                 {def?.title}
               </span>
               <span className="scorecard-track">

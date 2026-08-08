@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import { fmtPlainPct, pearson, strength } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
@@ -14,8 +14,6 @@ import {
   percentGridValues,
 } from "./chartFrame";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
-import { useSkin } from "../SkinContext";
-import { proxyMarks } from "../palette";
 import partidoLatitudeData from "../../../data/argentina-partido-latitudes.json";
 import { useDict } from "../I18nContext";
 import type {
@@ -73,15 +71,13 @@ export default function LatitudeScatter({
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
   const HEIGHT = figureHeight(WIDTH, SHAPE);
-  const { sky, skin } = useSkin();
   const [showCountries, setShowCountries] = useState(true);
   const [showRegions, setShowRegions] = useState(true);
 
   // Two series, in this proxy's own colour: latitude is proxy 3, and every figure that argues
   // about latitude wears the same hue.
-  const cols = useMemo(() => proxyMarks(PROXY.latitude, 2, sky), [sky]);
-  const countryColor = cols[0] as string;
-  const regionColor = cols[1] as string;
+  const countryColor = `var(--proxy-mark-${PROXY.latitude}-0)`;
+  const regionColor = `var(--proxy-mark-${PROXY.latitude}-1)`;
 
   useEffect(() => {
     if (!unified || !features || !svgRef.current) return;
@@ -256,7 +252,6 @@ export default function LatitudeScatter({
     showRegions,
     countryColor,
     regionColor,
-    skin,
     WIDTH,
     HEIGHT,
   ]);

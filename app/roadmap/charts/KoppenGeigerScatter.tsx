@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import {
   KG_FAMILY_KEYS,
@@ -10,7 +10,6 @@ import {
   strength,
 } from "../chartHelpers";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
-import { useSkin } from "../SkinContext";
 import { showTooltip, hideTooltip } from "../tooltip";
 import SeriesChips from "./SeriesChips";
 import {
@@ -23,7 +22,6 @@ import {
   percentGridValues,
   quantileByRank,
 } from "./chartFrame";
-import { proxyMarks } from "../palette";
 import { useDict } from "../I18nContext";
 import type {
   CountryFeature,
@@ -69,7 +67,6 @@ export default function KoppenGeigerScatter({
   regions,
 }: KoppenGeigerScatterProps) {
   const d = useDict();
-  const { sky } = useSkin();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
   const HEIGHT = figureHeight(WIDTH, SHAPE);
@@ -79,10 +76,9 @@ export default function KoppenGeigerScatter({
   // Climate is proxy 2, so three colours from its own split-complementary. Colour now encodes the
   // *layer* — countries, regions, mean — not the family: the families are already named along the
   // axis, and spending five hues on them left nothing to separate the two layers with.
-  const pal = useMemo(() => proxyMarks(PROXY.climate, 3, sky), [sky]);
-  const countryColor = pal[0] as string;
-  const regionColor = pal[1] as string;
-  const meanColor = pal[2] as string;
+  const countryColor = `var(--proxy-mark-${PROXY.climate}-0)`;
+  const regionColor = `var(--proxy-mark-${PROXY.climate}-1)`;
+  const meanColor = `var(--proxy-mark-${PROXY.climate}-2)`;
 
   useEffect(() => {
     if (!unified || !proxies || !features || !svgRef.current) return;

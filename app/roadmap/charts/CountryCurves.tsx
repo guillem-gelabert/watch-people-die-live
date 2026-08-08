@@ -5,14 +5,12 @@ import * as d3 from "d3";
 import {
   MONTHS,
   COUNTRY_CURVE_PICKS,
-  curveColors,
   KG_FAMILY_KEYS,
   MAX_COMPARE_COUNTRIES,
 } from "../chartHelpers";
 import { CURVE_Y_DOMAIN, MARGINS } from "./chartFrame";
 import { kgFamilyName } from "../chartHelpers";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
-import { useSkin } from "../SkinContext";
 import { showTooltip, hideTooltip } from "../tooltip";
 import type { CountryFeature, SeasonalityData, SeasonalityProxies } from "../types";
 import { sampleHarmonicCurve, shiftHarmonicCurveHalfYear } from "@/lib/seasonal-curve";
@@ -81,11 +79,14 @@ const LAT_BINS = [
 // `seasonality.countries`). Starts on Switzerland alone; categories bulk-add measured countries
 // by climate zone, GDP bin, or latitude bin, up to the colour-pool cap.
 export default function CountryCurves({ seasonality, features, proxies }: CountryCurvesProps) {
-  const { sky } = useSkin();
   const d = useDict();
   const t = d.charts.countryCurves;
   const UNKNOWN = d.charts.common.unknown;
-  const palette = useMemo(() => curveColors(sky, MAX_COMPARE_COUNTRIES), [sky]);
+  const palette = useMemo(
+    () =>
+      Array.from({ length: MAX_COMPARE_COUNTRIES }, (_, index) => `var(--curve-color-${index})`),
+    [],
+  );
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [sizeRef, WIDTH] = useFigureWidth<SVGSVGElement>();
   const HEIGHT = figureHeight(WIDTH, SHAPE);
