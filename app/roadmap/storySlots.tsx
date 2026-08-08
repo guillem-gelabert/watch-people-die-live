@@ -33,17 +33,13 @@ import SubnationalChoroplethMap from "./charts/SubnationalChoroplethMap";
 import { PROXY } from "./charts/chartFrame";
 import { useDict } from "./I18nContext";
 import { useRoadmapData } from "./useRoadmapData";
+import { BENELUX, JAPAN, WEST_AFRICA } from "@/lib/closeup-crops";
 
 // The two crops the design uses: West Africa, where the borders are straight lines a grid can
-// almost follow, and the Low Countries, where they are not.
-const WEST_AFRICA_BBOX: [[number, number], [number, number]] = [
-  [-6, 4],
-  [6, 14],
-];
-const BENELUX_BBOX: [[number, number], [number, number]] = [
-  [-3, 43.5],
-  [16, 53],
-];
+// almost follow, and the Low Countries, where they are not. Their bounds live in
+// lib/closeup-crops.ts, which is also what the baked 10m outlines are clipped to.
+const WEST_AFRICA_BBOX = WEST_AFRICA.bbox;
+const BENELUX_BBOX = BENELUX.bbox;
 
 type SlotsBySection = Record<string, Record<string, ReactNode>>;
 
@@ -58,6 +54,7 @@ export function useStorySlots(): SlotsBySection {
   const d = useDict();
   const {
     features,
+    closeupOutlines,
     neighborsByM49,
     seasonality,
     unified,
@@ -105,6 +102,7 @@ export function useStorySlots(): SlotsBySection {
           <div className="chart-grid density-cluster" aria-label={d.panels.densityClusterLabel}>
             <BorderRasterCloseup
               features={features}
+              outlines={closeupOutlines?.get(WEST_AFRICA.key) ?? null}
               grid={grid}
               bbox={WEST_AFRICA_BBOX}
               title={d.panels.westAfrica}
@@ -114,6 +112,7 @@ export function useStorySlots(): SlotsBySection {
             />
             <BorderRasterCloseup
               features={features}
+              outlines={closeupOutlines?.get(BENELUX.key) ?? null}
               grid={grid}
               bbox={BENELUX_BBOX}
               title={d.panels.benelux}
@@ -132,6 +131,7 @@ export function useStorySlots(): SlotsBySection {
           <SubnationalChoroplethMap
             admin1Features={admin1Features}
             features={features}
+            coastOutlines={closeupOutlines?.get(JAPAN.key) ?? null}
             nuts2Features={nuts2Features}
             ratePer100kByKey={ratePer100kByKey}
             ratePer100kByCountry={ratePer100kByCountry}
@@ -282,6 +282,7 @@ export function useStorySlots(): SlotsBySection {
     [
       d,
       features,
+      closeupOutlines,
       neighborsByM49,
       activeSeasonality,
       unified,

@@ -46,6 +46,13 @@ interface Model {
 
 interface BorderRasterCloseupProps {
   features: CountryFeature[] | null;
+  // The line the raster is being measured against, at the resolution this zoom needs: 10m
+  // geometry clipped to this crop (see scripts/build-closeup-outlines.ts). The 110m `features`
+  // every other map uses carries 163 vertices across the whole West Africa crop, which draws the
+  // Bight of Benin as about four straight segments — so the figure's own subject, a real border
+  // the grid cannot follow, was being argued against a border that was itself a staircase.
+  // Optional: until the file lands, and if it never does, the 110m outlines still draw.
+  outlines?: CountryFeature[] | null;
   grid: DensityGrid | null;
   bbox: Bbox;
   zoom?: number;
@@ -115,6 +122,7 @@ const BORDER = "#f6c58f";
 // (log scale), matching the flat DensityMap chart above it.
 export default function BorderRasterCloseup({
   features,
+  outlines,
   grid,
   bbox,
   zoom = 1,
@@ -261,8 +269,10 @@ export default function BorderRasterCloseup({
     }
 
     // Draw every country's borders; the viewBox-rect clip crops the overscan (and
-    // overseas parts of multi-part countries) down to the visible panel.
-    const borders: BorderModel[] = features
+    // overseas parts of multi-part countries) down to the visible panel. The baked outlines are
+    // already clipped to this crop, so when they are present there is nothing outside the panel
+    // left to iterate — the clip below only has to finish the letterboxed margin.
+    const borders: BorderModel[] = (outlines ?? features)
       .map((f, i): BorderModel | null => {
         const d = path(f);
         if (!d) return null;
@@ -271,7 +281,18 @@ export default function BorderRasterCloseup({
       .filter((b): b is BorderModel => b !== null);
 
     return { width, height, cells, borders, nameById };
-  }, [features, grid, bbox, zoom, colorBy, neighborsByM49, countryHues, densityHue, UNKNOWN]);
+  }, [
+    features,
+    outlines,
+    grid,
+    bbox,
+    zoom,
+    colorBy,
+    neighborsByM49,
+    countryHues,
+    densityHue,
+    UNKNOWN,
+  ]);
 
   if (!model) {
     return (

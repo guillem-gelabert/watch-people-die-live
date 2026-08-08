@@ -15,6 +15,7 @@ import {
 import { useFigureWidth } from "./useFigureSize";
 import { useDict } from "../I18nContext";
 import { fill } from "@/lib/i18n/fill";
+import { JAPAN } from "@/lib/closeup-crops";
 import type {
   Admin1Feature,
   CountryFeature,
@@ -29,6 +30,11 @@ interface SubnationalChoroplethMapProps {
   // nothing but cells the sea and an unmapped region are the same dark plate — the coast is what
   // says which of the two the reader is looking at.
   features: CountryFeature[] | null;
+  // The same coastline at the resolution this crop needs. Japan in the 110m outlines is 132
+  // vertices for the whole archipelago — Kyushu and Shikoku come out as lumps and the Inland Sea
+  // between them closes up, which on a map of Japanese prefectures is the wrong shape entirely.
+  // The baked crop (scripts/build-closeup-outlines.ts) is 10m. Optional; falls back to `features`.
+  coastOutlines?: CountryFeature[] | null;
   nuts2Features: Nuts2Feature[] | null;
   ratePer100kByKey: RatePer100kByKey | null;
   ratePer100kByCountry: RatePer100kByCountry | null;
@@ -77,10 +83,8 @@ const RAMP = Array.from({ length: RAMP_STEPS }, (_, k) => {
 
 // Japan, Okinawa to Hokkaido. The story's own lead example is Akita against Tokyo, and Japan
 // reports every prefecture — so the country that makes the argument is the country on screen.
-const BBOX: Bbox = [
-  [127, 29],
-  [147, 46],
-];
+// Defined in lib/closeup-crops.ts because the baked 10m coastline is clipped to exactly this box.
+const BBOX: Bbox = JAPAN.bbox;
 
 // Step 5: a static, fully-vector (SVG) world choropleth of first-level regions colored by their
 // real crude death rate. Two geometry layers — Eurostat NUTS-2 across Europe, Natural Earth
@@ -90,6 +94,7 @@ const BBOX: Bbox = [
 export default function SubnationalChoroplethMap({
   admin1Features,
   features,
+  coastOutlines,
   nuts2Features,
   ratePer100kByKey,
   ratePer100kByCountry,
@@ -273,7 +278,8 @@ export default function SubnationalChoroplethMap({
     // The coastline, over the cells: country outlines rather than region ones, so the line the reader
     // sees is the land/sea edge and not a mesh of internal borders. Drawn inside the clipped content
     // group so it stops at the panel, and transparent to the pointer so the cells keep their hover.
-    if (features) {
+    const coast = coastOutlines ?? features;
+    if (coast) {
       content
         .append("g")
         .attr("class", "map-coast")
@@ -283,7 +289,7 @@ export default function SubnationalChoroplethMap({
         .attr("stroke-linejoin", "round")
         .style("pointer-events", "none")
         .selectAll("path")
-        .data(features)
+        .data(coast)
         .join("path")
         .attr("d", (f) => path(f) ?? "");
     }
@@ -321,7 +327,16 @@ export default function SubnationalChoroplethMap({
       .attr("class", "map-graticule")
       .attr("fill", "none")
       .attr("stroke-width", GRATICULE_WIDTH);
-  }, [drawn, features, ratePer100kByKey, ratePer100kByCountry, domain, width, height]);
+  }, [
+    drawn,
+    features,
+    coastOutlines,
+    ratePer100kByKey,
+    ratePer100kByCountry,
+    domain,
+    width,
+    height,
+  ]);
 
   const loading = !drawn || !ratePer100kByKey;
 

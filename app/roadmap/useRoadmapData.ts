@@ -8,6 +8,8 @@ import type { AppliedSeasonalityFallbacks, ClimateFallbackModel } from "@/lib/sp
 import type {
   Admin1Feature,
   Admin1Properties,
+  CloseupOutlineFeature,
+  CloseupOutlinesByCrop,
   ConflictsPayload,
   CountryFeature,
   DensityGrid,
@@ -33,6 +35,9 @@ type GridStatus = "loading" | "ready" | "error";
 interface RoadmapState {
   status: Status;
   features: CountryFeature[] | null;
+  // 10m outlines clipped to the three regional crops, keyed by crop (lib/closeup-crops.ts).
+  // The close-ups zoom well past what `features` (110m) can carry; see build-closeup-outlines.ts.
+  closeupOutlines: CloseupOutlinesByCrop | null;
   neighborsByM49: NeighborsByM49 | null; // shared-border adjacency, for the step-5 neighbour scatter
   seasonality: SeasonalityData | null;
   unified: SeasonalityData | null;
@@ -88,6 +93,7 @@ export function useRoadmapData(): RoadmapState {
     grid: null,
     gridStatus: "loading", // "loading" | "ready" | "error"
     deathsPerYearById: null, // Map<m49, number>, for the step-2 centroid chart
+    closeupOutlines: null,
     admin1Features: null,
     nuts2Features: null,
     subnational: null,
@@ -179,6 +185,25 @@ export function useRoadmapData(): RoadmapState {
         setState((s) => ({ ...s, deathsPerYearById }));
       })
       .catch((err) => console.error("Could not load rate grid", err));
+
+    // 10m coastlines and borders for the three regional close-ups, baked offline and clipped to
+    // their crops (scripts/build-closeup-outlines.ts). Its own chain, and optional: if it never
+    // arrives the close-ups fall back to the 110m outlines every other map uses, which is coarse
+    // at that zoom but is still a map.
+    d3.json<GeoJSON.FeatureCollection>("/data/closeup-outlines.json")
+      .then((collection) => {
+        if (cancelled || !collection?.features) return;
+        const byCrop: CloseupOutlinesByCrop = new Map();
+        for (const feature of collection.features as CloseupOutlineFeature[]) {
+          const crop = feature.properties?.crop;
+          if (!crop) continue;
+          const bucket = byCrop.get(crop);
+          if (bucket) bucket.push(feature);
+          else byCrop.set(crop, [feature]);
+        }
+        setState((s) => ({ ...s, closeupOutlines: byCrop }));
+      })
+      .catch((err) => console.error("Could not load close-up outlines", err));
 
     // ACLED conflict fatalities (step 6). Served by the /api/conflicts route (not a static
     // file), refreshed ~daily. Optional — the step degrades to no map if it's empty/unavailable.

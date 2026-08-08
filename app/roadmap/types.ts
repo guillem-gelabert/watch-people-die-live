@@ -12,6 +12,17 @@ export interface CountryProperties {
 }
 export type CountryFeature = Feature<Geometry, CountryProperties>;
 
+// --- data/closeup-outlines.json ---------------------------------------------------
+// Same shape as a CountryFeature, plus the crop it was clipped to. Built offline from
+// world-atlas countries-10m by scripts/build-closeup-outlines.ts: the regional close-ups
+// zoom far past what the 110m outlines everything else uses can carry, and 10m clipped to
+// three small windows costs a fraction of the 10m world. Grouped by `crop` on load.
+export interface CloseupOutlineProperties extends CountryProperties {
+  crop: string;
+}
+export type CloseupOutlineFeature = Feature<Geometry, CloseupOutlineProperties>;
+export type CloseupOutlinesByCrop = Map<string, CloseupOutlineFeature[]>;
+
 // Shared-border adjacency (topojson-client neighbors()), keyed by M49 numeric id. Used
 // by the step-5 "amplitude vs. neighbouring countries" scatter.
 export type NeighborsByM49 = Map<number, number[]>;
