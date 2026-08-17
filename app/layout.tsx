@@ -46,16 +46,17 @@ export const metadata: Metadata = {
 // indicator; the controls that would land there pad themselves off with the --sa-* tokens in
 // globe.css.
 //
-// themeColor is only the *opening* sky, because a layout is a shared server component and cannot
-// see which section the reader is in. Safari tints its status bar and toolbar from it, so left at
-// this value it frames every later section in two black bars — StoryClient moves it with the sky
-// once the story mounts. Declaring it here is still what stops the chrome flashing a different
-// colour on load, which is the one moment the client cannot cover.
+// Deliberately no themeColor. Declaring one is what makes Safari fill the status bar strip with a
+// flat colour instead of letting the page run under it — which is the whole of the "blocked safe
+// areas": not the page painting the strip, but the browser painting over it. Without it Safari
+// does what it does on any ordinary site, scrimming the content under the status bar rather than
+// hiding it, and the story reaches the top of the screen. The trade is that the chrome no longer
+// has a colour to wear before the first paint; the story opens on a near-black sky, which is close
+// enough to what Safari picks on its own that there is nothing to see.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#000011",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

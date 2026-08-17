@@ -1844,10 +1844,10 @@ footer {
 
   /* Edge to edge, under the notch and the home indicator with it. Holding the sky back to the safe
      areas was an attempt to stop those strips reading as blocks of the wrong colour, and it was the
-     wrong lever: Safari paints its own status bar and toolbar over them and tints both from
-     theme-color, so the block a reader sees is the browser's, not the page's. That is fixed where
-     it lives — StoryClient keeps theme-color on the section's sky — and the page goes back to one
-     continuous colour, which is what it should have been either way. */
+     wrong lever: the block was never the page. Safari fills the status bar strip itself whenever a
+     document declares theme-color, so the fix was to stop declaring one (see app/layout.tsx) and
+     let the page run under the status bar the way it does on any ordinary site. Which leaves the
+     sky as one continuous colour, which is what it should have been either way. */
   background-color: var(--sky, #001);
   transition: background-color 0.55s ease;
 }
