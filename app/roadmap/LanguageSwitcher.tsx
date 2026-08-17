@@ -4,12 +4,12 @@ import Link from "next/link";
 import { LOCALES, LOCALE_NAMES, LOCALE_SHORT, localeHref } from "@/lib/i18n/config";
 import { useI18n } from "./I18nContext";
 
-// Three links, always visible in the top corner. Links rather than a select: the locale is part
-// of the URL, so each language is a real address a reader can bookmark or send to someone, and a
-// crawler following them is exactly what the hreflang set in the page's metadata promises.
+// Three links in the corner of the opening screen, scrolling away with it. Links rather than a
+// select: the locale is part of the URL, so each language is a real address a reader can bookmark
+// or send to someone, and a crawler following them is exactly what the hreflang set in the page's
+// metadata promises.
 //
-// `scroll={false}` because switching language mid-story should not throw the reader back to the
-// globe — the section they were reading is the same section in the other file.
+// `scroll={false}` so switching does not move the reader — they stay where the switch was.
 //
 // `prefetch={false}` because these three sit in the corner of the opening screen, so Next was
 // prefetching all of them the moment the globe appeared. Each one is a full RSC payload of the

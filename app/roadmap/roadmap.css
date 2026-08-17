@@ -318,6 +318,20 @@ body {
   font-size: 1.05rem;
   line-height: 1.7;
   color: var(--body);
+
+  /* Justified, and therefore hyphenated: a 288px column of Baskerville set flush both ways tears
+     open rivers on any line holding a long word, and hyphenation is what closes them. The two
+     belong together — neither is set without the other. Which dictionary the browser breaks by
+     comes from the story's own `lang` (StoryClient), so a German compound breaks by German rules
+     rather than English ones.
+
+     The limits are the conservative end of what a narrow measure can take: nothing under 7
+     characters is broken at all, and never with fewer than 3 letters either side of the hyphen —
+     enough to keep the fragments readable and the right edge off a ladder of hyphens. A browser
+     that does not know the property falls back to its own defaults, which are close. */
+  text-align: justify;
+  hyphens: auto;
+  hyphenate-limit-chars: 7 3 3;
 }
 
 .source {
@@ -1811,8 +1825,8 @@ footer {
 
 /* ---------------------------------------------------------------------------
    Story shell — one vertical scroll: a sticky globe stage that exits as the
-   reader moves, then the sections. The sky is set inline by StoryClient and
-   cross-faded here rather than interpolated per frame.
+   reader moves, then the sections. The sky comes from --sky, resolved by
+   StoryClient, and is cross-faded here rather than interpolated per frame.
    --------------------------------------------------------------------------- */
 
 .story {
@@ -1827,6 +1841,27 @@ footer {
   --story-gutter: clamp(22px, 5.6vw, 34px);
 
   min-height: 100vh;
+}
+
+/* The sky, painted as its own layer inset by the safe areas rather than as the container's
+   background. The page is `viewportFit: cover`, so a background on .story reaches under the notch
+   and the home indicator, and a peach section put solid peach bands either side of the screen,
+   against black browser chrome. Held back to the insets, no section colour reaches them: the globe
+   shows through on the opening screen, and below it the night ground (body, #001 — the same colour
+   as themeColor) does. The flow still scrolls past behind them, as it does on any full-bleed page.
+
+   Fixed rather than scrolling because the sky is one flat colour, which also means the iOS
+   rubber-band past either end of the scroll reveals that same ground instead of a torn edge.
+   z-index -1 puts it above the page canvas and below every child of .story — the stage is 3, the
+   flow 4, the rail 6, the language switch 7 — and .story sets no z-index of its own, so it opens
+   no stacking context to trap it in. */
+.story::before {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: var(--sa-top) var(--sa-right) var(--sa-bottom) var(--sa-left);
+  background-color: var(--sky, #001);
+  pointer-events: none;
   transition: background-color 0.55s ease;
 }
 
@@ -1864,7 +1899,7 @@ footer {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  padding: 0 22px calc(env(safe-area-inset-bottom, 0px) + 30px);
+  padding: 0 22px calc(var(--sa-bottom) + 30px);
   text-align: center;
   pointer-events: auto;
   touch-action: pan-y;
@@ -1942,24 +1977,26 @@ footer {
 }
 
 /* ---------------------------------------------------------------------------
-   Language switch. Fixed in the opposite corner from the way back to the globe,
-   because it is the one control that has to be reachable from the first screen
-   and from the last. Three links, not a select: each language is a real URL.
+   Language switch, in the opening screen's top corner opposite the way back to
+   the globe. Three links, not a select: each language is a real URL.
    --------------------------------------------------------------------------- */
 
+/* Absolute, not fixed: the choice of language belongs to the opening screen, so it scrolls away
+   with it rather than riding over the whole story. The reader who wants it back has the way to it
+   already — #story-return puts them at the top, where this is. */
 #story-lang {
-  position: fixed;
+  position: absolute;
   z-index: 7;
-  top: max(12px, env(safe-area-inset-top));
-  left: max(14px, env(safe-area-inset-left));
+  top: max(12px, var(--sa-top));
+  left: max(14px, var(--sa-left));
   display: flex;
   gap: 2px;
   padding: 3px;
   border-radius: 999px;
 
-  /* Its own translucent chip rather than the section skin: it sits over the night sky at the
-     top of the page and over whatever colour the reader has scrolled into further down, and it
-     has to stay legible on both without repainting on every sky change. */
+  /* Its own translucent chip rather than the section skin: it sits over the night sky, and has to
+     stay legible against whichever half of the globe is behind it without repainting on every sky
+     change. */
   background: rgb(20 16 26 / 34%);
   backdrop-filter: blur(7px);
 }
@@ -1991,7 +2028,11 @@ footer {
    — as the design has it — once the window is too narrow for anything else. */
 #story-return {
   position: absolute;
-  top: 14px;
+
+  /* Clear of the notch: the rail it hangs from is stuck to the very top of the viewport, and the
+     control is set in the section's own ink — dark on a light section, and so invisible if it
+     lands in the empty band above the sky. */
+  top: calc(var(--sa-top) + 14px);
   right: max(16px, calc(50vw - var(--story-column-max) / 2 - 78px));
   display: flex;
   gap: 9px;
@@ -2502,7 +2543,10 @@ footer {
   min-height: 58svh;
   flex-direction: column;
   justify-content: center;
-  padding: 34px 0 40px;
+
+  /* The 40px is the design's; the inset is on top of it, so the pull control keeps its full gap
+     above the home indicator rather than ending a few pixels off it. */
+  padding: 34px 0 calc(var(--sa-bottom) + 40px);
   text-align: center;
 }
 
@@ -2967,7 +3011,10 @@ footer {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 52px 20px 26px;
+
+  /* The scrim behind it deliberately covers the whole screen — a modal is meant to — but the
+     dialog's own contents still keep out of the notch and the home indicator. */
+  padding: calc(var(--sa-top) + 52px) 20px calc(var(--sa-bottom) + 26px);
   animation:
     proxy-modal-fade 0.34s ease both,
     proxy-modal-in 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
