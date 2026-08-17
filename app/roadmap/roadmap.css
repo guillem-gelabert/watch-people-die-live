@@ -1977,13 +1977,15 @@ footer {
 }
 
 /* ---------------------------------------------------------------------------
-   Language switch. Fixed in the opposite corner from the way back to the globe,
-   because it is the one control that has to be reachable from the first screen
-   and from the last. Three links, not a select: each language is a real URL.
+   Language switch, in the opening screen's top corner opposite the way back to
+   the globe. Three links, not a select: each language is a real URL.
    --------------------------------------------------------------------------- */
 
+/* Absolute, not fixed: the choice of language belongs to the opening screen, so it scrolls away
+   with it rather than riding over the whole story. The reader who wants it back has the way to it
+   already — #story-return puts them at the top, where this is. */
 #story-lang {
-  position: fixed;
+  position: absolute;
   z-index: 7;
   top: max(12px, var(--sa-top));
   left: max(14px, var(--sa-left));
@@ -1992,9 +1994,9 @@ footer {
   padding: 3px;
   border-radius: 999px;
 
-  /* Its own translucent chip rather than the section skin: it sits over the night sky at the
-     top of the page and over whatever colour the reader has scrolled into further down, and it
-     has to stay legible on both without repainting on every sky change. */
+  /* Its own translucent chip rather than the section skin: it sits over the night sky, and has to
+     stay legible against whichever half of the globe is behind it without repainting on every sky
+     change. */
   background: rgb(20 16 26 / 34%);
   backdrop-filter: blur(7px);
 }
