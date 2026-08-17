@@ -163,6 +163,26 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     return { sky, skin: skinFromSky(sky) };
   }, [activeSky]);
 
+  // Safari tints its status bar and its toolbar from theme-color, and the root layout can only
+  // declare one — it is a shared server component that cannot see which section the reader is in.
+  // Left at the opening night sky it framed every later section in two black bars, which is the
+  // "blocked safe areas" a reader actually sees: the page runs edge to edge underneath, but the
+  // browser paints over both ends in a colour that stopped being right after the first screen.
+  // Moving it with the sky is what makes the chrome disappear into the page.
+  useEffect(() => {
+    const metas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]');
+    if (metas.length === 0) {
+      const meta = document.createElement("meta");
+      meta.name = "theme-color";
+      meta.content = activeSky;
+      document.head.appendChild(meta);
+      return;
+    }
+    // Every one of them: a page that declares theme-color per colour-scheme has more than one, and
+    // updating only the first would leave the other to win in whichever scheme it matches.
+    for (const meta of metas) meta.content = activeSky;
+  }, [activeSky]);
+
   // The sections are built once and reused across sky changes. They do not depend on the active sky
   // — each only declares its own, and the palette reaches the figures through SkinContext and CSS
   // variables — so rebuilding this tree ten times a page was rebuilding every section's markdown
@@ -205,9 +225,9 @@ export default function StoryClient({ markdown }: StoryClientProps) {
   );
 
   const body = (
-    // No background here: --sky (from skinToCssVars) is the same colour, and .story::before paints
-    // it inset by the safe areas. A background on the container itself reaches under the notch and
-    // the home indicator, which is how a peach section ended up with peach bands top and bottom.
+    // No background here: --sky (from skinToCssVars) carries the colour and roadmap.css paints
+    // .story from it, so the sky is one declaration rather than an inline style competing with a
+    // stylesheet.
     <div
       className="story"
       // The prose is justified, so it is hyphenated, and a browser only hyphenates text whose

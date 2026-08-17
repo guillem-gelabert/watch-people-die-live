@@ -1841,27 +1841,14 @@ footer {
   --story-gutter: clamp(22px, 5.6vw, 34px);
 
   min-height: 100vh;
-}
 
-/* The sky, painted as its own layer inset by the safe areas rather than as the container's
-   background. The page is `viewportFit: cover`, so a background on .story reaches under the notch
-   and the home indicator, and a peach section put solid peach bands either side of the screen,
-   against black browser chrome. Held back to the insets, no section colour reaches them: the globe
-   shows through on the opening screen, and below it the night ground (body, #001 — the same colour
-   as themeColor) does. The flow still scrolls past behind them, as it does on any full-bleed page.
-
-   Fixed rather than scrolling because the sky is one flat colour, which also means the iOS
-   rubber-band past either end of the scroll reveals that same ground instead of a torn edge.
-   z-index -1 puts it above the page canvas and below every child of .story — the stage is 3, the
-   flow 4, the rail 6, the language switch 7 — and .story sets no z-index of its own, so it opens
-   no stacking context to trap it in. */
-.story::before {
-  content: "";
-  position: fixed;
-  z-index: -1;
-  inset: var(--sa-top) var(--sa-right) var(--sa-bottom) var(--sa-left);
+  /* Edge to edge, under the notch and the home indicator with it. Holding the sky back to the safe
+     areas was an attempt to stop those strips reading as blocks of the wrong colour, and it was the
+     wrong lever: Safari paints its own status bar and toolbar over them and tints both from
+     theme-color, so the block a reader sees is the browser's, not the page's. That is fixed where
+     it lives — StoryClient keeps theme-color on the section's sky — and the page goes back to one
+     continuous colour, which is what it should have been either way. */
   background-color: var(--sky, #001);
-  pointer-events: none;
   transition: background-color 0.55s ease;
 }
 
