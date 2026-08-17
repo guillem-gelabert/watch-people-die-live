@@ -42,12 +42,15 @@ export const metadata: Metadata = {
   applicationName: "Watch People Die Live",
 };
 
-// `viewportFit: cover` lets the globe stage fill the screen edge to edge, under the notch and the
-// home indicator. No section colour follows it there: the story's sky stops at the insets
-// (.story::before) and every control pads itself off them with the --sa-* tokens in globe.css, so
-// the bands show the night ground behind the page rather than whatever the reader has scrolled
-// into. themeColor is that same ground, so the browser chrome matches it and does not flash a
-// different colour on load.
+// `viewportFit: cover` lets the page fill the screen edge to edge, under the notch and the home
+// indicator; the controls that would land there pad themselves off with the --sa-* tokens in
+// globe.css.
+//
+// themeColor is only the *opening* sky, because a layout is a shared server component and cannot
+// see which section the reader is in. Safari tints its status bar and toolbar from it, so left at
+// this value it frames every later section in two black bars — StoryClient moves it with the sky
+// once the story mounts. Declaring it here is still what stops the chrome flashing a different
+// colour on load, which is the one moment the client cannot cover.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
