@@ -42,9 +42,12 @@ export const metadata: Metadata = {
   applicationName: "Watch People Die Live",
 };
 
-// `viewportFit: cover` lets the sticky stage and the pull-up bar reach under the notch and
-// the home indicator; everything inside them pads with env(safe-area-inset-*). themeColor
-// matches the opening sky so the browser chrome does not flash a different colour on load.
+// `viewportFit: cover` lets the globe stage fill the screen edge to edge, under the notch and the
+// home indicator. No section colour follows it there: the story's sky stops at the insets
+// (.story::before) and every control pads itself off them with the --sa-* tokens in globe.css, so
+// the bands show the night ground behind the page rather than whatever the reader has scrolled
+// into. themeColor is that same ground, so the browser chrome matches it and does not flash a
+// different colour on load.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,

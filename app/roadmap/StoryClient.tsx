@@ -205,10 +205,12 @@ export default function StoryClient({ markdown }: StoryClientProps) {
   );
 
   const body = (
+    // No background here: --sky (from skinToCssVars) is the same colour, and .story::before paints
+    // it inset by the safe areas. A background on the container itself reaches under the notch and
+    // the home indicator, which is how a peach section ended up with peach bands top and bottom.
     <div
       className="story"
       style={{
-        backgroundColor: activeSky,
         colorScheme: active.skin.dark ? "dark" : "light",
         ...(skinToCssVars(active.sky, active.skin) as CSSProperties),
       }}
