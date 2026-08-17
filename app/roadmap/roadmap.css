@@ -318,6 +318,20 @@ body {
   font-size: 1.05rem;
   line-height: 1.7;
   color: var(--body);
+
+  /* Justified, and therefore hyphenated: a 288px column of Baskerville set flush both ways tears
+     open rivers on any line holding a long word, and hyphenation is what closes them. The two
+     belong together — neither is set without the other. Which dictionary the browser breaks by
+     comes from the story's own `lang` (StoryClient), so a German compound breaks by German rules
+     rather than English ones.
+
+     The limits are the conservative end of what a narrow measure can take: nothing under 7
+     characters is broken at all, and never with fewer than 3 letters either side of the hyphen —
+     enough to keep the fragments readable and the right edge off a ladder of hyphens. A browser
+     that does not know the property falls back to its own defaults, which are close. */
+  text-align: justify;
+  hyphens: auto;
+  hyphenate-limit-chars: 7 3 3;
 }
 
 .source {

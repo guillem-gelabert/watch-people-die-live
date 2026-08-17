@@ -8,7 +8,7 @@ import MiniEarth from "./MiniEarth";
 import Section from "./Section";
 import { parseSky, skinFromSky, skinToCssVars } from "./palette";
 import { SkinProvider } from "./SkinContext";
-import { useDict } from "./I18nContext";
+import { useI18n } from "./I18nContext";
 import LanguageSwitcher from "./LanguageSwitcher";
 import RoadmapMarkdown, { roadmapSections, type SectionHeadingKind } from "./roadmapMarkdown";
 import { ProxyGuessProvider } from "./proxy/ProxyGuessContext";
@@ -43,7 +43,7 @@ const SHORT_CHAPTER = 3;
 // dictionary through the context, and a provider rendered *by* this component would be below
 // the hook that needs it — which is exactly how every chart panel briefly stayed in English.
 export default function StoryClient({ markdown }: StoryClientProps) {
-  const dictionary = useDict();
+  const { locale, d: dictionary } = useI18n();
   const sections = useMemo(() => roadmapSections(markdown), [markdown]);
   const slotsByKey = useStorySlots();
   const [skyIndex, setSkyIndex] = useState(0);
@@ -210,6 +210,12 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     // the home indicator, which is how a peach section ended up with peach bands top and bottom.
     <div
       className="story"
+      // The prose is justified, so it is hyphenated, and a browser only hyphenates text whose
+      // language it knows. I18nProvider does set document.documentElement.lang, but from an
+      // effect — too late for the first paint, which would set every language with English
+      // hyphenation rules and then reflow. Declaring it on the story itself puts the right
+      // language in the server-rendered markup, where the first line break is decided.
+      lang={locale}
       style={{
         colorScheme: active.skin.dark ? "dark" : "light",
         ...(skinToCssVars(active.sky, active.skin) as CSSProperties),
