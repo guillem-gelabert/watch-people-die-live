@@ -7,7 +7,7 @@ import { setHeroActive } from "../globe/stageState";
 import MiniEarth from "./MiniEarth";
 import Section from "./Section";
 import { chartPaletteToCssVars, parseSky, skinFromSky, skinToCssVars } from "./palette";
-import { useDict } from "./I18nContext";
+import { useI18n } from "./I18nContext";
 import LanguageSwitcher from "./LanguageSwitcher";
 import RoadmapMarkdown, { roadmapSections, type SectionHeadingKind } from "./roadmapMarkdown";
 import { ProxyGuessProvider } from "./proxy/ProxyGuessContext";
