@@ -113,7 +113,15 @@ function GlobeStage({ phaseRef }: GlobeStageProps) {
 
   return (
     <>
-      <div id="loader" aria-hidden="true" className={loaded ? "hidden" : ""}>
+      {/* Hidden once the first frame is up, and also whenever the stage is off screen. The cover
+          exists to hide an unpainted canvas, and an unpainted canvas nobody can see needs no cover —
+          but the reason it has to say so explicitly is that `frameloop` below is "never" while the
+          stage is away, so no frame renders, `onFirstFrame` never fires and `loaded` never flips. A
+          reader who reloads mid-story would otherwise get this sitting over the prose for good.
+
+          The trade: scrolling back up to a globe that never finished shows the cover again for the
+          moment before its first frame. That is the honest state — it really is still loading. */}
+      <div id="loader" aria-hidden="true" className={loaded || !globeNear ? "hidden" : ""}>
         <div className="spinner" />
       </div>
 

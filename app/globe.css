@@ -58,10 +58,18 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.5s ease;
+
+  /* `display` is transitioned discretely so the element is taken out of the document at the end of
+     the fade rather than lingering at `opacity: 0`. An invisible cover is still a cover: it stays in
+     the layer tree over the whole story, it keeps its background, and anything that walks the page's
+     fixed elements still finds it sitting there. Out of the layout, it is actually gone. */
+  transition:
+    opacity 0.5s ease,
+    display 0.5s allow-discrete;
 }
 
 #loader.hidden {
+  display: none;
   opacity: 0;
   pointer-events: none;
 }
