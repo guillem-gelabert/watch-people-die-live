@@ -20,6 +20,7 @@ export interface Skin {
   tileMuted: string;
   tileOpen: string;
   ink: string;
+  inkTile: string;
   body: string;
   mute: string;
   rule: string;
@@ -167,6 +168,7 @@ export function skinFromSky(sky: Rgb): Skin {
       tileMuted: mix(sky, WHITE, 0.09),
       tileOpen: mix(sky, WHITE, 0.26),
       ink: "#ffffff",
+      inkTile: mix(sky, INK, 0.55),
       body: mix(sky, WHITE, 0.88),
       mute: mix(sky, WHITE, 0.72),
       rule: "rgba(255,255,255,.26)",
@@ -180,6 +182,7 @@ export function skinFromSky(sky: Rgb): Skin {
     tileMuted: mix(sky, WHITE, 0.4),
     tileOpen: mix(sky, WHITE, 0.84),
     ink: "#1d1822",
+    inkTile: "#1d1822",
     body: mix(sky, INK, 0.94),
     mute: mix(sky, INK, m),
     rule: "rgba(29,24,34,.24)",
@@ -368,6 +371,7 @@ export function skinToCssVars(sky: Rgb, skin: Skin): Record<string, string> {
     "--sky": rgbCss(sky),
     "--paper": skin.paper,
     "--ink": skin.ink,
+    "--ink-tile": skin.inkTile,
     "--body": skin.body,
     "--mute": skin.mute,
     "--tile": skin.tile,

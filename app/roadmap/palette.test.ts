@@ -13,6 +13,7 @@ import {
   relativeLuminance,
   schemes,
   skinFromSky,
+  skinToCssVars,
   type Rgb,
 } from "./palette";
 import { curveColors } from "./chartHelpers";
@@ -88,6 +89,24 @@ describe("skinFromSky", () => {
     const skin = skinFromSky(parseSky("#bcd8ee"));
     expect(lumOf(skin.tileMuted)).toBeLessThan(lumOf(skin.tile));
     expect(lumOf(skin.tile)).toBeLessThan(lumOf(skin.tileOpen));
+  });
+
+  it("keeps inkTile a guaranteed-dark well on dark skies and equal to ink on light ones", () => {
+    for (const hex of ["#2b1c3a", "#000000"]) {
+      const skin = skinFromSky(parseSky(hex));
+      expect(lumOf(skin.inkTile), `inkTile on ${hex}`).toBeLessThan(lumOf(skin.paper));
+    }
+
+    const light = skinFromSky(parseSky("#bcd8ee"));
+    expect(light.inkTile).toBe(light.ink);
+  });
+});
+
+describe("skinToCssVars", () => {
+  it("publishes inkTile as --ink-tile", () => {
+    const sky = parseSky("#2b1c3a");
+    const skin = skinFromSky(sky);
+    expect(skinToCssVars(sky, skin)["--ink-tile"]).toBe(skin.inkTile);
   });
 });
 
