@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 
+import os from "node:os";
+
 // Everything under public/ is served by Next with `cache-control: public, max-age=0`, which means
 // a conditional request per file per visit. This page asks for around twenty of them — the grids,
 // the seasonality set, the two topologies — so a reader who has the whole story in cache still
@@ -18,6 +20,23 @@ const CACHE = {
   // Texture maps of the Earth. These change when the planet does.
   texture: "public, max-age=2592000, stale-while-revalidate=31536000",
 };
+
+// `next dev` serves its own internals — everything under /_next, the HMR socket — only to hosts on
+// this list, so reading the page on a phone used to mean pinning this laptop's address here and
+// re-pinning it whenever the network handed out a new one. Read the addresses at startup instead:
+// every non-internal IPv4 this machine currently answers on, which picks up both the LAN address
+// and the 100.x Tailscale one, plus the two name forms a phone is likely to use. Wildcards match
+// per DNS label, and `*.ts.net` would only cover a two-label name, so the MagicDNS pattern needs
+// the recursive `**` to reach `<host>.<tailnet>.ts.net`. A new address still needs a restart, and
+// none of this is read outside `next dev`.
+const devOrigins = [
+  ...Object.values(os.networkInterfaces())
+    .flat()
+    .filter((iface) => iface?.family === "IPv4" && !iface.internal)
+    .map((iface) => iface.address),
+  "**.ts.net",
+  "*.local",
+];
 
 const nextConfig = {
   // The version of the framework serving a page is not the reader's business and not worth the
@@ -60,6 +79,7 @@ const nextConfig = {
       },
     ];
   },
+  allowedDevOrigins: devOrigins,
 };
 
 export default nextConfig;
