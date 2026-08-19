@@ -80,6 +80,12 @@ pnpm dev
 `data/density-grid.json` and `data/rate-grid.json` are committed, so no build/bake step is
 needed to run. `predev`/`prebuild` sync `data/*.json` into `public/data/` automatically.
 
+`pnpm dev:ios` does the same and then opens the page in Mobile Safari on the iOS Simulator —
+the only place the mobile layout, the page running under the status bar and touch on the
+charts behave like the real thing. It reuses a dev server already on the port if there is
+one, boots a simulator if none is running (`SIM_DEVICE` picks which), and takes an optional
+path: `pnpm dev:ios "/?lang=ca"`.
+
 ## Tooling
 
 Strict TypeScript throughout (`tsconfig.json`). ESLint checks correctness only — Prettier
