@@ -32,6 +32,16 @@ const EXIT_SCREENS = 0.95;
 // The sky belongs to whichever section owns this fraction of the viewport height. Picking a
 // point above the middle means a section claims the screen slightly before it fills it.
 const SKY_LINE = 0.42;
+// How long the sky line has to stay settled on one section before that section's palette is
+// committed. Crossing the line is cheap to detect but expensive to honour — a sky change repaints
+// the story's ink, tiles, rules and figures — so a flick that crosses four sections would otherwise
+// start four cross-fades, each interrupting the last, and the reader arrives to a colour still
+// catching up with where they stopped. Deferring the commit until the line holds still coalesces
+// the whole flick into the one change that matters: the sky of the section actually landed on.
+//
+// The scan position itself is never deferred (see skyIndexRef) — only the commit is, so the walk
+// stays in step with the scroll while the palette waits.
+const SKY_SETTLE_MS = 250;
 
 const CHAPTER_CLASS: Record<SectionHeadingKind, string> = {
   default: "story-heading",
@@ -53,7 +63,13 @@ export default function StoryClient({ markdown }: StoryClientProps) {
   const sections = useMemo(() => roadmapSections(markdown), [markdown]);
   const slotsByKey = useStorySlots();
   const [skyIndex, setSkyIndex] = useState(-1);
+  // The latest candidate, updated on every scroll: the section walk below seeds itself from this, so
+  // it has to track the scroll even while the palette commit is still waiting.
   const skyIndexRef = useRef(-1);
+  // The candidate that has actually been committed to state, and the timer waiting to commit the
+  // next one. Kept in refs because the scroll handler is built once and must not be rebuilt per sky.
+  const committedSkyRef = useRef(-1);
+  const skyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const phaseRef = useRef(0);
   const stageRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<HTMLDivElement>(null);
@@ -127,7 +143,19 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     if (atEnd) next = nodes.length - 1;
     if (next !== skyIndexRef.current) {
       skyIndexRef.current = next;
-      setSkyIndex(next);
+      if (skyTimerRef.current !== null) clearTimeout(skyTimerRef.current);
+      if (committedSkyRef.current === -1) {
+        // The first sky of the session is not a transition — there is nothing to cross-fade from,
+        // and delaying it would open the story on the wrong colour. Land it at once.
+        committedSkyRef.current = next;
+        setSkyIndex(next);
+      } else {
+        skyTimerRef.current = setTimeout(() => {
+          skyTimerRef.current = null;
+          committedSkyRef.current = skyIndexRef.current;
+          setSkyIndex(skyIndexRef.current);
+        }, SKY_SETTLE_MS);
+      }
     }
   }, []);
 
@@ -149,6 +177,7 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     return () => {
       window.removeEventListener("scroll", handler);
       window.removeEventListener("resize", handler);
+      if (skyTimerRef.current !== null) clearTimeout(skyTimerRef.current);
     };
   }, [onScroll]);
 
