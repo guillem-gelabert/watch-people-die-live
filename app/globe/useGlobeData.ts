@@ -21,9 +21,8 @@ const FLAT_SEASON: HarmonicCurve = {
   coefficients: [1, 0, 0, 0, 0, 0, 0, 0, 0],
 };
 
-// Emphasis multiplier for the ACLED conflict layer. 1.0 folds annualised conflict fatalities
-// in at face value (they already share the grid's deaths/year unit); raise it to make active
-// conflict zones stand out more than their raw share of global mortality.
+// Emphasis multiplier for the ACLED conflict layer. The server's default four-week/P10–P90
+// weekly estimate is already annualised onto real populated rate-grid cells.
 const CONFLICT_WEIGHT = 1.0;
 
 // The combined grid baked offline by notebooks/combine.ipynb: one row per populated
@@ -174,9 +173,9 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
       const baseW = new Float64Array(n);
       const conflictW = new Float64Array(n);
 
-      // Annualised conflict fatalities (from /api/conflicts) keyed by the grid cell they fall
-      // in. Re-snap with THIS grid's cellsize so the join stays correct even if the route's
-      // aggregation resolution and the grid ever drift apart.
+      // Annualised predicted conflict fatalities (from /api/conflicts), already assigned to the
+      // nearest populated same-country cell for each ACLED Admin-1 centroid. Re-snapping here is
+      // defensive against floating-point JSON representations only.
       const conflictByCell = new Map<string, number>();
       if (conflicts?.cells?.length) {
         for (const [lon, lat, f] of conflicts.cells) {
@@ -198,8 +197,8 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
         }
       });
 
-      // Conflict fatalities in cells with no population entry can't be placed (the sampler needs
-      // a real country per cell), so they're dropped — report how much, never silently.
+      // The server guarantees populated cells. Keep this readback diagnostic so a future grid
+      // rebuild cannot silently invalidate a persisted conflict snapshot.
       if (conflicts?.cells?.length) {
         const totalConflict = conflicts.cells.reduce((s, [, , f]) => s + f, 0);
         const dropped = totalConflict - foldedConflict;

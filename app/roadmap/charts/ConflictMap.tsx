@@ -25,34 +25,19 @@ const ASPECT = 0.52;
 const MIN_HEIGHT = 180;
 const MAX_HEIGHT = 320;
 
-// A square root keeps the *area* of a dot proportional to its fatalities. The scale tops out at
-// a high percentile rather than at the single worst cell: Ukraine's peak is three orders of
-// magnitude above the median, and scaled against it every other conflict would be a dot.
+// A square root keeps the *area* of an Admin-1 centroid proportional to its fatalities. The
+// scale tops out at a high percentile so one extreme region does not flatten the rest.
 const MAX_R = 6.5;
 const SCALE_QUANTILE = 0.97;
-
-// Cells below this many deaths a year are not drawn. A single fatal event anywhere in a year
-// puts a cell on the map, and there are enough of those to lay a grey wash over every populated
-// continent — which would say "conflict is everywhere" where the data says the opposite. The
-// floor is stated under the figure, because dropping data quietly is its own kind of lie.
-const FLOOR = 5;
 
 // How many clusters get a name. Past half a dozen the labels collide more than they inform.
 const LABELLED = 6;
 // A label is skipped when its box would touch one already placed.
 const LABEL_CLEARANCE = 4;
 
-// What share of the window's fatalities survive the floor, to one decimal.
-function sharePlotted(cells: ConflictsPayload["cells"]): string {
-  const all = cells.reduce((sum, c) => sum + c[2], 0);
-  if (!(all > 0)) return "0";
-  const kept = cells.reduce((sum, c) => (c[2] >= FLOOR ? sum + c[2] : sum), 0);
-  return ((kept / all) * 100).toFixed(1);
-}
-
-// Where the trailing year's conflict fatalities actually are. Every cell here fires on top of
-// its ordinary mortality, so this is the layer that puts a war into the feed without touching
-// the crude death rate underneath it.
+// The map shows the disclosed spatial precision of the source: one centroid per Admin-1 region,
+// not the locations of individual events. The globe separately uses each region's nearest
+// populated same-country rate-grid cell.
 export default function ConflictMap({ conflicts, features }: ConflictMapProps) {
   const t = useDict().charts.conflictMap;
   const ref = useRef<SVGSVGElement | null>(null);
@@ -83,30 +68,34 @@ export default function ConflictMap({ conflicts, features }: ConflictMapProps) {
         .attr("stroke-width", 0.5);
     }
 
-    const cells = (conflicts?.cells ?? []).filter((c) => c[2] >= FLOOR);
-    if (!cells.length) return;
+    const regions = conflicts?.regions ?? [];
+    if (!regions.length) return;
 
-    const ceiling = d3.quantile(cells.map((c) => c[2]).sort(d3.ascending), SCALE_QUANTILE) ?? 1;
+    const ceiling =
+      d3.quantile(regions.map((region) => region.fatalities).sort(d3.ascending), SCALE_QUANTILE) ??
+      1;
     const r = d3.scaleSqrt().domain([0, ceiling]).range([0, MAX_R]).clamp(true);
     const ink = "var(--red)";
 
-    // Heaviest last, so a big cell is never buried under the scatter of small ones around it.
+    // Heaviest last, so a major region is never buried under nearby smaller ones.
     const dots = svg.append("g");
-    for (const [lon, lat, fatalities] of [...cells].sort((a, b) => a[2] - b[2])) {
-      const xy = projection([lon, lat]);
+    for (const region of [...regions].sort((a, b) => a.fatalities - b.fatalities)) {
+      const xy = projection([region.longitude, region.latitude]);
       if (!insideViewport(xy, width, height)) continue;
       dots
         .append("circle")
         .attr("cx", xy![0])
         .attr("cy", xy![1])
-        .attr("r", Math.max(0.5, r(fatalities)))
+        .attr("r", Math.max(0.6, r(region.fatalities)))
         .attr("fill", ink)
-        // Cells overlap where a conflict is dense, and the pile-up is the point — so they are
-        // drawn translucent and allowed to sum rather than being deduplicated away.
         .attr("fill-opacity", 0.55)
         .on("pointerenter", (event: PointerEvent) =>
           showTooltip(
-            `${Math.round(fatalities).toLocaleString()} deaths a year at this cell`,
+            fill(t.regionTooltip, {
+              region: region.admin1,
+              country: region.country,
+              n: Math.round(region.fatalities).toLocaleString(),
+            }),
             event.clientX,
             event.clientY,
           ),
@@ -114,15 +103,22 @@ export default function ConflictMap({ conflicts, features }: ConflictMapProps) {
         .on("pointerleave", hideTooltip);
     }
 
-    // Names for the handful of countries carrying the window, placed at the centroid of their
-    // own cells rather than the country's, so the label sits on the fighting.
+    // Names for the handful of countries carrying the window, placed at the fatality-weighted
+    // centroid of their reported Admin-1 regions so the label sits on the observed concentration.
     const top = (conflicts?.byCountry ?? []).slice(0, LABELLED);
     const labels = svg.append("g");
     const placed: DOMRect[] = [];
     for (const { country, fatalities } of top) {
-      const feature = features.find((f) => f.properties?.name === country);
-      if (!feature) continue;
-      const xy = projection(d3.geoCentroid(feature));
+      const countryRegions = regions.filter((region) => region.country === country);
+      const denominator = countryRegions.reduce((sum, region) => sum + region.fatalities, 0);
+      if (!(denominator > 0)) continue;
+      const longitude =
+        countryRegions.reduce((sum, region) => sum + region.longitude * region.fatalities, 0) /
+        denominator;
+      const latitude =
+        countryRegions.reduce((sum, region) => sum + region.latitude * region.fatalities, 0) /
+        denominator;
+      const xy = projection([longitude, latitude]);
       if (!insideViewport(xy, width, height)) continue;
       const text = labels
         .append("text")
@@ -164,16 +160,13 @@ export default function ConflictMap({ conflicts, features }: ConflictMapProps) {
     }
   }, [conflicts, features, width, height, t]);
 
-  const cells = conflicts?.cells ?? [];
-  const drawn = cells.filter((c) => c[2] >= FLOOR).length;
-  const note = cells.length
+  const regions = conflicts?.regions ?? [];
+  const note = regions.length
     ? fill(t.note, {
-        events: conflicts!.eventCount.toLocaleString(),
-        days: conflicts!.window.days,
-        drawn: drawn.toLocaleString(),
-        total: cells.length.toLocaleString(),
-        floor: FLOOR,
-        share: sharePlotted(cells),
+        fatalities: Math.round(conflicts!.totalFatalities).toLocaleString(),
+        weeks: conflicts!.window.weeks,
+        regions: regions.length.toLocaleString(),
+        through: conflicts!.commonThrough,
       })
     : t.noData;
 

@@ -220,14 +220,16 @@ export const en = {
     deathsByAgeCauseCopy: "Share of deaths in each age band, and the cause mix within it.",
     densityClusterLabel: "Vector border and raster density close-up",
     ewmaLabel: "Robust exponentially-weighted moving average of conflict fatalities",
-    ewmaTitle: "Monthly fatalities, and the weighted mean the globe uses",
+    ewmaTitle: "Weekly fatalities, and the weighted mean the globe uses",
     ewmaCopy:
-      "Solid bars are reported fatalities and the line is the exponentially weighted mean. The " +
-      "hollow bar at the right is today — the number the globe would use. Move either slider and " +
-      "it is what moves.",
-    conflictMapLabel: "Conflict fatalities on the sampling grid",
-    conflictMapTitle: "Where the trailing year's fatalities are",
-    conflictMapCopy: "ACLED fatal events aggregated onto the sampling grid.",
+      "The globe uses the default four-week, P10–P90 estimate. Solid bars are ACLED's 12 " +
+      "complete reported weeks; the hollow bar estimates the current week. Moving the sliders is a " +
+      "counterfactual demonstration and does not change the globe.",
+    conflictMapLabel: "Conflict fatalities at approximate Admin-1 centroids",
+    conflictMapTitle: "Where the last 12 complete weeks' fatalities are",
+    conflictMapCopy:
+      "ACLED publishes weekly regional aggregates. Each dot is an Admin-1 centroid, not an " +
+      "individual fatal event's location.",
     westAfrica: "West Africa",
     benelux: "Benelux",
     figureLatitude: "Latitude correlation",
@@ -239,25 +241,25 @@ export const en = {
 
   ewma: {
     empty:
-      "No conflict fatalities have been reported in the trailing {n} days (or the live ACLED " +
-      "layer is unavailable), so there is no recent series for the prediction to run on.",
+      "No conflict fatalities are available for the last {n} complete weeks, so there is no " +
+      "weekly series for the prediction to run on.",
     ariaLabel:
-      "Daily conflict fatalities over the last {n} days, stacked by country (each day's " +
-      "sub-10% countries grouped as Others at the bottom), with a {weighting} weighted " +
-      "prediction of {prediction} deaths for today{clamp}",
+      "Weekly conflict fatalities over the last {n} complete weeks, stacked by country (each " +
+      "week's sub-10% countries grouped as Others), with a {weighting} weighted estimate of " +
+      "{prediction} deaths for the current week{clamp}",
     weightingFlat: "flat",
-    weightingHalfLife: "{halfLife}-day half-life",
+    weightingHalfLife: "{halfLife}-week half-life",
     clampOn: ", outliers clamped to P{lo}–P{hi}",
     clampOff: ", outliers unclamped",
-    today: "today",
-    todayApprox: "today ≈ {value}/day",
+    estimate: "estimate",
+    estimateApprox: "current ≈ {value}/week",
     halfLifeName: "Half-life",
     halfLifeFlat: "flat mean",
-    halfLifeDays: "{n} days",
-    halfLifeFlatSpoken: "flat mean, every day weighted equally",
+    halfLifeWeeks: "{n} weeks",
+    halfLifeFlatSpoken: "flat mean, every week weighted equally",
     halfLifeNote:
-      "How many days it takes for a day's influence on the prediction to halve. At zero every " +
-      "day in the window counts the same.",
+      "How many weeks it takes for a week's influence on the estimate to halve. At zero every " +
+      "week in the window counts the same.",
     dampingName: "Damping",
     dampingOff: "off",
     dampingBand: "P{lo}–P{hi}",
@@ -266,12 +268,12 @@ export const en = {
     dampingNote:
       "How far in from each end the outlier clamp bites, before any weighting. At zero the " +
       "massacre counts in full.",
-    readout: "Predicted today:",
-    readoutUnit: "deaths/day",
-    readoutAsidePlain: "(plain average of the fortnight: {mean}",
+    readout: "Estimated current week:",
+    readoutUnit: "deaths/week",
+    readoutAsidePlain: "(plain average of the 12 weeks: {mean}",
     readoutAsideClamped: ", totals clamped to P{lo}–P{hi}",
     readoutAsideUnclamped: ", nothing clamped",
-    readoutAsideFlat: ", every day weighted the same",
+    readoutAsideFlat: ", every week weighted the same",
     others: "Others",
     tooltipDeaths: "{country}: {n} deaths",
     tooltipMore: "+{n} more: {total}",

@@ -314,12 +314,15 @@ export const chartsDe: ChartsDictionary = {
 
   conflictMap: {
     note:
-      "{events} tödliche Ereignisse über {days} Tage. Gezeigt werden {drawn} von {total} Zellen " +
-      "mit mindestens {floor} Toten pro Jahr — zusammen {share} % der Todesopfer des Fensters.",
+      "{fatalities} gemeldete Todesopfer in {regions} Admin-1-Regionen über {weeks} vollständige " +
+      "Wochen, bis {through}.",
     noData: "Keine Konfliktdaten verfügbar — die Ebene ist aus.",
-    aria: "Karte der Konflikttoten des zurückliegenden Jahres. {note}",
-    lead: "Diese Zellen feuern zusätzlich zu ihrer gewöhnlichen Sterblichkeit, nicht an deren Stelle.",
+    aria: "Ungefähre Admin-1-Zentroidkarte der Konflikttoten. {note}",
+    lead:
+      "Die Orte sind regionale Zentroide. Für den Globus wird jeder zum nächsten besiedelten " +
+      "Rasterfeld desselben Landes verschoben und zur gewöhnlichen Sterblichkeit addiert.",
     plateTitle: "{n} Todesopfer im Fenster",
+    regionTooltip: "{region}, {country}: {n} Todesopfer",
   },
 
   prediction: {

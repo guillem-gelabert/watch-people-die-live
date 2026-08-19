@@ -217,14 +217,16 @@ export const ca: Dictionary = {
       "Proporció de defuncions a cada franja d'edat, i la barreja de causes dins de cadascuna.",
     densityClusterLabel: "Detall de fronteres vectorials i densitat rasteritzada",
     ewmaLabel: "Mitjana mòbil robusta ponderada exponencialment de morts per conflicte",
-    ewmaTitle: "Morts mensuals, i la mitjana ponderada que fa servir el globus",
+    ewmaTitle: "Morts setmanals, i la mitjana ponderada que fa servir el globus",
     ewmaCopy:
-      "Les barres plenes són morts declarades i la línia és la mitjana ponderada " +
-      "exponencialment. La barra buida de la dreta és avui — la xifra que faria servir el " +
-      "globus. Mou qualsevol dels dos controls i és el que es mou.",
-    conflictMapLabel: "Morts per conflicte sobre la graella de mostreig",
-    conflictMapTitle: "On són les morts de l'últim any",
-    conflictMapCopy: "Esdeveniments mortals d'ACLED agregats sobre la graella de mostreig.",
+      "El globus fa servir l'estimació predeterminada de quatre setmanes i P10–P90. Les barres " +
+      "plenes són les 12 setmanes completes publicades per ACLED; la barra buida estima la " +
+      "setmana actual. Moure els controls és una demostració contrafactual i no canvia el globus.",
+    conflictMapLabel: "Morts per conflicte en centroides Admin-1 aproximats",
+    conflictMapTitle: "On són les morts de les últimes 12 setmanes completes",
+    conflictMapCopy:
+      "ACLED publica agregats regionals setmanals. Cada punt és un centroide Admin-1, no la " +
+      "ubicació d'un esdeveniment mortal individual.",
     westAfrica: "Àfrica Occidental",
     benelux: "Benelux",
     figureLatitude: "Correlació amb la latitud",
@@ -236,26 +238,25 @@ export const ca: Dictionary = {
 
   ewma: {
     empty:
-      "No s'ha declarat cap mort per conflicte en els darrers {n} dies (o la capa en directe " +
-      "d'ACLED no està disponible), així que no hi ha cap sèrie recent sobre la qual fer la " +
-      "predicció.",
+      "No hi ha morts per conflicte disponibles per a les últimes {n} setmanes completes, així " +
+      "que no hi ha cap sèrie setmanal sobre la qual fer l'estimació.",
     ariaLabel:
-      "Morts diàries per conflicte dels darrers {n} dies, apilades per país (els països que cada " +
-      "dia queden per sota del 10% s'agrupen com a Altres a baix), amb una predicció ponderada " +
-      "{weighting} de {prediction} morts per avui{clamp}",
+      "Morts setmanals per conflicte de les últimes {n} setmanes completes, apilades per país " +
+      "(els països per sota del 10% de cada setmana s'agrupen com a Altres), amb una estimació " +
+      "ponderada {weighting} de {prediction} morts per a la setmana actual{clamp}",
     weightingFlat: "plana",
-    weightingHalfLife: "amb semivida de {halfLife} dies",
+    weightingHalfLife: "amb semivida de {halfLife} setmanes",
     clampOn: ", valors extrems retallats a P{lo}–P{hi}",
     clampOff: ", valors extrems sense retallar",
-    today: "avui",
-    todayApprox: "avui ≈ {value}/dia",
+    estimate: "estimació",
+    estimateApprox: "actual ≈ {value}/setmana",
     halfLifeName: "Semivida",
     halfLifeFlat: "mitjana plana",
-    halfLifeDays: "{n} dies",
-    halfLifeFlatSpoken: "mitjana plana, tots els dies ponderats igual",
+    halfLifeWeeks: "{n} setmanes",
+    halfLifeFlatSpoken: "mitjana plana, totes les setmanes ponderades igual",
     halfLifeNote:
-      "Quants dies triga a reduir-se a la meitat la influència d'un dia sobre la predicció. A " +
-      "zero, tots els dies de la finestra compten igual.",
+      "Quantes setmanes triga a reduir-se a la meitat la influència d'una setmana sobre " +
+      "l'estimació. A zero, totes les setmanes compten igual.",
     dampingName: "Esmorteïment",
     dampingOff: "desactivat",
     dampingBand: "P{lo}–P{hi}",
@@ -264,12 +265,12 @@ export const ca: Dictionary = {
     dampingNote:
       "Fins on entra el retall de valors extrems des de cada extrem, abans de cap ponderació. A " +
       "zero, la massacre compta sencera.",
-    readout: "Predicció per avui:",
-    readoutUnit: "morts/dia",
-    readoutAsidePlain: "(mitjana simple de la quinzena: {mean}",
+    readout: "Estimació per a la setmana actual:",
+    readoutUnit: "morts/setmana",
+    readoutAsidePlain: "(mitjana simple de les 12 setmanes: {mean}",
     readoutAsideClamped: ", totals retallats a P{lo}–P{hi}",
     readoutAsideUnclamped: ", res retallat",
-    readoutAsideFlat: ", tots els dies ponderats igual",
+    readoutAsideFlat: ", totes les setmanes ponderades igual",
     others: "Altres",
     tooltipDeaths: "{country}: {n} morts",
     tooltipMore: "+{n} més: {total}",

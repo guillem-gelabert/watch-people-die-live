@@ -264,7 +264,7 @@ export function useStorySlots(): SlotsBySection {
             <section className="chart-panel wide">
               <h3 className="chart-title">{d.panels.ewmaTitle}</h3>
               <p className="chart-copy">{d.panels.ewmaCopy}</p>
-              <ConflictEwmaWidget dailyStack={conflicts?.dailyStack} />
+              <ConflictEwmaWidget weeklyStack={conflicts?.weeklyStack} />
             </section>
           </div>
         ),

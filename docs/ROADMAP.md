@@ -193,17 +193,17 @@ Every rendered country and region is coloured by seasonal amplitude. Observation
 
 ### conflicts · A war is not a Poisson process [Conflicts] · #eeb87d
 
-The previous layers capture long term mortality trends, which account for most of the deaths worldwide. But if we want to show current mortality we need to take into account finer grain factors, the biggest one being conflicts. ACLED records every reported political-violence event with a location and a fatality count and provides updates on a daily basis.
+The previous layers capture long-term mortality trends, which account for most deaths worldwide. But current mortality also needs finer-grained factors, the largest being conflicts. ACLED's real-time Research feed publishes weekly country and Admin-1 aggregates with fatalities and regional centroid coordinates. Those centroids are an approximation, not individual event locations.
 
-For all other layers we multiplied the base Crude Death Rate by a seasonality or density factor. But here we get daily —yesterday's— observed or very short-term estimated numbers of real defunctions, so what's our factor?
+For all other layers we multiplied the base crude death rate by a seasonality or density factor. Here we get 12 complete, reported weeks ending at the oldest publication date shared by all six ACLED regions. So what is our factor for the current week?
 
-We do a recency weighted average to predict today's mortality. Specifically we use a robust exponentially weighted moving average (Robust EWMA). Which means something like _use recent days more than older days, but dampen suspiciously extreme values before averaging_.
+We use a recency-weighted average to estimate the current week's mortality. Specifically, a robust exponentially weighted moving average (Robust EWMA): _use recent weeks more than older weeks, but damp suspiciously extreme values before averaging_.
 
 For example:
 
-In the last 7 days, we've got the following numbers:
+Take seven weeks from the 12-week window:
 
-| Day        |   1 |   2 |   3 |   4 |   5 |   6 |   7 |
+| Week       |   1 |   2 |   3 |   4 |   5 |   6 |   7 |
 | ---------- | --: | --: | --: | --: | --: | --: | --: |
 | Fatalities |  20 |  22 |  21 |  90 |  24 |  26 |  28 |
 
@@ -211,12 +211,12 @@ We calculate the 10th and 90th percentiles.
 
 | Percentile |  Cap | Meaning                                         |
 | ---------- | ---: | ----------------------------------------------- |
-| P10        | 20.6 | About 10% of days have lower numbers than this. |
-| P90        | 52.8 | About 90% of days have lower numbers than this. |
+| P10        | 20.6 | About 10% of weeks have lower numbers than this. |
+| P90        | 52.8 | About 90% of weeks have lower numbers than this. |
 
 Then we update the numbers above and below these caps:
 
-| Day | Original value | Capped value | Change         |
+| Week | Original value | Capped value | Change         |
 | --: | -------------: | -----------: | -------------- |
 |   1 |             20 |         20.6 | Raised to P10  |
 |   2 |             22 |           22 | Unchanged      |
@@ -226,11 +226,11 @@ Then we update the numbers above and below these caps:
 |   6 |             26 |           26 | Unchanged      |
 |   7 |             28 |           28 | Unchanged      |
 
-To calculate the weights we need to chose a half-life factor (how many days it takes to halve the impact a day has in the final prediction). The best way to calculate an appropriate half-life factor for a given series, is to try different values and see which values better predict past observed events based on previous events. We won't do this. We'll use 4 instead, which I've landed on with some trial and error.
+To calculate the weights we choose a half-life: how many weeks it takes to halve a week's impact on the final estimate. A fitted value would require a longer validation exercise; here the production default is four weeks.
 
-So the weights to halve the impact every 4 days look like this:
+So the weights to halve the impact every four weeks look like this:
 
-| Day | Weight | Note                        |
+| Week | Weight | Note                        |
 | --: | -----: | --------------------------- |
 |   1 |  0.354 |                             |
 |   2 |  0.420 |                             |
@@ -238,15 +238,17 @@ So the weights to halve the impact every 4 days look like this:
 |   4 |  0.595 |                             |
 |   5 |  0.707 |                             |
 |   6 |  0.841 |                             |
-|   7 |  1.000 | Yesterday / most recent day |
+|   7 |  1.000 | Most recent complete week   |
 
 Then we do a weighted average using these weights. Which gives us 28.4.
 
-Both of those choices — how fast a day's influence decays, and how hard the extremes get pulled in before any of it is averaged — are mine, not the data's. So here they are as two sliders, over the real trailing fortnight. Drag them and watch the last bar move: that is the number the globe fires against today.
+Both choices — how fast a week's influence decays, and how hard the extremes get pulled in — are mine, not the data's. The globe always uses the default four-week/P10–P90 result, distributed by each Admin-1 region's share of the 12-week fatalities and annualised. The sliders below are a counterfactual demonstration; dragging them does not change the globe.
 
 [widget to update half life, curve smoothness, and see prediction]
 
 [map of conflict fatalities]
+
+The map reports fatalities over the same 12 complete weeks at ACLED's Admin-1 centroids. For the globe, each centroid is assigned to the nearest populated sampling-grid cell within the same country.
 
 ### who · Who · #d9dbdd · chapter
 

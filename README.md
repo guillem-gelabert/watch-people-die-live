@@ -165,9 +165,15 @@ country/sex/age band are kept, the rest folded into "other causes".
 ## Conflict data (ACLED, runtime)
 
 Step 6 ("Ongoing Conflicts") and the globe's conflict layer are served by the `/api/conflicts`
-route, which pulls fatal events from the [ACLED API](https://acleddata.com) over the trailing
-12 months, aggregates their fatalities onto the same 0.5° grid the globe samples, and caches the
-result for ~a day (an in-process memo + Next's fetch cache — no scheduler, no committed data).
+route. It authenticates to ACLED's six regional aggregate landing pages, discovers the current
+XLSX files, and streams them with ExcelJS. The oldest regional publication date becomes the
+globally complete cutoff; the route retains the 12 complete weeks ending there.
+
+The chart and map use the reported weekly country/Admin-1 aggregates. The map draws the supplied
+Admin-1 centroids as an explicit spatial approximation. For the globe, a robust EWMA (four-week
+half-life, P10–P90 damping) estimates the current weekly total. That total is distributed by each
+Admin-1 region's 12-week fatality share, annualised, and placed on the nearest populated
+rate-grid cell in the same country.
 
 Unlike the build-time keys above, these are **runtime** secrets. Set a myACLED account's
 credentials locally in `.env` and as Railway service variables:
@@ -175,13 +181,14 @@ credentials locally in `.env` and as Railway service variables:
 ```bash
 ACLED_USERNAME=you@example.edu
 ACLED_PASSWORD=your-myacled-password
-# Optional: shrink the window for a fast local pull (default 365).
-ACLED_WINDOW_DAYS=7
+# Railway: mount a persistent volume at /data and store the complete snapshot there.
+ACLED_WEEKLY_CACHE_FILE=/data/acled-weekly-v1.json
 ```
 
 ACLED uses OAuth2 (the old key+email scheme is gone); the route exchanges these for a bearer
-token per pull. If they're unset or a fetch fails, `/api/conflicts` returns an empty-but-valid
-payload and both the globe and Step 6 simply skip the conflict layer.
+token per refresh. Complete snapshots are refreshed after 24 hours. A cold cache waits for all
+six downloads; later auth, download, or schema failures keep serving the last complete snapshot
+as stale. Snapshot replacement is atomic, and concurrent refreshes are deduplicated.
 
 ## Deploy on Railway
 
@@ -196,10 +203,10 @@ payload and both the globe and Step 6 simply skip the conflict layer.
 4. Open the generated domain — Railway's egress reaches the World Bank API too, so the globe
    shows live death rates.
 
-At runtime only the optional conflict layer needs keys (`ACLED_USERNAME` / `ACLED_PASSWORD`,
-see _Conflict data_ above); without them the globe and Step 6 just drop conflicts. Everything
-else is keyless — the World Bank API is public and `data/rate-grid.json` is baked offline ahead
-of time. `un_api_key`/`UN_API_KEY` is used only by the **build** to fetch the
+At runtime only the conflict layer needs keys (`ACLED_USERNAME` / `ACLED_PASSWORD`) and its
+Railway volume path (`ACLED_WEEKLY_CACHE_FILE`; see _Conflict data_ above). Everything else is
+keyless — the World Bank API is public and `data/rate-grid.json` is baked offline ahead of time.
+`un_api_key`/`UN_API_KEY` is used only by the **build** to fetch the
 UN age/sex data. Cause data (`data/causes.json`) is _not_ fetched on build — IHME GBD has no
 API — so until it's rebuilt and committed (see _Building the persona data_), causes come from
 the bundled sample.

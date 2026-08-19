@@ -260,14 +260,14 @@ export interface SubnationalLoo {
 export type RegionNeighborsByCode = Map<string, string[]>;
 // --- /api/conflicts (ACLED conflict fatalities, runtime) ----------------------------
 // Re-exported from the server producer so the route and the roadmap/globe consumers share
-// one shape. `cells` are annualised fatalities snapped to the same 0.5° grid the globe
-// samples; `byCountry` is the per-country roll-up the Step 6 chart reads. See lib/acled.ts.
+// one shape. `cells` are annualised weekly-model weights placed on populated grid cells;
+// `regions` retain ACLED's Admin-1 centroids for the explanatory map. See lib/acled.ts.
 export type {
   ConflictsPayload,
   ConflictCell,
   ConflictCountry,
-  ConflictDay,
-  ConflictDailyStack,
+  ConflictRegion,
+  ConflictWeeklyStack,
 } from "@/lib/acled";
 
 // region key (adm1_code or NUTS_ID) -> rate per 100k, for the choropleth join.

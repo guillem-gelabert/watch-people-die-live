@@ -194,17 +194,17 @@ Jedes dargestellte Land und jede Region ist nach saisonaler Amplitude eingefärb
 
 ### conflicts · Ein Krieg ist kein Poisson-Prozess [Konflikte] · #eeb87d
 
-Die bisherigen Ebenen erfassen langfristige Sterblichkeitstrends, die den größten Teil der Todesfälle weltweit ausmachen. Wollen wir aber die aktuelle Sterblichkeit zeigen, müssen wir feinkörnigere Faktoren berücksichtigen, und der größte davon sind Konflikte. ACLED erfasst jedes gemeldete Ereignis politischer Gewalt mit Ort und Zahl der Todesopfer und liefert tägliche Aktualisierungen.
+Die bisherigen Ebenen erfassen langfristige Sterblichkeitstrends, die den größten Teil der Todesfälle weltweit ausmachen. Aktuelle Sterblichkeit braucht aber auch feinkörnigere Faktoren, vor allem Konflikte. ACLEDs Echtzeitangebot für Forschung veröffentlicht wöchentliche Aggregate nach Land und Admin-1 mit Todesopfern und regionalen Zentroidkoordinaten. Diese Zentroide sind eine Annäherung, keine einzelnen Ereignisorte.
 
-Bei allen anderen Ebenen haben wir die zugrunde liegende rohe Sterberate mit einem Saisonalitäts- oder Dichtefaktor multipliziert. Hier aber bekommen wir tägliche — gestrige — beobachtete oder sehr kurzfristig geschätzte Zahlen echter Sterbefälle. Was ist also unser Faktor?
+Bei allen anderen Ebenen haben wir die zugrunde liegende rohe Sterberate mit einem Saisonalitäts- oder Dichtefaktor multipliziert. Hier erhalten wir 12 vollständige Berichtswochen bis zum ältesten Veröffentlichungsdatum, das alle sechs ACLED-Regionen gemeinsam haben. Was ist also unser Faktor für die aktuelle Woche?
 
-Wir bilden einen nach Aktualität gewichteten Durchschnitt, um die heutige Sterblichkeit vorherzusagen. Konkret nutzen wir einen robusten exponentiell gewichteten gleitenden Mittelwert (Robust EWMA). Das heißt so viel wie: _nutze jüngere Tage stärker als ältere, aber dämpfe verdächtig extreme Werte, bevor du mittelst_.
+Wir bilden einen nach Aktualität gewichteten Durchschnitt, um die Sterblichkeit der aktuellen Woche zu schätzen. Konkret nutzen wir einen robusten exponentiell gewichteten gleitenden Mittelwert (Robust EWMA): _gewichte jüngere Wochen stärker als ältere, aber dämpfe verdächtig extreme Werte vor dem Mitteln_.
 
 Zum Beispiel:
 
-In den letzten 7 Tagen haben wir folgende Zahlen:
+Nehmen wir sieben Wochen aus dem 12-Wochen-Fenster:
 
-| Tag        |   1 |   2 |   3 |   4 |   5 |   6 |   7 |
+| Woche      |   1 |   2 |   3 |   4 |   5 |   6 |   7 |
 | ---------- | --: | --: | --: | --: | --: | --: | --: |
 | Todesopfer |  20 |  22 |  21 |  90 |  24 |  26 |  28 |
 
@@ -212,12 +212,12 @@ Wir berechnen das 10. und das 90. Perzentil.
 
 | Perzentil | Grenze | Bedeutung                                        |
 | --------- | -----: | ------------------------------------------------ |
-| P10       |   20,6 | Etwa 10 % der Tage haben niedrigere Zahlen als diese. |
-| P90       |   52,8 | Etwa 90 % der Tage haben niedrigere Zahlen als diese. |
+| P10       |   20,6 | Etwa 10 % der Wochen haben niedrigere Zahlen. |
+| P90       |   52,8 | Etwa 90 % der Wochen haben niedrigere Zahlen. |
 
 Dann passen wir die Zahlen über und unter diesen Grenzen an:
 
-| Tag | Ursprungswert | Gekappter Wert | Änderung          |
+| Woche | Ursprungswert | Gekappter Wert | Änderung          |
 | --: | ------------: | -------------: | ----------------- |
 |   1 |            20 |           20,6 | Auf P10 angehoben |
 |   2 |            22 |             22 | Unverändert       |
@@ -227,11 +227,11 @@ Dann passen wir die Zahlen über und unter diesen Grenzen an:
 |   6 |            26 |             26 | Unverändert       |
 |   7 |            28 |             28 | Unverändert       |
 
-Für die Gewichte müssen wir eine Halbwertszeit wählen (wie viele Tage es dauert, bis sich der Einfluss eines Tages auf die endgültige Vorhersage halbiert). Am besten bestimmt man eine passende Halbwertszeit für eine gegebene Reihe, indem man verschiedene Werte ausprobiert und schaut, welche vergangene beobachtete Ereignisse aus den vorhergehenden am besten vorhersagen. Das machen wir nicht. Wir nehmen stattdessen 4, worauf ich mit etwas Ausprobieren gekommen bin.
+Für die Gewichte wählen wir eine Halbwertszeit: wie viele Wochen es dauert, bis sich der Einfluss einer Woche auf die endgültige Schätzung halbiert. Eine Anpassung würde eine längere Validierung erfordern; hier beträgt der Produktionsstandard vier Wochen.
 
-Die Gewichte für eine Halbierung alle 4 Tage sehen also so aus:
+Die Gewichte für eine Halbierung alle vier Wochen sehen so aus:
 
-| Tag | Gewicht | Anmerkung                     |
+| Woche | Gewicht | Anmerkung                     |
 | --: | ------: | ----------------------------- |
 |   1 |   0,354 |                               |
 |   2 |   0,420 |                               |
@@ -239,15 +239,17 @@ Die Gewichte für eine Halbierung alle 4 Tage sehen also so aus:
 |   4 |   0,595 |                               |
 |   5 |   0,707 |                               |
 |   6 |   0,841 |                               |
-|   7 |   1,000 | Gestern / der jüngste Tag     |
+|   7 |   1,000 | Jüngste vollständige Woche    |
 
 Dann bilden wir mit diesen Gewichten einen gewichteten Durchschnitt. Das ergibt 28,4.
 
-Beide Entscheidungen — wie schnell der Einfluss eines Tages abklingt und wie stark die Extreme hereingezogen werden, bevor überhaupt gemittelt wird — sind meine, nicht die der Daten. Also hier sind sie als zwei Regler, über den echten letzten zwei Wochen. Zieh daran und sieh zu, wie sich der letzte Balken bewegt: Das ist die Zahl, gegen die der Globus heute feuert.
+Beide Entscheidungen — wie schnell der Einfluss einer Woche abklingt und wie stark die Extreme hereingezogen werden — sind meine, nicht die der Daten. Der Globus nutzt immer das Standardergebnis mit vier Wochen und P10–P90, verteilt nach dem Anteil jeder Admin-1-Region an den Todesopfern der 12 Wochen und auf ein Jahr hochgerechnet. Die Regler sind eine kontrafaktische Demonstration; sie verändern den Globus nicht.
 
 [widget to update half life, curve smoothness, and see prediction]
 
 [map of conflict fatalities]
+
+Die Karte zeigt die Todesopfer derselben 12 vollständigen Wochen an ACLEDs Admin-1-Zentroiden. Für den Globus wird jeder Zentroid dem nächsten besiedelten Rasterfeld im selben Land zugeordnet.
 
 ### who · Wer · #d9dbdd · chapter
 

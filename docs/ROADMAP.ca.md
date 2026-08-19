@@ -193,17 +193,17 @@ Cada país i regió representats estan acolorits per amplitud estacional. Les ob
 
 ### conflicts · Una guerra no és un procés de Poisson [Conflictes] · #eeb87d
 
-Les capes anteriors capturen tendències de mortalitat a llarg termini, que expliquen la major part de les morts al món. Però si volem mostrar la mortalitat actual hem de tenir en compte factors de gra més fi, i el més gran són els conflictes. ACLED registra cada esdeveniment de violència política reportat amb una localització i un recompte de morts, i publica actualitzacions diàries.
+Les capes anteriors capturen tendències de mortalitat a llarg termini, que expliquen la major part de les morts al món. Però la mortalitat actual també necessita factors de gra més fi, i el més gran són els conflictes. El canal en temps real d'ACLED per a recerca publica agregats setmanals per país i Admin-1 amb morts i coordenades del centroide regional. Aquests centroides són una aproximació, no ubicacions d'esdeveniments individuals.
 
-Per a totes les altres capes multiplicàvem la taxa bruta de mortalitat base per un factor d'estacionalitat o de densitat. Però aquí obtenim xifres diàries —les d'ahir— observades o estimades a molt curt termini de defuncions reals, així que quin és el nostre factor?
+Per a totes les altres capes multiplicàvem la taxa bruta de mortalitat base per un factor d'estacionalitat o de densitat. Aquí obtenim 12 setmanes completes declarades, acabades en la data de publicació més antiga compartida per les sis regions d'ACLED. Quin és, doncs, el factor per a la setmana actual?
 
-Fem una mitjana ponderada per recència per predir la mortalitat d'avui. Concretament fem servir una mitjana mòbil robusta ponderada exponencialment (Robust EWMA). Que vol dir una cosa com _fes servir els dies recents més que els antics, però esmorteeix els valors sospitosament extrems abans de fer la mitjana_.
+Fem una mitjana ponderada per recència per estimar la mortalitat de la setmana actual. Concretament fem servir una mitjana mòbil robusta ponderada exponencialment (Robust EWMA): _dona més pes a les setmanes recents que a les antigues, però esmorteeix els valors sospitosament extrems abans de fer la mitjana_.
 
 Per exemple:
 
-En els darrers 7 dies, tenim les xifres següents:
+Prenem set setmanes de la finestra de 12:
 
-| Dia   |  1  |  2  |  3  |  4  |  5  |  6  |  7  |
+| Setmana |  1  |  2  |  3  |  4  |  5  |  6  |  7  |
 | ----- | --: | --: | --: | --: | --: | --: | --: |
 | Morts |  20 |  22 |  21 |  90 |  24 |  26 |  28 |
 
@@ -211,12 +211,12 @@ Calculem els percentils 10 i 90.
 
 | Percentil | Límit | Significat                                       |
 | --------- | ----: | ------------------------------------------------ |
-| P10       |  20,6 | Al voltant del 10% dels dies tenen xifres més baixes que aquesta. |
-| P90       |  52,8 | Al voltant del 90% dels dies tenen xifres més baixes que aquesta. |
+| P10       |  20,6 | Al voltant del 10% de les setmanes tenen xifres més baixes. |
+| P90       |  52,8 | Al voltant del 90% de les setmanes tenen xifres més baixes. |
 
 Després actualitzem les xifres per sobre i per sota d'aquests límits:
 
-| Dia | Valor original | Valor retallat | Canvi          |
+| Setmana | Valor original | Valor retallat | Canvi          |
 | --: | -------------: | -------------: | -------------- |
 |   1 |             20 |           20,6 | Pujat a P10    |
 |   2 |             22 |             22 | Sense canvis   |
@@ -226,11 +226,11 @@ Després actualitzem les xifres per sobre i per sota d'aquests límits:
 |   6 |             26 |             26 | Sense canvis   |
 |   7 |             28 |             28 | Sense canvis   |
 
-Per calcular els pesos hem de triar un factor de semivida (quants dies triga a reduir-se a la meitat l'impacte que té un dia en la predicció final). La millor manera de calcular un factor de semivida adequat per a una sèrie donada és provar valors diferents i veure quins prediuen millor esdeveniments passats observats a partir dels anteriors. Nosaltres no ho farem. Farem servir 4, un valor al qual he arribat amb una mica de prova i error.
+Per calcular els pesos triem una semivida: quantes setmanes triga a reduir-se a la meitat l'impacte d'una setmana en l'estimació final. Ajustar-la exigiria una validació més llarga; aquí el valor predeterminat de producció és quatre setmanes.
 
-Així que els pesos per reduir l'impacte a la meitat cada 4 dies queden així:
+Així que els pesos per reduir l'impacte a la meitat cada quatre setmanes queden així:
 
-| Dia | Pes    | Nota                        |
+| Setmana | Pes    | Nota                        |
 | --: | -----: | --------------------------- |
 |   1 |  0,354 |                             |
 |   2 |  0,420 |                             |
@@ -238,15 +238,17 @@ Així que els pesos per reduir l'impacte a la meitat cada 4 dies queden així:
 |   4 |  0,595 |                             |
 |   5 |  0,707 |                             |
 |   6 |  0,841 |                             |
-|   7 |  1,000 | Ahir / el dia més recent    |
+|   7 |  1,000 | Setmana completa més recent |
 
 Després fem una mitjana ponderada amb aquests pesos. Que ens dona 28,4.
 
-Totes dues tries — com de ràpid decau la influència d'un dia, i com de fort s'arrosseguen cap endins els extrems abans de fer cap mitjana — són meves, no de les dades. Així que aquí les tens com a dos controls lliscants, sobre la quinzena real més recent. Arrossega'ls i mira com es mou l'última barra: aquesta és la xifra contra la qual dispara el globus avui.
+Totes dues tries — com de ràpid decau la influència d'una setmana i com de fort s'arrosseguen cap endins els extrems — són meves, no de les dades. El globus sempre fa servir el resultat predeterminat de quatre setmanes i P10–P90, distribuït segons la proporció de morts de cada regió Admin-1 dins les 12 setmanes i anualitzat. Els controls són una demostració contrafactual; moure'ls no canvia el globus.
 
 [widget to update half life, curve smoothness, and see prediction]
 
 [map of conflict fatalities]
+
+El mapa mostra les morts de les mateixes 12 setmanes completes als centroides Admin-1 d'ACLED. Per al globus, cada centroide s'assigna a la cel·la poblada més propera dins del mateix país.
 
 ### who · Qui · #d9dbdd · chapter
 

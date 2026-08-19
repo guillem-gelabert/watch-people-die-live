@@ -220,14 +220,16 @@ export const de: Dictionary = {
       "Anteil der Sterbefälle je Altersgruppe, und die Ursachenmischung innerhalb der Gruppe.",
     densityClusterLabel: "Nahaufnahme von Vektorgrenzen und gerasterter Dichte",
     ewmaLabel: "Robuster exponentiell gewichteter gleitender Mittelwert der Konflikttoten",
-    ewmaTitle: "Monatliche Todesopfer und der gewichtete Mittelwert, den der Globus nutzt",
+    ewmaTitle: "Wöchentliche Todesopfer und der gewichtete Mittelwert des Globus",
     ewmaCopy:
-      "Ausgefüllte Balken sind gemeldete Todesopfer, die Linie ist der exponentiell gewichtete " +
-      "Mittelwert. Der hohle Balken rechts ist heute — die Zahl, die der Globus verwenden würde. " +
-      "Bewege einen der beiden Regler, und genau das bewegt sich.",
-    conflictMapLabel: "Konflikttote auf dem Stichprobenraster",
-    conflictMapTitle: "Wo die Todesopfer des letzten Jahres liegen",
-    conflictMapCopy: "Tödliche ACLED-Ereignisse, aggregiert auf das Stichprobenraster.",
+      "Der Globus nutzt die Standardeinstellung von vier Wochen und P10–P90. Die ausgefüllten " +
+      "Balken sind ACLEDs 12 vollständige Berichtswochen; der hohle Balken schätzt die aktuelle. " +
+      "Die Regler zeigen Gegenfakten und verändern den Globus nicht.",
+    conflictMapLabel: "Konflikttote an angenäherten Admin-1-Zentroiden",
+    conflictMapTitle: "Wo die Todesopfer der letzten 12 vollständigen Wochen liegen",
+    conflictMapCopy:
+      "ACLED veröffentlicht wöchentliche Regionalaggregate. Jeder Punkt ist ein Admin-1-Zentroid, " +
+      "nicht der Ort eines einzelnen tödlichen Ereignisses.",
     westAfrica: "Westafrika",
     benelux: "Benelux",
     figureLatitude: "Korrelation mit dem Breitengrad",
@@ -239,40 +241,39 @@ export const de: Dictionary = {
 
   ewma: {
     empty:
-      "In den letzten {n} Tagen wurden keine Konflikttoten gemeldet (oder die ACLED-Live-Ebene " +
-      "ist nicht verfügbar), es gibt also keine aktuelle Reihe, auf der die Vorhersage laufen " +
-      "könnte.",
+      "Für die letzten {n} vollständigen Wochen sind keine Konflikttoten verfügbar; daher gibt " +
+      "es keine Wochenreihe für die Schätzung.",
     ariaLabel:
-      "Tägliche Konflikttote der letzten {n} Tage, nach Land gestapelt (die Länder unter 10 % " +
-      "eines Tages werden unten als Andere zusammengefasst), mit einer {weighting} gewichteten " +
-      "Vorhersage von {prediction} Toten für heute{clamp}",
+      "Wöchentliche Konflikttote der letzten {n} vollständigen Wochen, nach Land gestapelt " +
+      "(Länder unter 10 % einer Woche als Andere), mit einer {weighting} gewichteten Schätzung " +
+      "von {prediction} Toten für die aktuelle Woche{clamp}",
     weightingFlat: "flach",
-    weightingHalfLife: "mit {halfLife} Tagen Halbwertszeit",
+    weightingHalfLife: "mit {halfLife} Wochen Halbwertszeit",
     clampOn: ", Ausreißer auf P{lo}–P{hi} begrenzt",
     clampOff: ", Ausreißer unbegrenzt",
-    today: "heute",
-    todayApprox: "heute ≈ {value}/Tag",
+    estimate: "Schätzung",
+    estimateApprox: "aktuell ≈ {value}/Woche",
     halfLifeName: "Halbwertszeit",
     halfLifeFlat: "flacher Mittelwert",
-    halfLifeDays: "{n} Tage",
-    halfLifeFlatSpoken: "flacher Mittelwert, jeder Tag gleich gewichtet",
+    halfLifeWeeks: "{n} Wochen",
+    halfLifeFlatSpoken: "flacher Mittelwert, jede Woche gleich gewichtet",
     halfLifeNote:
-      "Wie viele Tage es dauert, bis sich der Einfluss eines Tages auf die Vorhersage halbiert. " +
-      "Bei null zählt jeder Tag im Fenster gleich viel.",
+      "Wie viele Wochen es dauert, bis sich der Einfluss einer Woche auf die Schätzung halbiert. " +
+      "Bei null zählt jede Woche gleich viel.",
     dampingName: "Dämpfung",
     dampingOff: "aus",
     dampingBand: "P{lo}–P{hi}",
     dampingSpokenOn: "auf P{lo} und P{hi} begrenzt",
-    dampingSpokenOff: "keine Begrenzung der Tagessummen",
+    dampingSpokenOff: "keine Begrenzung der Wochensummen",
     dampingNote:
       "Wie weit die Ausreißergrenze von jedem Ende her greift, vor jeder Gewichtung. Bei null " +
       "zählt das Massaker in voller Höhe.",
-    readout: "Vorhersage für heute:",
-    readoutUnit: "Tote/Tag",
-    readoutAsidePlain: "(einfacher Durchschnitt der zwei Wochen: {mean}",
-    readoutAsideClamped: ", Tagessummen auf P{lo}–P{hi} begrenzt",
+    readout: "Schätzung für die aktuelle Woche:",
+    readoutUnit: "Tote/Woche",
+    readoutAsidePlain: "(einfacher Durchschnitt der 12 Wochen: {mean}",
+    readoutAsideClamped: ", Wochensummen auf P{lo}–P{hi} begrenzt",
     readoutAsideUnclamped: ", nichts begrenzt",
-    readoutAsideFlat: ", jeder Tag gleich gewichtet",
+    readoutAsideFlat: ", jede Woche gleich gewichtet",
     others: "Andere",
     tooltipDeaths: "{country}: {n} Tote",
     tooltipMore: "+{n} weitere: {total}",

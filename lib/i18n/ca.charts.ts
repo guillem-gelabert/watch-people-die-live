@@ -307,12 +307,15 @@ export const chartsCa: ChartsDictionary = {
 
   conflictMap: {
     note:
-      "{events} esdeveniments mortals en {days} dies. Es mostren {drawn} de {total} cel·les que " +
-      "carreguen almenys {floor} morts l'any — juntes, el {share}% de les morts de la finestra.",
+      "{fatalities} morts declarades en {regions} regions Admin-1 durant {weeks} setmanes " +
+      "completes, fins al {through}.",
     noData: "No hi ha dades de conflictes disponibles — la capa està desactivada.",
-    aria: "Mapa de morts per conflicte durant l'any anterior. {note}",
-    lead: "Aquestes cel·les es disparen a sobre de la seva mortalitat ordinària, no en lloc seu.",
+    aria: "Mapa aproximat de centroides Admin-1 de morts per conflicte. {note}",
+    lead:
+      "Les ubicacions són centroides regionals. Per al globus, cadascuna es mou a la cel·la " +
+      "poblada més propera del mateix país i s'afegeix a la mortalitat ordinària.",
     plateTitle: "{n} morts durant la finestra",
+    regionTooltip: "{region}, {country}: {n} morts",
   },
 
   prediction: {

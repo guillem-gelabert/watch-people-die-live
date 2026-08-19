@@ -289,12 +289,15 @@ export const chartsEn = {
 
   conflictMap: {
     note:
-      "{events} fatal events over {days} days. Showing the {drawn} of {total} cells carrying at " +
-      "least {floor} deaths a year — together {share}% of the window's fatalities.",
+      "{fatalities} reported fatalities across {regions} Admin-1 regions over {weeks} complete " +
+      "weeks, through {through}.",
     noData: "No conflict data available — the layer is off.",
-    aria: "Map of conflict fatalities over the trailing year. {note}",
-    lead: "These cells fire on top of their ordinary mortality, not instead of it.",
+    aria: "Approximate Admin-1 centroid map of conflict fatalities. {note}",
+    lead:
+      "Locations are regional centroids. For the globe, each is moved to the nearest populated " +
+      "cell in the same country and added on top of ordinary mortality.",
     plateTitle: "{n} fatalities in the window",
+    regionTooltip: "{region}, {country}: {n} fatalities",
   },
 
   prediction: {
