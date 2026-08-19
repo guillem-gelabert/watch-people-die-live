@@ -2674,30 +2674,9 @@ footer {
   margin-top: 18px;
 }
 
-/* Zero-height sticky rail, and the card hangs off it rather than being sticky itself.
-
-   Safari paints a solid background-colour extension behind a viewport-constrained (fixed or sticky)
-   element that borders an edge of the viewport, so that no gap shows through while it scrolls. This
-   card is taller than the screen for the first two thirds of its fold — 1818px against a 714px
-   viewport, measured on an iPhone 17 Pro — so it overran the bottom edge and Safari filled the
-   toolbar strip with the card's own tile colour, turning the bottom safe area opaque exactly as the
-   proxies came into view. Nothing about the card's appearance was wrong; being sticky was.
-
-   A rail with no height and no background is not something Safari needs to extend, and the card
-   inside it is an ordinary absolutely-positioned box rather than a viewport-constrained one. Same
-   pattern as #story-return-rail, and for the same reason. The rail's 12px offset is also what keeps
-   it clear of the edge, which the card's `top: 12px` used to provide. */
-.proxy-card-rail {
+.proxy-card {
   position: sticky;
   top: 12px;
-  height: 0;
-}
-
-.proxy-card {
-  position: absolute;
-  top: 0;
-  right: 0;
-  left: 0;
   padding: 14px 13px 15px;
   border-radius: 18px;
 }
@@ -2999,25 +2978,17 @@ footer {
   }
 }
 
-/* Transparent, and that is the point: see the note in ProxyRankingCard. It is the fixed element, so
-   it is the one Safari would sample, and it gives it nothing to extend. Everything visible below is
-   absolute inside it. */
-.proxy-overlay {
+.proxy-scrim {
   position: fixed;
   inset: 0;
   z-index: 20;
-}
-
-.proxy-scrim {
-  position: absolute;
-  inset: 0;
   background: rgb(8 10 16 / 55%);
   backdrop-filter: blur(3px);
   animation: proxy-scrim-in 0.35s ease both;
 }
 
 .proxy-modal {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: 21;
   display: flex;
