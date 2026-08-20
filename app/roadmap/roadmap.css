@@ -2674,6 +2674,16 @@ footer {
   margin-top: 18px;
 }
 
+/* Pinned by the browser, and still pinned by the browser on iOS, where this is currently broken:
+   iOS 26 Safari stops repainting the strip of page behind its collapsed URL bar while a stuck
+   sticky element is on screen, and clips that element's own paint to the layout viewport besides,
+   so the card is cut off where the bar begins. Reported as a WebKit regression and fixed in a
+   later build; neither workaround is worth its price in the meantime — pinning the card from
+   JavaScript (a per-frame translate, or position: fixed flipped by an observer) either jitters,
+   because the pin then lags a scroll iOS runs off the main thread, or is clipped exactly as the
+   sticky is. What is worth doing is making the fallback harmless: the strip falls back to the
+   canvas colour, so StoryClient keeps that on the section's own sky and the band reads as the
+   page rather than as a bar. */
 .proxy-card {
   position: sticky;
   top: 12px;

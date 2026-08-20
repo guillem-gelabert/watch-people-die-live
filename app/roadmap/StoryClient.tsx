@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import GlobeStage from "../globe/GlobeStage";
 import { setHeroActive } from "../globe/stageState";
 import MiniEarth from "./MiniEarth";
 import Section from "./Section";
-import { chartPaletteToCssVars, parseSky, skinFromSky, skinToCssVars } from "./palette";
+import { chartPaletteToCssVars, parseSky, rgbCss, skinFromSky, skinToCssVars } from "./palette";
 import { useI18n } from "./I18nContext";
 import LanguageSwitcher from "./LanguageSwitcher";
 import RoadmapMarkdown, { roadmapSections, type SectionHeadingKind } from "./roadmapMarkdown";
@@ -210,6 +210,23 @@ export default function StoryClient({ markdown }: StoryClientProps) {
     const sky = parseSky(activeSky);
     return { sky, skin: skinFromSky(sky) };
   }, [activeSky]);
+
+  // The same sky on the canvas behind the document. Normally invisible — .story covers every
+  // pixel of it — but iOS Safari paints the strips behind its collapsed bars from the document's
+  // own pixels, and where those are missing it falls back to the canvas colour, which propagates
+  // from body. That gap is exactly what the sticky proxy card opens on iOS 26 (see .proxy-card in
+  // roadmap.css): left at globe.css's near-black, the fallback reads as a dark bar across the top
+  // and bottom of a light section. Kept in step with the sky, it is the sky, so the artifact is
+  // invisible for as long as the WebKit bug lasts — and the rubber-band at either end of the
+  // scroll stops flashing near-black too. A passive effect would write this one frame after .story
+  // repaints — React flushes it after the commit that sets --sky — and reduced motion has no
+  // cross-fade to hide that lag behind, so it has to run in the same commit, before paint.
+  useLayoutEffect(() => {
+    document.body.style.backgroundColor = rgbCss(active.sky);
+    return () => {
+      document.body.style.backgroundColor = "";
+    };
+  }, [active.sky]);
 
   // The sections are built once and reused across sky changes. They do not depend on the active sky
   // — each only declares its own, and the palette reaches the figures through CSS variables — so

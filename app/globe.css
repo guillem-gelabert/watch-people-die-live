@@ -20,8 +20,14 @@
 }
 
 /* The globe is the opening screen of one long scroll, not a fullscreen app any more, so
-   the document scrolls. The story's sky paints the scroll container (see roadmap.css
-   .story); this background only shows before the first sky resolves. */
+   the document scrolls. The story's sky paints the scroll container (see roadmap.css .story);
+   the colour below is the canvas behind it, which StoryClient keeps on the same sky. The
+   near-black here is only what the canvas wears until the first sky resolves — it is not
+   normally seen, but iOS Safari falls back to the canvas colour for the strips behind its
+   collapsed bars, so it is worth transitioning with the rest rather than snapping. The two halves
+   of that pairing live in different files, so the reduced-motion rule that turns this transition
+   off, at the foot of this file, has a twin in roadmap.css that turns .story's off — the two have
+   to move together or the fallback strips snap out of step with the section they sit behind. */
 html,
 body {
   overscroll-behavior-y: none;
@@ -32,6 +38,10 @@ body {
   background: #001;
   color: var(--fg);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* Matches .story's own cross-fade in roadmap.css, so the canvas and the page change sky
+     together — and its reduced-motion rule there has to keep matching this one below. */
+  transition: background-color 0.55s ease;
 }
 
 /* Fills the sticky stage rather than the viewport — #story-stage owns the positioning. */
@@ -262,6 +272,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  body,
   #island,
   #island-mini,
   #island-full,
