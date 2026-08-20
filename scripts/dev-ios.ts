@@ -3,8 +3,8 @@
 // touch on the charts — only behaves like the real thing in a real mobile browser. Chrome's
 // device emulation runs neither WebKit nor a status bar, so it cannot answer those questions.
 //
-// Run as `pnpm dev:ios`; the optional first argument is the path to open (default `/`, so
-// `pnpm dev:ios "/roadmap?lang=ca"` lands straight on the story). SIM_DEVICE picks the
+// Run as `pnpm dev:ios`; the optional first argument is the path to open (default `/`, which
+// is the story — `pnpm dev:ios "/?lang=ca"` opens it in Catalan). SIM_DEVICE picks the
 // simulator to boot when none is running yet.
 //
 // The simulator shares the host's loopback, so http://localhost:<port> just works — no LAN
