@@ -2,6 +2,7 @@
 created: 2026-08-21T10:56:28.783Z
 title: Remove the concept tiles beneath the deaths-by-age chart
 priority: 1
+promoted_to: phase-05 plan 05-01
 area: story
 files:
   - app/roadmap/storySlots.tsx:254

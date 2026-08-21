@@ -25,12 +25,15 @@ See: .planning/PROJECT.md (updated 2026-06-28)
 
 ## Current Position
 
-Phase: 04 (Persona Realism Ladder) — PLANNED, not started
-Plan: 0 of 8 (wave 1 of 5 ready: 04-01)
-Status: Plans written with enforced waves; awaiting execution
+Phase: 04 (Persona Realism Ladder) — PLANNED, not started · Phase 05 (Story Reading Experience) — PLANNED, not started
+Plan: 0 of 11 (Phase 04: 0/8, wave 1 = 04-01; Phase 05: 0/3, all wave 1)
+Status: Plans written with enforced waves; awaiting execution. Phase 05 was added 2026-08-21 from
+the story batch and is deliberately disjoint from Phase 04 — no shared files, so the two phases can
+run concurrently. Phase 05's 05-03 is `autonomous: false` (it needs a colour decision); 05-01 and
+05-02 are autonomous.
 Last activity: 2026-07-31 -- Phase 04 created from the nine captured persona-realism todos
 
-Progress: [__________] 0% (0/8 plans in milestone v2.0)
+Progress: [__________] 0% (0/11 plans in milestone v2.0)
 
 v1.0 MVP: phases 1-3, 5/5 plans, complete 2026-06-29. Progress above is v2.0-scoped, matching how
 v1.0 was tracked. Backlog 999.1 is unsequenced and excluded from the count.
@@ -118,9 +121,9 @@ mostly in `app/roadmap/`, and none is promoted to a plan yet.
 
 | Rank | #   | Item                                                     | Prio | Area  | Note                |
 | ---- | --- | -------------------------------------------------------- | ---- | ----- | ------------------- |
-| 1    | s04 | Remove the concept tiles under the deaths-by-age chart   | high | story | mechanical          |
-| 2    | s11 | Pull-to-top fires on scroll inertia; raise its cost      | high | story | ~5 lines            |
-| 3    | s01 | Predefined (not sky-derived) proxy strip colours         | high | story | gated on colour     |
+| 1    | s04 | Remove the concept tiles under the deaths-by-age chart   | high | story | -> plan 05-01       |
+| 2    | s11 | Pull-to-top fires on scroll inertia; raise its cost      | high | story | -> plan 05-02       |
+| 3    | s01 | Predefined (not sky-derived) proxy strip colours         | high | story | -> plan 05-03       |
 | 4    | s10 | Last screen needs a background colour, not black         | mid  | story | gated on colour     |
 | 5    | s12 | Pull control off hardcoded white onto palette tokens     | mid  | story | before s10 if light |
 | 6    | s03 | Proxy modal opens on reload; scroll jump on close        | high | story | needs discussion    |
