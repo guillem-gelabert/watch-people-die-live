@@ -65,11 +65,12 @@ v1.0 shipped on 2026-06-29 (causes data, share metadata, public roadmap page, pu
 ## Constraints
 
 - **Tech stack**: Keep Node.js >=20, Next.js 16 (App Router, React 19), strict TypeScript, Three.js via react-three-fiber, D3 and TopoJSON unless a concrete feature requires a change - the current stack is deployed and working. (Superseded the original Express + static-browser-module build.)
-- **Server data formats**: The server parses JSON or CSV only. Any upstream source that
-  publishes Excel or another binary format is converted offline - a script under `scripts/` or a
-  notebook - and its output committed, the way `data/rate-grid.json` already works. Set
-  2026-08-21. `exceljs` in `lib/acled-weekly.ts` is the one outstanding violation; see todos
-  s13 and s14.
+- **Server data formats**: The server parses JSON or CSV only **at runtime**. Any upstream
+  source that publishes Excel or another binary format is converted at build time by a script
+  under `scripts/` (or offline in a notebook), and the request path reads only its JSON output -
+  the way `data/rate-grid.json` already works. Set 2026-08-21. `exceljs` in
+  `lib/acled-weekly.ts` is the one outstanding violation: it currently parses workbooks on the
+  request path. It moves into the `prebuild` chain rather than being removed. See s13 and s14.
 - **Data integrity**: Preserve country-level annual death totals and density-weighted placement - this is the core statistical promise of the project.
 - **Identity/privacy**: Personas must remain statistically representative and never imply an identifiable real person - the app is not a surveillance tool.
 - **Data sources**: `data/causes.json` requires a manual IHME GBD CSV export because there is no tokened GBD API - the workflow must account for that human step.
@@ -91,7 +92,7 @@ v1.0 shipped on 2026-06-29 (causes data, share metadata, public roadmap page, pu
 | Keep the MVP web-first and deployed on Railway              | Fastest path to a deployed, shareable visualizer                                                    | Good so far |
 | Treat advanced realism layers as future roadmap work        | Protects MVP scope while preserving the long-term realism ambition                                  | Pending     |
 | Map the brownfield codebase before initialization           | Planning should reflect the existing architecture and shipped behavior                              | Good so far |
-| Parse only JSON or CSV on the server                        | A binary parser on the request path is a reliability risk and cannot be exercised offline; ExcelJS's streaming reader failed 7/20 on a valid ZIP entry order| 2026-08-21  |
+| Parse JSON or CSV only at runtime                          | A binary parser on the request path is a reliability risk and cannot be exercised offline; ExcelJS's streaming reader failed 7/20 on a valid ZIP entry order| 2026-08-21  |
 | Open v2.0 for persona realism rather than extend v1.0       | v1.0 shipped; STATE.md claiming an in-progress v1.0 contradicted a complete ROADMAP                 | 2026-07-31  |
 | Derive Phase 4 waves from file overlap, not priority order  | Gives `$gsd-execute-phase`'s intra-wave safety check something real to enforce                       | 2026-07-31  |
 

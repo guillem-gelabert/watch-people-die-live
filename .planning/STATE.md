@@ -124,8 +124,8 @@ mostly in `app/roadmap/`, and none is promoted to a plan yet.
 | 1    | s04 | Remove the concept tiles under the deaths-by-age chart   | high | story | DONE - plan 05-01   |
 | 2    | s11 | Pull-to-top fires on scroll inertia; raise its cost      | high | story | DONE - plan 05-02   |
 | 3    | s01 | Predefined (not sky-derived) proxy strip colours         | high | story | DONE - plan 05-03   |
-| 4    | s13 | ACLED off server-side xlsx onto committed JSON           | high | data  | kills the flake too |
-| 5    | s14 | Schedule the conflict rebuild                            | high | data  | mandatory, needs s13 |
+| 4    | s13 | ACLED xlsx from request path into the build              | high | data  | fixes the flake too |
+| 5    | s14 | Keep the built layer current and honest about its age    | high | data  | mandatory, needs s13 |
 | 6    | s10 | Last screen needs a background colour, not black         | mid  | story | gated on colour     |
 | 7    | s12 | Pull control off hardcoded white onto palette tokens     | mid  | story | before s10 if light |
 | 8    | s03 | Proxy modal opens on reload; scroll jump on close        | high | story | needs discussion    |
@@ -140,101 +140,23 @@ mostly in `app/roadmap/`, and none is promoted to a plan yet.
 its own frozen 1-9, because Phase 04's plan numbers preserve that captured rank. Filenames keep
 their capture id (s01-s14) as the stable reference, so rank and filename do not match.
 
-**Architectural rule set 2026-08-21: the server parses JSON or CSV only.** Recorded in PROJECT.md
-constraints and Key Decisions. `exceljs` in `lib/acled-weekly.ts` is the only violation - it is
-also the cause of a test that failed 7/20 runs and blocked three commits today, and a latent
-production failure (a one-shot HTTP stream with no replay, on a reader that mis-parses a valid ZIP
-entry order). s13 removes it. ACLED's REST API does return JSON (`_format=json`, base
-`https://acleddata.com/api/`) with every field the model needs, **but it is embargoed**: probed
-2026-08-21 with this project's credentials, every response carries
-`data_query_restrictions.date_recency: 12 Months`, so the account may only read events at least a
-year old. `year=2026` returns zero rows. The conflict layer is a rolling current twelve-**week**
-window, so the API cannot feed it, and that is presumably why the code scrapes the aggregated
-workbooks in the first place.
+**Architectural rule set 2026-08-21: the server parses JSON or CSV only at runtime.** Recorded in
+PROJECT.md constraints and Key Decisions. `exceljs` in `lib/acled-weekly.ts` is the only
+violation - it parses workbooks on the request path, which is also the cause of a test that failed
+7/20 runs and blocked three commits today, and a latent production failure (a one-shot HTTP stream
+with no replay, on a reader that mis-parses a valid ZIP entry order).
 
-Net effect on the plan: the xlsx must be converted **offline** (the rule and the only feasible
-design agree), and **s14 is mandatory rather than optional** - with no runtime source of current
-data, a schedule is the only thing keeping the layer from being stale by construction. The API
-remains useful for anything historical: event-level rows with 31 fields, twelve months back.
+**Resolved 2026-08-21: fetch and parse the workbooks at build time**, in the `prebuild` chain
+alongside the four scripts already there. Not the REST API - probed with this project's
+credentials, `data_query_restrictions.date_recency` is twelve **months**, and the layer needs a
+rolling current twelve-**week** window, so `year=2026` returns nothing. Format was never the
+barrier (the API serves csv/json/xml/txt); recency is, and it is a documented per-account
+restriction. Not a hand-run notebook either, because the window would age silently.
 
-`priority:` in the todo files now carries this rank. It is **batch-scoped** - the p01-p09 batch
-keeps its own frozen 1-9, because Phase 04's plan numbers preserve that captured rank. Filenames
-keep their capture id (s01-s12) as the stable reference, so rank and filename no longer match.
+Building it also fixes the flake properly: a build script can download each workbook and use
+ExcelJS's buffered reader, measured 0/20 against 7/20 for the streaming one. `exceljs` stays a
+dependency - it is needed at build time - but leaves the request path.
 
-Three carry `discuss: true` in frontmatter (s02, s03, s08) — the desired end state is a design
-call, not a mechanical fix. s02 and s03 are the same scroll mechanic (`useProxyFold`) seen from
-two angles and should be discussed together.
-
-**Deduplicated against Phase 04 on 2026-08-21.** No Phase 04 plan touches `app/roadmap/*`,
-`docs/ROADMAP*.md` or `lib/i18n/*` (verified across all eight `files_modified` sets), so s01–s06,
-s08 and s09 have no file overlap with the phase. Two corrections were applied:
-
-- **s07 was substantially already-committed work** and has been rewritten and narrowed. 04-02
-  already ingests the WHO Mortality Database and records per-country source + year; 04-03 already
-  folds in the GBD export and records the WHO/GBD split, and has already decided that export is
-  human-in-the-loop (`autonomous: false`). What survives in s07 is only the two things the phase
-  demonstrably does not do — scheduling anything at all (a grep of the phase for
-  cron/schedule/refresh/freshness returns nothing), and telling the reader the vintage in the
-  story's **Who** chapter. It now carries `blocked_by: phase-04 plans 04-02, 04-03`.
-- **s06 mis-stated its Phase 04 relationship.** It is enabled by 04-05 (region key on every cell)
-  but *not* served by 04-07, whose seasonal-composition tensor reweights who dies rather than
-  giving monthly mortality level per cell. Corrected in the todo.
-
-**Agreed working set (2026-08-21):** s04, s11, s01, s10 — confirmed by the user, in that
-priority order. Notes on it:
-
-- **04-01 is explicitly NOT in this set.** It is cheap but it is a precondition of the cause
-  ladder; do it with 04-02/04-03, not as an easy first task. See the corrected `**Start:**` note
-  above.
-- **s04 and s11 are the only two that are finishable in one sitting.** s01's diff is trivial but
-  gated on choosing five hues that clear contrast against every sky in the seasonality chapter;
-  s10 is one value in three files but gated on a design choice.
-- **s10 was split**: it now covers only the colour decision. The pull control's hardcoded white,
-  which is what blocks a light colour, became **s12**. Do s12 first if the chosen sky is light;
-  skip it if the sky stays dark.
-
-One open question surfaced by the dedup: `docs/ROADMAP.md:265` asserts the GBD table "is exported
-once by hand" — 04-02 makes that sentence false for ~120 countries the moment it ships. Either
-04-02 gains a story-edit task, or the story ships a known falsehood until s07 lands.
-
-### Blockers/Concerns
-
-- Production Railway smoke checks require a linked Railway project or deployed URL; `PORTFOLIO-HANDOFF.md` records the follow-up.
-- ~~No general automated test runner~~ - resolved: Vitest (`pnpm test`) plus the Husky pre-commit chain. `scripts/verify-globe-alignment.ts` remains the coordinate-sensitive check.
-- **RESOLVED 2026-08-21 — `.planning` across parallel agents.** `commit_docs` is now `true` and
-  `.planning/` is out of `.gitignore`, so GSD's cross-worktree planning sync works and Phase 04's
-  five-wave parallel structure is unblocked. The repo is **public**, so planning docs are public:
-  before the first commit, the six pre-Next-migration codebase maps (CONCERNS, CONVENTIONS,
-  INTEGRATIONS, STACK, STRUCTURE, TESTING — all dated 2026-06-28, all describing the dead
-  Express/`public/app.js` architecture) were deleted, keeping only the accurate
-  `ARCHITECTURE.md` (2026-07-03). Regenerate with `/gsd:map-codebase` if needed. PROJECT.md's
-  false Express/no-test-runner constraints were corrected and its portfolio framing trimmed.
-  **Anything written here from now on is public — no credentials, no third-party specifics.**
-
-- **Superseded — original wording of the above.** Deferred 2026-07-31. `commit_docs: false`
-  plus the `.gitignore` entry disables GSD's native cross-worktree planning sync, so multiple
-  worktrees each get an independent (or absent) `.planning`. Blocks any parallel execution of
-  Phase 4's waves across worktrees. Options and evidence in
-  `.planning/notes/2026-07-31-planning-sharing-across-parallel-agents.md`.
-
-## Deferred Items
-
-Items acknowledged and carried forward from previous milestone close:
-
-| Category       | Item                                                                                                     | Status                               | Deferred At    |
-| -------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------ | -------------- |
-| Realism layers | Sub-national rates, time-of-day, seasonal, climate/biome, weather, conflict, and epidemic/pandemic modes | Deferred to v2+                      | initialization |
-| Engineering    | General automated test runner and broader frontend modularization                                        | Deferred until MVP risk justifies it | initialization |
-
-## Quick Tasks Completed
-
-| ID          | Task                                                                | Date       | Commits              |
-| ----------- | ------------------------------------------------------------------- | ---------- | -------------------- |
-| 260819-hk3  | Darken the LaTeX formula tiles (were rendering white on dark skies)  | 2026-08-19 | `cb7a2a48`, `13da08d9` |
-
-## Session Continuity
-
-Last session: 2026-07-31
-Stopped at: Phase 4 planned and documented (8 plans, 5 waves, 04-CONTEXT.md written);
-no plan executed. Next action is wave 1 = plan 04-01, plus kicking off 04-03's GBD export requests.
-Resume file: None
+The cost, which is what s14 now covers: **freshness becomes deploy cadence**, and
+`freshness.refreshedAt` must report the workbook's own `latestThrough` rather than the build
+clock, or a rebuild with no new upstream data would claim to be current.

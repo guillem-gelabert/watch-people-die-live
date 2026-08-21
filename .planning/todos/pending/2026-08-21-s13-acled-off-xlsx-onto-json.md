@@ -1,6 +1,6 @@
 ---
 created: 2026-08-21T15:40:00.000Z
-title: Move ACLED xlsx parsing off the server into an offline job
+title: Move ACLED xlsx parsing from the request path into the build
 priority: 4
 area: data
 files:
@@ -48,99 +48,36 @@ Steps 1–3 should not be on the server at all. Two further reasons beyond the r
 
 ## Solution
 
-TBD in detail, but the target is settled: **the server reads a committed JSON artifact and
-nothing else.**
+**Decided 2026-08-21: fetch and parse the workbooks at build time.** Not offline in a
+notebook, not at runtime. A script in the `prebuild` chain downloads the six regional
+workbooks, parses them, aggregates, and writes `data/conflicts.json`; the request path reads
+only that JSON.
 
-**The REST API cannot be used. Probed 2026-08-21 with this project's own credentials.**
+This is the project's existing pattern rather than a new one — `prebuild` already runs
+`build-seasonality-fallbacks`, `build-seasonality-validation`, `build-closeup-outlines` and
+`sync-data`, and derived JSON already lives in `data/` and is copied to `public/data/`.
 
-OAuth succeeds, `https://acleddata.com/api/acled/read?_format=json` returns JSON, and the
-rows carry all 31 fields including every one the model needs — `event_date`, `country`,
-`admin1`, `fatalities`, `latitude`, `longitude`. So on format alone it would be ideal.
+It also fixes the flake properly rather than by deletion: a build script can download each
+workbook to disk and use ExcelJS's **buffered** reader instead of the streaming one. That was
+measured at 0/20 failures against 7/20 for the streaming path, because the buffered reader
+parses the whole archive before resolving cells and so is immune to ZIP entry order. The
+`workbookRels` monkey-patch in `parseRegionalWorkbook` can go with it.
 
-It is embargoed. Every response includes:
+### Why not the alternatives
 
-```json
-"data_query_restrictions": {
-  "date_recency": { "quantity": 12, "unit": "Months",
-                    "description": "12 Months old", "date": "2025-08-21" }
-}
-```
+- **Runtime JSON from the REST API** — impossible at current access. `data_query_restrictions.date_recency` is twelve months (probed 2026-08-21); `year=2026` returns nothing. See the finding above.
+- **A hand-run notebook** — the twelve-week window would age silently between runs.
 
-This account may only read events **at least twelve months old**. `year=2026` returns zero
-rows; so does `event_date >= 2026-08-01`. The conflict layer is a rolling *current*
-twelve-**week** window feeding an EWMA prediction of this week's fatalities, so a source
-twelve **months** behind is not a source at all.
+### Shape of the work
 
-That is almost certainly why the existing code scrapes the aggregated `.xlsx` workbooks
-rather than calling the API: ACLED's curated aggregated products are published without the
-recency embargo that applies to raw event access at this tier. The workbooks are the only
-route to current data this project has.
+1. New `scripts/build-conflicts.ts`, added to `prebuild` (and `predev`, matching the other four).
+2. Move the aggregation out of `lib/acled-weekly.ts` into something the script imports. `buildWeeklyStack`, the region and cell mapping and `countryM49` are already source-agnostic and move unchanged.
+3. Swap the streaming reader for the buffered one; delete the `workbookRels` patch and the `Readable` input path.
+4. Reduce `/api/conflicts` to serving `data/conflicts.json`. `lib/acled-cache.ts` largely goes — with no runtime fetch there is no TTL to honour — but `ConflictsPayload.freshness` is rendered by the story and has to keep meaning something (see s14).
+5. Keep the aggregation tests; drop the workbook fixtures that carried the flake.
 
-**Can the aggregated data be had in another format? No. Probed 2026-08-21.**
+### Open decisions
 
-| Attempt                                        | Result                                |
-| ---------------------------------------------- | ------------------------------------- |
-| aggregated landing page, all data-file links   | one `.xlsx`, nothing else             |
-| same file path with `.csv` / `.json`           | 404 (static Drupal file, no negotiation) |
-| `api/aggregated/read`, `api/aggregated-data/read` | **403**                            |
-| `api/acled/read?_format=csv`                   | 200, `text/csv` — but embargoed       |
-
-So CSV *is* available, just not for current data: the raw-events endpoint serves it happily
-and the aggregated product is xlsx-only. Both doors lead to the same wall.
-
-Worth noting the 403s are **403, not 404** — an aggregated endpoint may well exist and
-simply not be entitled to this account.
-
-**Therefore the cheapest fix is not engineering at all: ask ACLED to lift the embargo.**
-Non-commercial and research access tiers commonly have the twelve-month `date_recency`
-restriction waived, and there is already an `acled-api-access-request.txt` in `.gitignore`,
-so this correspondence may have happened before. If the embargo is lifted, or the aggregated
-endpoint is opened, then:
-
-- the layer is fetched as JSON or CSV at runtime, satisfying the rule with no offline step;
-- `exceljs` is deleted;
-- **s14 becomes unnecessary** — no bake, no cron, no staleness;
-- the flaky test disappears.
-
-That is a strictly better outcome than every option below, for the price of an email. Do
-that before building the offline job.
-
-**Consequences for this todo:**
-
-- Replacing the workbook fetch with a JSON fetch is **not available at current access
-  level**. Do not plan for it unless the access request above succeeds.
-- The xlsx therefore has to be converted **offline**, which is what the architectural rule
-  asks for anyway — the rule and the only feasible design agree.
-- The aggregation stays where it is in shape: the offline job reads the workbooks and emits
-  `data/conflicts.json`. `buildWeeklyStack`, the region and cell mapping and `countryM49`
-  are already source-agnostic and move across unchanged.
-- **s14 stops being optional.** With no runtime fetch possible, a schedule is the only thing
-  that keeps the layer current. s13 without s14 ships a conflict layer that is stale by
-  construction.
-- The API is still worth remembering for anything historical — twelve-month-old event-level
-  data with 31 fields per event is a good source for a retrospective layer, just not for
-  this one.
-
-Shape of the work:
-
-1. Confirm the API can serve the twelve-week window with the fields the model needs —
-   week/date, country, admin1, fatalities, centroid latitude/longitude. Credentials are
-   already configured (`ACLED_USERNAME`, `ACLED_PASSWORD`); there is an
-   `acled-api-access-request.txt` in `.gitignore` that may already record the answer.
-2. Write the offline job. A script under `scripts/` fits the existing convention better
-   than a notebook, since the six existing `build-*.ts` scripts are the precedent and this
-   needs no exploration. It authenticates, pulls JSON, aggregates, writes
-   `data/conflicts.json`.
-3. Move the aggregation out of `lib/acled-weekly.ts` into something the script imports, and
-   delete the workbook path: `parseRegionalWorkbook`, `discoverWorkbook`,
-   `validateWorkbookHeaders`, `headerIndexes`, and the `exceljs` dependency.
-4. Reduce `/api/conflicts` to serving the committed JSON. Decide what happens to
-   `lib/acled-cache.ts` — with no runtime fetch there is nothing to cache and no TTL to
-   honour, so most of it goes, but the `freshness` field the UI reads has to keep working
-   (see s14).
-5. `lib/acled-weekly.test.ts` loses its workbook fixtures and the flake with them. Keep the
-   tests for the aggregation logic, which is the part worth testing.
-
-**The cost, stated plainly:** ACLED is the only genuinely live layer in the project. Baking
-it makes the conflict layer only as fresh as the last run of the job, and nothing schedules
-anything here yet. That is **s14**, and this todo is half a solution without it.
+- **ACLED unreachable at build time: fail the deploy, or fall back?** Failing is loud and correct in CI; falling back to the last committed `data/conflicts.json` keeps deploys unblocked but can ship stale numbers silently. Leaning fail-with-fallback-only-if-a-committed-file-exists.
+- **Is `data/conflicts.json` committed?** If generated only at build, local `pnpm dev` needs ACLED credentials or the layer is empty. Committing it matches `data/rate-grid.json` and keeps dev working without secrets, at the cost of a churning binary-ish diff every rebuild.
+- **`exceljs` stays a dependency** — it is needed at build time. It moves off the request path, which is what the rule asks, but `pnpm why exceljs` will still show it. Worth a note in the script header so nobody "cleans it up".
