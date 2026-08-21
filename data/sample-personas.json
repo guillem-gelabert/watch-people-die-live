@@ -19,6 +19,7 @@
   "causes": {
     "source": "sample",
     "year": 2021,
+    "coverage": { "location": "country", "age": "age_bands", "sex": "male_female" },
     "bands": [[0, 0], [1, 4], [5, 14], [15, 29], [30, 49], [50, 64], [65, 74], [75, 84], [85, 200]],
     "causes": [
       "neonatal complications",

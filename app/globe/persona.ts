@@ -10,9 +10,11 @@ import type { Dictionary } from "@/lib/i18n/en";
 //   • age + sex are drawn from the country's REAL age x sex distribution of deaths
 //     (UN World Population Prospects, data/mortality-age-sex.json), so a death in
 //     Japan skews old and one in Nigeria skews young;
-//   • the cause is drawn from IHME Global Burden of Disease cause weights when
-//     data/causes.json is present. The current committed export is global and sex-specific;
-//     a fuller country/age export can use the same JSON shape later.
+//   • the cause is drawn from IHME Global Burden of Disease cause weights, but only when
+//     data/causes.json declares in `coverage` that its weights really do vary by age band.
+//     The committed export is global and all-ages — one set of weights repeated across all
+//     nine bands — so it is rejected and the age-gated table below answers instead. A
+//     country x age x sex export drops into the same JSON shape and is used on arrival.
 //
 // Both files are built offline (scripts/build-mortality.ts, scripts/build-causes.ts)
 // and shipped as static JSON. If they are missing or a country has no data we fall
@@ -39,8 +41,17 @@ interface CauseSexEntry {
   f: CauseWeights[];
 }
 
+// What scripts/build-causes.ts says the export it wrote can actually answer. Optional because
+// this is unvalidated fetched JSON, and a file that does not declare its coverage is not trusted.
+interface CauseCoverage {
+  location: "country" | "global";
+  age: "all_ages_repeated_across_bands" | "age_bands";
+  sex: "male_female";
+}
+
 interface CauseData {
   causes: string[];
+  coverage?: CauseCoverage;
   global: CauseSexEntry;
   countries: Record<string, CauseSexEntry>;
 }
@@ -237,10 +248,15 @@ function sexLabel(words: PersonaWords, sex: Sex, age: number): string {
   return sex === "f" ? words.woman : words.man;
 }
 
-// Cause from the best available cause data; current GBD export is global and sex-specific.
+// Cause from the real data, but only for a band the export can actually speak to.
 function pickCause(m49: number | undefined, sex: Sex, bandIdx: number, age: number): string {
-  if (CAUSE) {
-    const e = (m49 !== undefined && CAUSE.countries[m49]) || CAUSE.global;
+  // The band axis is only real when the builder says so. An all-ages export repeats one set of
+  // weights across every band, so reading it would hand an infant a pensioner's cause — the
+  // age-gated table below is strictly better than that.
+  if (CAUSE?.coverage?.age === "age_bands") {
+    // Country cells exist only in a country-scoped export; a global one is used as global.
+    const byCountry = CAUSE.coverage.location === "country" ? CAUSE.countries : undefined;
+    const e = (m49 !== undefined && byCountry?.[m49]) || CAUSE.global;
     const cell = e?.[sex]?.[bandIdx]; // { causeIdx: weight }
     if (cell) {
       const idxs = Object.keys(cell);
