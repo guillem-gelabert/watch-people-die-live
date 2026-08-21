@@ -5,19 +5,30 @@ import { useEffect, useRef } from "react";
 import { useDict } from "./I18nContext";
 
 // How far the reader has to travel before the bar is full. Long: going back to the top is a
-// hundred screens of scroll undone, and the old 104px could be reached by overshooting the last
-// paragraph. This is a gesture you have to mean.
-const THRESHOLD = 260;
+// hundred screens of scroll undone. Raised twice — 104px, then 260 — each time because the bar
+// could be filled by overshooting the last paragraph. The overshoot was really momentum being
+// accepted as a pull (see SETTLE_MS); that is now gated at the input, so this number no longer
+// carries the job of resisting a coast. It is raised anyway, because the gesture should cost
+// something on its own terms. This is a gesture you have to mean.
+const THRESHOLD = 340;
 // The elastic constant. The bar fills against a spring rather than linearly — the first half of
-// the travel fills three-quarters of it, and the last quarter of the bar costs half the pull. The
-// resistance is the whole point: it is what makes the end of the gesture feel like a decision
-// rather than a distance.
-const SOFTNESS = THRESHOLD / 2.2;
+// the travel fills about four-fifths of it, and the last fifth of the bar costs half the pull.
+// The resistance is the whole point: it is what makes the end of the gesture feel like a decision
+// rather than a distance, which is why the divisor went up with the threshold rather than staying
+// proportional — a longer pull with the old curve would have been a longer *cheap* pull.
+const SOFTNESS = THRESHOLD / 2.8;
 const FULL_STRAIN = 1 - Math.exp(-THRESHOLD / SOFTNESS);
 // A mouse wheel arrives in discrete deltas with no "end" event, so a gap this long stands in for
 // letting go. Just longer than the pause between two deltas of one continuous scroll, and shorter
 // than anything a reader would experience as a wait.
 const RELEASE_MS = 150;
+// A trackpad keeps emitting decaying deltas for hundreds of milliseconds after the fingers have
+// left it, and those deltas are indistinguishable from a deliberate pull once they arrive at the
+// bottom of the page. So the stream that carried the reader here does not count: deltas are only
+// accepted after the wheel has gone quiet for this long. Momentum cannot survive its own silence;
+// a reader who means it still has their hand on the trackpad. Longer than RELEASE_MS, because a
+// pause inside one pull must not read as the end of the coast that preceded it.
+const SETTLE_MS = 300;
 // Below full stretch, an unfed pull leaks back at this rate: a trackpad flick that stops short
 // unwinds instead of banking progress towards the next one.
 const LEAK_PER_SECOND = 520;
@@ -57,8 +68,14 @@ export default function PullToGlobe() {
     // is the reader saying they want to leave, and the release is them meaning it. Once armed the
     // bar stops leaking, so the decision keeps until they act on it either way.
     let armed = false;
-    // When the wheel last moved, which is the only thing a wheel has in place of a release.
+    // When the wheel last fed the pull, which is the only thing a wheel has in place of a release.
     let lastWheel = 0;
+    // When any wheel event last arrived, fed or not — this is what measures the momentum tail.
+    let lastWheelAny = 0;
+    // False until the wheel has gone quiet at the end of the page. Closed, deltas are discarded:
+    // an unbroken stream arriving at the bottom is the coast that brought the reader here, not a
+    // decision to leave. Re-closed on leaving the end, so coming back re-arms it.
+    let settled = false;
     let raf = 0;
     let lastTick = 0;
     let releaseTimer: ReturnType<typeof setTimeout> | undefined;
@@ -153,9 +170,22 @@ export default function PullToGlobe() {
     };
 
     const onWheel = (e: WheelEvent) => {
-      if (fired || !atEnd() || e.deltaY <= 0) return;
+      // Every wheel event updates the tail clock, including the ones this gate throws away —
+      // otherwise a discarded momentum stream would look like silence to the next delta.
+      const now = performance.now();
+      const quiet = now - lastWheelAny;
+      lastWheelAny = now;
+      if (fired || !atEnd()) {
+        settled = false;
+        return;
+      }
+      if (!settled) {
+        if (quiet < SETTLE_MS) return;
+        settled = true;
+      }
+      if (e.deltaY <= 0) return;
       pull = Math.min(THRESHOLD * 1.6, pull + e.deltaY);
-      lastWheel = performance.now();
+      lastWheel = now;
       run();
     };
 
