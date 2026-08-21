@@ -76,9 +76,39 @@ rather than calling the API: ACLED's curated aggregated products are published w
 recency embargo that applies to raw event access at this tier. The workbooks are the only
 route to current data this project has.
 
+**Can the aggregated data be had in another format? No. Probed 2026-08-21.**
+
+| Attempt                                        | Result                                |
+| ---------------------------------------------- | ------------------------------------- |
+| aggregated landing page, all data-file links   | one `.xlsx`, nothing else             |
+| same file path with `.csv` / `.json`           | 404 (static Drupal file, no negotiation) |
+| `api/aggregated/read`, `api/aggregated-data/read` | **403**                            |
+| `api/acled/read?_format=csv`                   | 200, `text/csv` — but embargoed       |
+
+So CSV *is* available, just not for current data: the raw-events endpoint serves it happily
+and the aggregated product is xlsx-only. Both doors lead to the same wall.
+
+Worth noting the 403s are **403, not 404** — an aggregated endpoint may well exist and
+simply not be entitled to this account.
+
+**Therefore the cheapest fix is not engineering at all: ask ACLED to lift the embargo.**
+Non-commercial and research access tiers commonly have the twelve-month `date_recency`
+restriction waived, and there is already an `acled-api-access-request.txt` in `.gitignore`,
+so this correspondence may have happened before. If the embargo is lifted, or the aggregated
+endpoint is opened, then:
+
+- the layer is fetched as JSON or CSV at runtime, satisfying the rule with no offline step;
+- `exceljs` is deleted;
+- **s14 becomes unnecessary** — no bake, no cron, no staleness;
+- the flaky test disappears.
+
+That is a strictly better outcome than every option below, for the price of an email. Do
+that before building the offline job.
+
 **Consequences for this todo:**
 
-- Replacing the workbook fetch with a JSON fetch is **not available**. Do not plan for it.
+- Replacing the workbook fetch with a JSON fetch is **not available at current access
+  level**. Do not plan for it unless the access request above succeeds.
 - The xlsx therefore has to be converted **offline**, which is what the architectural rule
   asks for anyway — the rule and the only feasible design agree.
 - The aggregation stays where it is in shape: the offline job reads the workbooks and emits
