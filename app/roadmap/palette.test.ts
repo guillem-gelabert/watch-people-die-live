@@ -206,6 +206,36 @@ describe("marks", () => {
   });
 });
 
+describe("proxyColors", () => {
+  // The regression this guards: these five used to be schemes(sky, true).analogous, so the proxy
+  // strips slid hue as the story's sky cross-faded and no proxy had an identity a reader could
+  // carry into the chart that scores it.
+  it("returns the five frozen identity colours", () => {
+    expect(proxyColors()).toEqual([
+      "rgb(8,142,247)",
+      "rgb(8,22,247)",
+      "rgb(7,228,214)",
+      "rgb(113,8,247)",
+      "rgb(8,247,113)",
+    ]);
+  });
+
+  it("no longer tracks any section sky", () => {
+    // Frozen at the seasonality sky, so that one still agrees by construction — and every other
+    // sky must now disagree. Before the freeze all ten agreed with their own sky.
+    expect(proxyColors()).toEqual(schemes(parseSky("#bcd8ee"), true).analogous);
+    for (const hex of SKIES.filter((h) => h !== "#bcd8ee" && h !== "#a6d2f5")) {
+      expect(proxyColors(), hex).not.toEqual(schemes(parseSky(hex), true).analogous);
+    }
+  });
+
+  it("hands out a copy, so a caller cannot mutate the identities", () => {
+    const first = proxyColors();
+    first[0] = "rgb(0,0,0)";
+    expect(proxyColors()[0]).toBe("rgb(8,142,247)");
+  });
+});
+
 describe("proxyMarks", () => {
   // Every proxy chart draws in its own proxy's colour, anchored away from the section hue.
   // Those anchors are vivid by construction, so they are exactly the colours most likely to
@@ -238,6 +268,15 @@ describe("proxyMarks", () => {
     expect(proxyMarks(3, 2, sky)).toEqual(proxyMarks(3, 2, sky));
     expect(proxyMarks(3, 2, sky)).not.toEqual(proxyMarks(1, 2, sky));
   });
+
+  // The other half of the freeze: identity is fixed, legibility is not. The figures are
+  // transparent and composite over the sky, so hardcoding these too would strand some proxy
+  // charts under 3:1 on some sections.
+  it("still corrects for the sky even though the anchor is frozen", () => {
+    const light = proxyMarks(0, 4, parseSky("#e7e9e4"));
+    const dark = proxyMarks(0, 4, parseSky("#2b1c3a"));
+    expect(light).not.toEqual(dark);
+  });
 });
 
 describe("chartPaletteToCssVars", () => {
@@ -246,7 +285,7 @@ describe("chartPaletteToCssVars", () => {
       const sky = parseSky(hex);
       const vars = chartPaletteToCssVars(sky);
 
-      proxyColors(sky).forEach((color, index) => {
+      proxyColors().forEach((color, index) => {
         expect(vars[`--proxy-color-${index}`]).toBe(color);
       });
       for (let proxy = 0; proxy < 5; proxy += 1) {

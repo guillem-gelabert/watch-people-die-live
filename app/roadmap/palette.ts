@@ -269,19 +269,39 @@ export function harmony(n: number, sky: Rgb, vivid = false, anchor?: string): st
   return s.mono(n);
 }
 
-// The five seasonality proxies wear five colours of the section they live in, keyed to
-// identity (their data-proxy index) so reordering the stack never repaints a card.
-export function proxyColors(sky: Rgb): string[] {
-  return schemes(sky, true).analogous;
+// The five seasonality proxies, keyed to identity (their data-proxy index) so reordering the
+// stack never repaints a card. Fixed values, not derived from the sky: these used to be
+// `schemes(sky, true).analogous`, which meant the five hues slid as the story's sky
+// cross-faded, and a reader could not carry "the strip I ranked first" down into the chart that
+// scores it. The values below are exactly what that expression produced at the seasonality sky
+// (`#bcd8ee`) — the section the proxy card actually lives in — so nothing changed where the
+// reader meets them; the drift everywhere else stopped.
+//
+// They are analogous by construction rather than by taste, and that is load-bearing:
+// `ProxyStrip` paints white ink on every fill, and a narrow hue band is what keeps the five at
+// something near one perceived lightness. Widening the separation makes the white ink fail.
+const PROXY_COLORS: readonly string[] = [
+  "rgb(8,142,247)",
+  "rgb(8,22,247)",
+  "rgb(7,228,214)",
+  "rgb(113,8,247)",
+  "rgb(8,247,113)",
+];
+
+export function proxyColors(): string[] {
+  return [...PROXY_COLORS];
 }
 
 export function proxyHarmony(idx: number, n: number, sky: Rgb): string[] {
-  const anchor = proxyColors(sky)[idx % 5];
+  const anchor = PROXY_COLORS[idx % 5];
   return harmony(n, sky, true, anchor);
 }
 
 // What every proxy chart actually draws with: that proxy's own harmony, then the 3:1
-// legibility pass, because the figures are transparent and composite over the sky.
+// legibility pass, because the figures are transparent and composite over the sky. The anchor is
+// fixed but this correction must stay dynamic — the marks composite over whatever sky is up, so
+// freezing them too would make some proxy charts illegible on some sections. Fixed identity,
+// corrected legibility: do not "finish the job" by hardcoding these as well.
 export function proxyMarks(idx: number, n: number, sky: Rgb): string[] {
   return marks(proxyHarmony(idx, n, sky), sky);
 }
@@ -411,7 +431,7 @@ export function skinToCssVars(sky: Rgb, skin: Skin): Record<string, string> {
 export function chartPaletteToCssVars(sky: Rgb): Record<string, string> {
   const out: Record<string, string> = {};
 
-  proxyColors(sky).forEach((color, index) => {
+  proxyColors().forEach((color, index) => {
     out[`--proxy-color-${index}`] = color;
   });
   for (let proxy = 0; proxy < 5; proxy += 1) {
