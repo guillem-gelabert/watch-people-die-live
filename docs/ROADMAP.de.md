@@ -291,7 +291,7 @@ Die Personen nutzen derzeit eine nationale Altersverteilung, ein Todesfall in ei
 
 :::
 
-### back-to-the-globe · Zurück zum Globus · #000000 · hidden
+### back-to-the-globe · Zurück zum Globus · #0c223f · hidden
 
 :::end-block
 

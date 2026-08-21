@@ -290,7 +290,7 @@ Personas currently use a national age distribution, so a death in a rural Spanis
 
 :::
 
-### back-to-the-globe · Back to the globe · #000000 · hidden
+### back-to-the-globe · Back to the globe · #0c223f · hidden
 
 :::end-block
 

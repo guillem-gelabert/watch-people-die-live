@@ -30,7 +30,7 @@ const SKIES = [
   "#d9dbdd", // Who
   "#eeb87d", // Conflicts
   "#cf7a68", // Still missing
-  "#000000", // Back to the globe
+  "#0c223f", // Back to the globe
 ] as const;
 
 const lumOf = (css: string): number => {
@@ -58,7 +58,7 @@ describe("parseColor", () => {
 describe("skinFromSky", () => {
   it("flips to the dark variant below 0.2 relative luminance", () => {
     expect(skinFromSky(parseSky("#2b1c3a")).dark).toBe(true);
-    expect(skinFromSky(parseSky("#000000")).dark).toBe(true);
+    expect(skinFromSky(parseSky("#0c223f")).dark).toBe(true);
     expect(skinFromSky(parseSky("#cf7a68")).dark).toBe(false);
     expect(skinFromSky(parseSky("#e8956d")).dark).toBe(false);
   });
@@ -93,7 +93,7 @@ describe("skinFromSky", () => {
   });
 
   it("keeps inkTile a guaranteed-dark well on dark skies and equal to ink on light ones", () => {
-    for (const hex of ["#2b1c3a", "#000000"]) {
+    for (const hex of ["#2b1c3a", "#0c223f"]) {
       const skin = skinFromSky(parseSky(hex));
       expect(lumOf(skin.inkTile), `inkTile on ${hex}`).toBeLessThan(lumOf(skin.paper));
     }
