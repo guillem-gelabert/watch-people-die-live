@@ -11,6 +11,7 @@ import {
   proxyMarks,
   proxyColors,
   relativeLuminance,
+  rgbToHsl,
   schemes,
   skinFromSky,
   skinToCssVars,
@@ -118,20 +119,57 @@ describe("schemes", () => {
     expect(s.splitComplementary).toHaveLength(3);
     expect(s.triadic).toHaveLength(3);
     expect(s.tetradic).toHaveLength(4);
-    expect(s.analogous).toHaveLength(5);
+    expect(s.analogous).toHaveLength(3);
     expect(s.mono(7)).toHaveLength(7);
   });
 
-  it("reproduces the five proxy fills visible in the handoff screenshots", () => {
-    // The proxy stack in the "When" section paints each card from
-    // schemes(sky, vivid).analogous — blue, dark blue, teal, purple, green.
-    expect(schemes(parseSky("#bcd8ee"), true).analogous).toEqual([
-      "rgb(8,142,247)",
-      "rgb(8,22,247)",
-      "rgb(7,228,214)",
-      "rgb(113,8,247)",
-      "rgb(8,247,113)",
-    ]);
+  it("is fifteen distinct colours per sky: base, eight hues, six shades", () => {
+    for (const hex of SKIES) {
+      const pal = schemes(parseSky(hex)).palette();
+      expect(pal, hex).toHaveLength(15);
+      expect(new Set(pal).size, `${hex} has a duplicate`).toBe(15);
+    }
+  });
+
+  // Pins the colour model to an external reference rather than to itself. These are the hues
+  // colorhexa.com/bcd8ee publishes for each scheme; the base is 206°. If a rotation is ever
+  // changed by accident, this fails with the offending hue rather than with a colour nobody can
+  // reason about. Rounding tolerance is 1°, since the trip through RGB is lossy.
+  it("matches colorhexa's scheme definitions", () => {
+    const s = schemes(parseSky("#bcd8ee"));
+    const hues = (cols: string[]) =>
+      cols.map((c) => {
+        const parsed = parseColor(c);
+        if (!parsed) throw new Error("unparseable: " + c);
+        return Math.round(rgbToHsl(parsed.rgb)[0]);
+      });
+    const near = (got: number[], want: number[]) => {
+      expect(got).toHaveLength(want.length);
+      got.forEach((g, i) => expect(Math.abs(g - (want[i] as number))).toBeLessThanOrEqual(1));
+    };
+    near(hues(s.complementary), [206, 26]);
+    near(hues(s.analogous), [176, 206, 236]);
+    near(hues(s.splitComplementary), [56, 206, 356]);
+    near(hues(s.triadic), [86, 206, 326]);
+    near(hues(s.tetradic), [146, 206, 326, 26]);
+  });
+
+  it("rotates hue only — one saturation and one lightness across every scheme", () => {
+    // The schemes read as schemes because nothing but hue moves. An earlier version dropped a
+    // lightness step on every third member, which meant one hue offset did not map to one colour.
+    const s = schemes(parseSky("#bcd8ee"), true);
+    const ls = [
+      ...s.complementary,
+      ...s.analogous,
+      ...s.splitComplementary,
+      ...s.triadic,
+      ...s.tetradic,
+    ].map((c) => {
+      const parsed = parseColor(c);
+      if (!parsed) throw new Error("unparseable: " + c);
+      return Math.round(rgbToHsl(parsed.rgb)[2] * 100);
+    });
+    expect(new Set(ls).size, `lightnesses seen: ${[...new Set(ls)].join(",")}`).toBe(1);
   });
 
   it("anchors on an explicit colour when given one", () => {
@@ -221,11 +259,12 @@ describe("proxyColors", () => {
   });
 
   it("no longer tracks any section sky", () => {
-    // Frozen at the seasonality sky, so that one still agrees by construction — and every other
-    // sky must now disagree. Before the freeze all ten agreed with their own sky.
-    expect(proxyColors()).toEqual(schemes(parseSky("#bcd8ee"), true).analogous);
-    for (const hex of SKIES.filter((h) => h !== "#bcd8ee" && h !== "#a6d2f5")) {
+    // These five were generated from the pre-2026-08-21 analogous scheme, which was five wide
+    // (0, ±30, ±60) with a lightness drop on its third member. That scheme no longer exists, so
+    // no sky's palette reproduces them any more — which is the point of holding them as literals.
+    for (const hex of SKIES) {
       expect(proxyColors(), hex).not.toEqual(schemes(parseSky(hex), true).analogous);
+      expect(proxyColors(), hex).not.toEqual(schemes(parseSky(hex), true).palette().slice(0, 5));
     }
   });
 

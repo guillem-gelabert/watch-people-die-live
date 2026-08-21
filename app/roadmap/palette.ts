@@ -30,6 +30,9 @@ export interface Schemes {
   hue: number;
   sat: number;
   dark: boolean;
+  // The section's whole palette in one ordered array: base, then the eight distinct non-base
+  // hues of the five classical schemes, then six monochromatic shades. Fifteen colours.
+  palette: () => string[];
   base: string;
   complementary: string[];
   splitComplementary: string[];
@@ -214,6 +217,32 @@ export function mapColor(str: string, skin: Skin): string {
 
 // --- harmonies ----------------------------------------------------------------------
 
+// The classical harmonies, as pure hue rotations from the base. These match colorhexa's
+// "Color Schemes" definitions exactly — checked against colorhexa.com/bcd8ee, whose base hue is
+// 206°: complementary 26°, analogous 176/236°, split complementary 56/356°, triadic 86/326°,
+// tetradic 146/326/26°. Each list includes the base at the position colorhexa shows it.
+const HUE_OFFSETS = {
+  complementary: [0, 180],
+  analogous: [-30, 0, 30],
+  splitComplementary: [-150, 0, 150],
+  triadic: [-120, 0, 120],
+  // colorhexa's tetrad is a rectangle, not a square: -60, +120, +180. Two of its three members
+  // are the triadic +120 and the complement, so it contributes exactly one new hue (-60).
+  tetradic: [-60, 0, 120, 180],
+} as const;
+
+// The eight distinct non-base hues the five schemes above produce between them, ordered by how
+// far each sits from what came before it. A chart asking for n series takes the first n, so a
+// two-series chart gets the complement and a six-series chart is still adding genuinely separated
+// hues rather than repeating one. Base + these 8 + the 6 monochromatic shades is the section's
+// whole palette: 15 colours, which is what `palette()` returns.
+const PALETTE_HUE_ORDER = [180, -120, 120, -150, 150, -60, -30, 30] as const;
+
+// colorhexa's monochromatic strip is the base plus three steps of 5% lightness either side.
+// Stored as offsets rather than absolute lightnesses because the base lightness itself depends
+// on whether the scheme is vivid and whether the sky is dark.
+const MONO_OFFSETS = [-0.15, -0.1, -0.05, 0.05, 0.1, 0.15] as const;
+
 const schemeCache = new Map<string, Schemes>();
 
 // A section's whole palette, generated from its own sky: every classical harmony at once.
@@ -230,20 +259,29 @@ export function schemes(sky: Rgb, vivid = false, anchor?: string): Schemes {
   // lighter, upward lightness ramp even while its skin is still the light-sky variant.
   const dark = relativeLuminance(sky) < 0.28;
   const sat = vivid ? 0.94 : Math.min(0.82, Math.max(0.4, sat0 + 0.2));
-  const lig = (i: number) => (vivid ? 0.5 - i * 0.04 : dark ? 0.62 + i * 0.07 : 0.46 - i * 0.07);
-  // Every third hue drops a lightness step so same-hue neighbours in a long ramp separate.
-  const at = (ds: number[]) => ds.map((d, i) => hslToCss(hue + d, sat, lig(i % 3 === 2 ? 1 : 0)));
+  const lightness = vivid ? 0.5 : dark ? 0.62 : 0.46;
+  // Classical harmonies are pure hue rotations at one saturation and one lightness — that is
+  // what makes a scheme read as a scheme. Every member of every scheme below is therefore the
+  // same colour turned around the wheel, matching colorhexa's definitions exactly (see
+  // HUE_OFFSETS). An earlier version dropped a lightness step on every third member so that
+  // same-hue neighbours in a long ramp would separate; that was a workaround for an analogous
+  // scheme five members wide, and with the schemes at their classical widths it is no longer
+  // needed. It is gone, because it meant one hue offset did not map to one colour.
+  const at = (ds: readonly number[]) => ds.map((d) => hslToCss(hue + d, sat, lightness));
 
   const out: Schemes = {
     hue,
     sat,
     dark,
-    base: hslToCss(hue, sat, lig(0)),
-    complementary: at([0, 180]),
-    splitComplementary: at([0, 150, 210]),
-    triadic: at([0, 120, 240]),
-    tetradic: at([0, 90, 180, 270]),
-    analogous: at([0, 30, -30, 60, -60]),
+    base: hslToCss(hue, sat, lightness),
+    complementary: at(HUE_OFFSETS.complementary),
+    splitComplementary: at(HUE_OFFSETS.splitComplementary),
+    triadic: at(HUE_OFFSETS.triadic),
+    tetradic: at(HUE_OFFSETS.tetradic),
+    analogous: at(HUE_OFFSETS.analogous),
+    // 3 darker, the base, then 3 lighter when asked for the canonical seven; for any other n,
+    // an evenly spaced ramp through the same range so a chart with more series than hues still
+    // gets one shade each.
     mono: (n: number) =>
       Array.from({ length: n }, (_, i) =>
         hslToCss(
@@ -252,20 +290,31 @@ export function schemes(sky: Rgb, vivid = false, anchor?: string): Schemes {
           dark ? 0.34 + (0.5 * i) / Math.max(1, n - 1) : 0.72 - (0.5 * i) / Math.max(1, n - 1),
         ),
       ),
+    palette: () => [
+      hslToCss(hue, sat, lightness),
+      ...PALETTE_HUE_ORDER.map((d) => hslToCss(hue + d, sat, lightness)),
+      ...MONO_OFFSETS.map((d) => hslToCss(hue, sat, clamp01(lightness + d))),
+    ],
   };
   schemeCache.set(key, out);
   return out;
 }
 
-// n series -> the scheme that fits. Beyond six distinct hues, shades of one hue read
-// better than more hues do.
+// n series -> the scheme that fits. Up to four, the classical scheme of that width. At five and
+// six, the section's ordered palette, which is those schemes deduplicated (PALETTE_HUE_ORDER), so
+// a six-series chart is still adding separated hues — the old rule padded `analogous` with the
+// complement and, now that analogous is three wide rather than five, would have run short.
+//
+// Past six, shades of one hue: more hues stop being separable, and the one caller at seven is
+// `--amplitude-ramp-*`, a sequential choropleth scale that has to be monochromatic. Do not raise
+// this cutoff to the palette's full nine hues without giving that ramp its own accessor.
 export function harmony(n: number, sky: Rgb, vivid = false, anchor?: string): string[] {
   const s = schemes(sky, vivid, anchor);
   if (n <= 1) return [s.base];
   if (n === 2) return s.complementary;
   if (n === 3) return s.splitComplementary;
   if (n === 4) return s.tetradic;
-  if (n <= 6) return s.analogous.concat(s.complementary[1] as string).slice(0, n);
+  if (n <= 6) return s.palette().slice(0, n);
   return s.mono(n);
 }
 
@@ -273,13 +322,19 @@ export function harmony(n: number, sky: Rgb, vivid = false, anchor?: string): st
 // stack never repaints a card. Fixed values, not derived from the sky: these used to be
 // `schemes(sky, true).analogous`, which meant the five hues slid as the story's sky
 // cross-faded, and a reader could not carry "the strip I ranked first" down into the chart that
-// scores it. The values below are exactly what that expression produced at the seasonality sky
-// (`#bcd8ee`) — the section the proxy card actually lives in — so nothing changed where the
-// reader meets them; the drift everywhere else stopped.
+// scores it.
 //
-// They are analogous by construction rather than by taste, and that is load-bearing:
-// `ProxyStrip` paints white ink on every fill, and a narrow hue band is what keeps the five at
-// something near one perceived lightness. Widening the separation makes the white ink fail.
+// They were captured from that expression at the seasonality sky (`#bcd8ee`), the section the
+// proxy card lives in, so nothing changed where the reader meets them. Nothing regenerates them
+// now: that analogous scheme was five wide (0, ±30, ±60) with a lightness drop on its third
+// member, and the scheme was narrowed to its classical three on 2026-08-21, so no current
+// `schemes()` call reproduces this array. That is the point of holding it as literals — but it
+// does mean these five are no longer a harmony of anything, and a future palette rework has to
+// decide what they should be rather than assuming the generator still knows.
+//
+// One constraint if they are ever re-picked: `ProxyStrip` paints white ink on every fill, and a
+// narrow hue band is what keeps the five near one perceived lightness. Widening the separation
+// makes the white ink fail — measured, p2 and p4 are already at 1.61 and 1.44 against white.
 const PROXY_COLORS: readonly string[] = [
   "rgb(8,142,247)",
   "rgb(8,22,247)",
