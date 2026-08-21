@@ -121,7 +121,7 @@ Ordering is by wave, not by plan number. Plan numbers preserve the captured prio
 
 Plans:
 
-- [ ] 04-01: Honour the cause coverage flag in pickCause _(wave 1)_
+- [x] 04-01: Honour the cause coverage flag in pickCause _(wave 1)_
 - [ ] 04-02: Source country age/sex causes from WHO Mortality Database _(wave 2)_
 - [ ] 04-04: Derive per-cell age/sex death weights from gridded population _(wave 2)_
 - [ ] 04-08: Unfilter age/sex in pipelines that already download it _(wave 2)_
@@ -169,10 +169,10 @@ Within Phase 4, waves execute in order 1 -> 5; plans inside a wave run in parall
 | v1.0      | 1. Cause Fidelity and Methodology | 2/2            | Complete    | 2026-06-29 |
 | v1.0      | 2. Shareable Public Surface       | 2/2            | Complete    | 2026-06-29 |
 | v1.0      | 3. Publish and Portfolio Handoff  | 1/1            | Complete    | 2026-06-29 |
-| **v2.0**  | 4. Persona Realism Ladder         | 0/8            | Not started | -          |
+| **v2.0**  | 4. Persona Realism Ladder         | 1/8            | In progress | -          |
 | **v2.0**  | 5. Story Reading Experience       | 0/3            | Not started | -          |
 
-v1.0 (MVP): 5/5 plans, complete 2026-06-29. v2.0: 0/11 plans (Phase 4 persona realism 0/8, Phase 5 story 0/3).
+v1.0 (MVP): 5/5 plans, complete 2026-06-29. v2.0: 1/11 plans (Phase 4 persona realism 1/8, Phase 5 story 0/3).
 
 ## Future Roadmaps
 

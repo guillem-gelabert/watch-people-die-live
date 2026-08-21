@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persona Realism
 status: in_progress
-stopped_at: Phase 04 planned (8 plans, 5 waves); no plan executed yet. Wave 1 is 04-01 alone.
-last_updated: "2026-07-31T10:44:09.396Z"
-last_activity: 2026-07-31 -- Phase 04 created from the nine captured persona-realism todos
+stopped_at: Phase 04 wave 1 done (04-01 + the GBD export spec). Wave 2 next: 04-02, 04-08, 04-04.
+last_updated: "2026-08-21T20:30:00.000Z"
+last_activity: 2026-08-21 -- 04-01 executed: pickCause honours coverage; GBD export spec written
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 13
 ---
 
 # Project State
@@ -25,15 +25,17 @@ See: .planning/PROJECT.md (updated 2026-06-28)
 
 ## Current Position
 
-Phase: 04 (Persona Realism Ladder) — PLANNED, not started · Phase 05 (Story Reading Experience) — PLANNED, not started
-Plan: 0 of 11 (Phase 04: 0/8, wave 1 = 04-01; Phase 05: 0/3, all wave 1)
-Status: Plans written with enforced waves; awaiting execution. Phase 05 was added 2026-08-21 from
-the story batch and is deliberately disjoint from Phase 04 — no shared files, so the two phases can
-run concurrently. Phase 05's 05-03 is `autonomous: false` (it needs a colour decision); 05-01 and
+Phase: 04 (Persona Realism Ladder) — IN PROGRESS, wave 1 done · Phase 05 (Story Reading Experience) — PLANNED, not started
+Plan: 1 of 11 (Phase 04: 1/8, wave 2 next = 04-02 + 04-08 + 04-04; Phase 05: 0/3, all wave 1)
+Status: Phase 04 wave 1 landed — `pickCause` now honours the `coverage` flag, so the committed
+global all-ages export is rejected in favour of the age-gated fallback table, and the quota-bound
+GBD export spec (`gbd-export-spec.md`) is ready for the portal requests to run in parallel with
+waves 2-5. Phase 05 was added 2026-08-21 from the story batch and is deliberately disjoint from
+Phase 04 — no shared files, so the two phases can run concurrently. Phase 05's 05-03 is `autonomous: false` (it needs a colour decision); 05-01 and
 05-02 are autonomous.
-Last activity: 2026-07-31 -- Phase 04 created from the nine captured persona-realism todos
+Last activity: 2026-08-21 -- 04-01 executed: pickCause honours coverage; GBD export spec written
 
-Progress: [__________] 0% (0/11 plans in milestone v2.0)
+Progress: [#_________] 9% (1/11 plans in milestone v2.0)
 
 v1.0 MVP: phases 1-3, 5/5 plans, complete 2026-06-29. Progress above is v2.0-scoped, matching how
 v1.0 was tracked. Backlog 999.1 is unsequenced and excluded from the count.
@@ -42,7 +44,7 @@ v1.0 was tracked. Backlog 999.1 is unsequenced and excluded from the count.
 
 **Velocity:**
 
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: n/a
 - Total execution time: 0.0 hours
 
