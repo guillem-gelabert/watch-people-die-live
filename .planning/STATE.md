@@ -124,10 +124,10 @@ mostly in `app/roadmap/`, and none is promoted to a plan yet.
 | 1    | s04 | Remove the concept tiles under the deaths-by-age chart   | high | story | DONE - plan 05-01   |
 | 2    | s11 | Pull-to-top fires on scroll inertia; raise its cost      | high | story | DONE - plan 05-02   |
 | 3    | s01 | Predefined (not sky-derived) proxy strip colours         | high | story | DONE - plan 05-03   |
-| 4    | s13 | ACLED xlsx from request path into the build              | high | data  | fixes the flake too |
-| 5    | s14 | Keep the built layer current and honest about its age    | high | data  | mandatory, needs s13 |
-| 6    | s10 | Last screen needs a background colour, not black         | mid  | story | gated on colour     |
-| 7    | s12 | Pull control off hardcoded white onto palette tokens     | mid  | story | before s10 if light |
+| 4    | s13 | ACLED xlsx from request path into the build              | high | data  | DONE                |
+| 5    | s14 | Keep the built layer current and honest about its age    | high | data  | PART DONE - cadence |
+| 6    | s10 | Last screen needs a background colour, not black        | mid  | story | DONE - #0c223f      |
+| 7    | s12 | Pull control off hardcoded white onto palette tokens    | mid  | story | DONE                |
 | 8    | s03 | Proxy modal opens on reload; scroll jump on close        | high | story | needs discussion    |
 | 9    | s02 | Unstick the proxy card when the fold completes           | high | story | needs discussion    |
 | 10   | s05 | One-word scale toggle with animated curvature            | mid  | story |                     |
@@ -168,3 +168,29 @@ escape hatch.
 The cost, which is what s14 now covers: **freshness becomes deploy cadence**, and
 `freshness.refreshedAt` must report the workbook's own `latestThrough` rather than the build
 clock, or a rebuild with no new upstream data would claim to be current.
+
+### Session 2026-08-21 — what shipped
+
+Phase 05 (s04, s11, s01) implemented, plus the colour model rework and the ACLED migration.
+
+- **s13 done.** `scripts/build-conflicts.ts` bakes the layer in `prebuild`; `/api/conflicts`,
+  `lib/acled-cache.ts` and the whole runtime snapshot path are gone. Verified by a production
+  build: the route no longer appears, and `app/` imports nothing from `lib/acled` but an erased
+  type, so `exceljs` is off the request path. `upstreamCutoff()` skips six workbook downloads when
+  the committed snapshot already covers the advertised week - 3s instead of minutes.
+- **s14 half done.** Its sharpest point is closed: `freshness` was *removed* rather than
+  repointed, because a baked artifact has no honest status to carry and nothing read the field.
+  `commonThrough` is the honest one and `ConflictMap` already shows it. **Outstanding: the deploy
+  cadence.** Freshness is now literally deploy frequency, and nothing schedules a redeploy.
+- **s12 done**, and it was the precondition for s10: four literal whites in the pull control moved
+  onto `--ink`, byte-identical today because `ink` resolves to `#ffffff` on a dark sky.
+- **s10 done.** Closing sky `#000000` -> `#0c223f`, the outermost stop of the earth thumbnail's own
+  gradient, so the handoff to the globe reads as continuous. Luminance 0.0158 keeps the dark
+  variant and white ink; body 12.53:1, mute 8.80:1.
+
+Still open, in rank order: s03/s02 (the two `useProxyFold` items, both `discuss: true`, and they
+are the same mechanic seen twice), s05, s06, s07, s09, s08. Phase 04 remains 0/8 - the entire
+v2.0 persona-realism milestone is untouched.
+
+Two standing annoyances: `lib/acled-weekly.test.ts` still fails roughly one run in three (fixture
+entry order, not production - it blocked five commits today), and nothing is pushed.

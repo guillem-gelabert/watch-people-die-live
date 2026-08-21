@@ -2,6 +2,7 @@
 created: 2026-08-21T15:40:00.000Z
 title: Keep the build-time conflict layer current, and honest about its age
 priority: 5
+resolved: substance done 2026-08-21 (freshness removed); cadence outstanding
 area: data
 blocked_by: s13 (nothing to schedule until the build script exists)
 mandatory: true (freshness is now deploy cadence — see below)

@@ -2,6 +2,7 @@
 created: 2026-08-21T15:40:00.000Z
 title: Move ACLED xlsx parsing from the request path into the build
 priority: 4
+resolved: done 2026-08-21
 area: data
 files:
   - lib/acled-weekly.ts
