@@ -245,7 +245,14 @@ export function commonCutoff(workbooks: DiscoveredWorkbook[]): string {
 export function validateWorkbookHeaders(headers: string[]): void {
   const normalized = new Set(headers.map((header) => header.trim().toUpperCase()));
   const missing = REQUIRED_HEADERS.filter((header) => !normalized.has(header));
-  if (missing.length) throw new Error(`ACLED workbook missing headers: ${missing.join(", ")}`);
+  // The received row goes in the message. Without it "missing headers: WEEK, COUNTRY, ..." is
+  // the same text whether the sheet has the wrong columns, whether the header row was skipped and
+  // a data row measured instead, or whether the cells arrived empty because the reader reached
+  // the worksheet before the shared-string table. Those need different fixes.
+  if (missing.length) {
+    const saw = headers.length ? headers.map((h) => JSON.stringify(h)).join(", ") : "(no cells)";
+    throw new Error(`ACLED workbook missing headers: ${missing.join(", ")}; row contained ${saw}`);
+  }
 }
 
 function headerIndexes(row: ExcelJS.Row): Record<(typeof REQUIRED_HEADERS)[number], number> {
