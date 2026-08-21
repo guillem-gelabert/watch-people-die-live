@@ -1,15 +1,12 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
-import { SnapshotManager, type SnapshotResult } from "./acled-cache";
 import {
-  ACLED_SCHEMA_VERSION,
   ACLED_WINDOW_WEEKS,
   addUtcDays,
   buildSnapshot,
   commonCutoff,
   discoverWorkbook,
-  isCompleteSnapshot,
   parseRegionalWorkbook,
   type AcledRegionSource,
   type ConflictsPayload,
@@ -20,7 +17,6 @@ export type {
   AcledRegionalCoverage,
   ConflictCell,
   ConflictCountry,
-  ConflictFreshnessStatus,
   ConflictRegion,
   ConflictsPayload,
   ConflictWeeklyStack,
@@ -232,87 +228,4 @@ export async function buildConflictsSnapshot(): Promise<ConflictsPayload> {
     throw new Error("ACLED refresh did not complete all six regions");
   }
   return buildSnapshot(parsed, cutoff, await loadRateGrid());
-}
-
-function lastCompleteSaturday(): string {
-  const date = new Date();
-  const daysSinceSaturday = (date.getUTCDay() + 1) % 7;
-  date.setUTCDate(date.getUTCDate() - daysSinceSaturday);
-  return date.toISOString().slice(0, 10);
-}
-
-function emptyPayload(note: string): ConflictsPayload {
-  const end = lastCompleteSaturday();
-  const start = addUtcDays(end, -(ACLED_WINDOW_WEEKS - 1) * 7);
-  const weeks = Array.from({ length: ACLED_WINDOW_WEEKS }, (_, index) => ({
-    week: addUtcDays(start, index * 7),
-    values: [0],
-    othersBreakdown: [],
-  }));
-  return {
-    schemaVersion: ACLED_SCHEMA_VERSION,
-    source: "ACLED weekly aggregated data — https://acleddata.com",
-    license: "ACLED Terms of Use — academic / non-commercial",
-    granularity: "week",
-    spatialPrecision: "admin1-centroid",
-    window: { start, end, weeks: ACLED_WINDOW_WEEKS },
-    commonThrough: end,
-    generatedAt: new Date().toISOString(),
-    totalFatalities: 0,
-    weeklyStack: { countries: ["Others"], weeks },
-    regions: [],
-    byCountry: [],
-    cells: [],
-    ewma: {
-      halfLifeWeeks: 4,
-      clampPercentile: 10,
-      lower: 0,
-      upper: 0,
-      curve: [],
-      predictedWeekly: 0,
-      annualizedPrediction: 0,
-    },
-    coverage: {
-      regionalSources: [],
-      unmappedCountries: [],
-      droppedFatalities: 0,
-      placedFatalities: 0,
-    },
-    freshness: { status: "unavailable", ageHours: null, refreshedAt: null },
-    note,
-  };
-}
-
-function configuredCacheFile(): string | null {
-  const value = process.env.ACLED_WEEKLY_CACHE_FILE?.trim();
-  return value || null;
-}
-
-let manager: SnapshotManager | null = null;
-
-function snapshotManager(): SnapshotManager {
-  if (!manager) {
-    manager = new SnapshotManager({
-      cacheFile: configuredCacheFile(),
-      build: buildConflictsSnapshot,
-      validate: isCompleteSnapshot,
-      empty: emptyPayload,
-    });
-  }
-  return manager;
-}
-
-export function getConflicts(): Promise<SnapshotResult> {
-  return snapshotManager().get();
-}
-
-export async function refreshConflicts(): Promise<void> {
-  try {
-    await snapshotManager().refresh();
-  } catch (error) {
-    console.error(
-      "ACLED weekly refresh failed; retaining the last complete snapshot:",
-      error instanceof Error ? error.message : "unknown error",
-    );
-  }
 }

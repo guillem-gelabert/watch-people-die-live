@@ -205,9 +205,12 @@ export function useRoadmapData(): RoadmapState {
       })
       .catch((err) => console.error("Could not load close-up outlines", err));
 
-    // ACLED conflict fatalities (step 6). Served by the /api/conflicts route (not a static
-    // file), refreshed ~daily. Optional — the step degrades to no map if it's empty/unavailable.
-    d3.json<ConflictsPayload>("/api/conflicts")
+    // ACLED conflict fatalities (step 6). A static file like every other layer: ACLED publishes
+    // the aggregated workbooks as .xlsx only, so `scripts/build-conflicts.ts` parses them during
+    // the build and this is its output. There is no runtime route any more, and no refresh — the
+    // window is as current as the last deploy, and `commonThrough` says which week it covers.
+    // Optional: the step degrades to no map if it's missing.
+    d3.json<ConflictsPayload>("/data/conflicts.json")
       .then((conflicts) => {
         if (cancelled || !conflicts) return;
         setState((s) => ({ ...s, conflicts }));

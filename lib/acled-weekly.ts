@@ -46,8 +46,6 @@ export interface AcledRegionalCoverage {
   invalidRows: number;
 }
 
-export type ConflictFreshnessStatus = "fresh" | "stale" | "unavailable";
-
 export interface ConflictsPayload {
   schemaVersion: typeof ACLED_SCHEMA_VERSION;
   source: string;
@@ -77,11 +75,12 @@ export interface ConflictsPayload {
     droppedFatalities: number;
     placedFatalities: number;
   };
-  freshness: {
-    status: ConflictFreshnessStatus;
-    ageHours: number | null;
-    refreshedAt: string | null;
-  };
+  // No `freshness` field. It used to carry { status, ageHours, refreshedAt } computed by the
+  // runtime snapshot cache. With the layer baked at build time there is no honest value to put
+  // in it: a status frozen at build says "fresh" forever, and `refreshedAt` set to the build
+  // clock would move on a rebuild that fetched nothing new — telling a reader the data is
+  // current when it is not. `commonThrough` is the honest field, it is already in the payload,
+  // and `ConflictMap` already shows it. Any consumer wanting an age can subtract it from now.
   note?: string;
 }
 
@@ -576,7 +575,6 @@ export function buildSnapshot(
       droppedFatalities: Math.max(0, totalFatalities - placedFatalities),
       placedFatalities,
     },
-    freshness: { status: "fresh", ageHours: 0, refreshedAt: generatedAt },
   };
 }
 

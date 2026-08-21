@@ -112,7 +112,7 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
             d3
               .json<AppliedSeasonalityFallbacks>("/data/seasonality-applied-fallbacks.json")
               .catch(() => null),
-            d3.json<ConflictsPayload>("/api/conflicts").catch(() => null),
+            d3.json<ConflictsPayload>("/data/conflicts.json").catch(() => null),
           ]);
       } catch (err) {
         console.error("Failed to load data:", err);
@@ -173,7 +173,7 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
       const baseW = new Float64Array(n);
       const conflictW = new Float64Array(n);
 
-      // Annualised predicted conflict fatalities (from /api/conflicts), already assigned to the
+      // Annualised predicted conflict fatalities (from the baked conflicts.json), already assigned to the
       // nearest populated same-country cell for each ACLED Admin-1 centroid. Re-snapping here is
       // defensive against floating-point JSON representations only.
       const conflictByCell = new Map<string, number>();
