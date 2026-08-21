@@ -186,33 +186,6 @@ export const en = {
     close: "Close",
   },
 
-  concept: {
-    clock: [
-      {
-        kind: "Method",
-        title: "One global clock",
-        body:
-          "Total deaths per year become a rate per second. Each interval is drawn from an " +
-          "exponential distribution, so bursts and gaps happen for the same reason they do in " +
-          "reality.",
-      },
-      {
-        kind: "Why it failed",
-        title: "Deaths in the ocean",
-        body:
-          "A uniform point on a sphere puts seven in ten deaths in water and most of the rest " +
-          "in empty land. Right total, meaningless map.",
-      },
-      {
-        kind: "Concept",
-        title: "Poisson process",
-        body:
-          "Independent events, exponential waiting times. This is why the rhythm looks broken " +
-          "and is not.",
-      },
-    ],
-  },
-
   panels: {
     samplingOrder: "Sampling order",
     deathsByAgeCauseLabel: "Deaths by age band and cause",

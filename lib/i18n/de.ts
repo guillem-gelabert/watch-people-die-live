@@ -185,33 +185,6 @@ export const de: Dictionary = {
     close: "Schließen",
   },
 
-  concept: {
-    clock: [
-      {
-        kind: "Methode",
-        title: "Eine einzige globale Uhr",
-        body:
-          "Die Gesamtzahl der Sterbefälle pro Jahr wird zu einer Rate pro Sekunde. Jedes " +
-          "Intervall wird aus einer Exponentialverteilung gezogen, sodass Häufungen und Lücken " +
-          "aus demselben Grund entstehen wie in der Wirklichkeit.",
-      },
-      {
-        kind: "Warum es scheiterte",
-        title: "Tote im Ozean",
-        body:
-          "Ein gleichverteilter Punkt auf einer Kugel legt sieben von zehn Toten ins Wasser und " +
-          "die meisten übrigen in leeres Land. Richtige Summe, sinnlose Karte.",
-      },
-      {
-        kind: "Konzept",
-        title: "Poisson-Prozess",
-        body:
-          "Unabhängige Ereignisse, exponentielle Wartezeiten. Deshalb wirkt der Rhythmus kaputt " +
-          "und ist es nicht.",
-      },
-    ],
-  },
-
   panels: {
     samplingOrder: "Reihenfolge der Ziehung",
     deathsByAgeCauseLabel: "Sterbefälle nach Altersgruppe und Ursache",

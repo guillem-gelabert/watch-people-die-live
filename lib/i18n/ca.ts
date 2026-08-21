@@ -182,33 +182,6 @@ export const ca: Dictionary = {
     close: "Tanca",
   },
 
-  concept: {
-    clock: [
-      {
-        kind: "Mètode",
-        title: "Un sol rellotge global",
-        body:
-          "Les defuncions totals per any es converteixen en una taxa per segon. Cada interval " +
-          "es treu d'una distribució exponencial, de manera que les ràfegues i els buits passen " +
-          "pel mateix motiu que passen a la realitat.",
-      },
-      {
-        kind: "Per què va fallar",
-        title: "Morts a l'oceà",
-        body:
-          "Un punt uniforme sobre una esfera posa set de cada deu morts a l'aigua i la major " +
-          "part de la resta en terra deshabitada. Total correcte, mapa sense sentit.",
-      },
-      {
-        kind: "Concepte",
-        title: "Procés de Poisson",
-        body:
-          "Esdeveniments independents, temps d'espera exponencials. Per això el ritme sembla " +
-          "trencat i no ho és.",
-      },
-    ],
-  },
-
   panels: {
     samplingOrder: "Ordre de mostreig",
     deathsByAgeCauseLabel: "Defuncions per franja d'edat i causa",
