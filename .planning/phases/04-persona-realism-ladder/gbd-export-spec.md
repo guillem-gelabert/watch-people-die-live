@@ -6,6 +6,12 @@ not effort work: start it now, fold it in whenever the chunks arrive.
 
 Tool: <https://vizhub.healthdata.org/gbd-results/>
 
+**Sign in first.** Verified 2026-08-21: the tool loads and the whole selection panel is usable
+anonymously, but the Search button reads "Sign in to search" — both querying and downloading are
+gated on a (free) IHME account. No IHME credentials exist in this repo's `.env` (only ACLED's), so
+the portal half of this plan cannot be automated; register or sign in at the link above with your
+own account. The download landing directory `data/source/gbd-country-age-sex/` already exists.
+
 ## What to select
 
 | Field | Value |
