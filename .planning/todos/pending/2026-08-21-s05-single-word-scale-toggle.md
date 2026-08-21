@@ -1,7 +1,7 @@
 ---
 created: 2026-08-21T10:56:28.783Z
 title: Make the scale toggle one word that morphs between straight and curved
-priority: 5
+priority: 8
 area: story
 files:
   - app/roadmap/charts/ScaleDiagonalToggle.tsx:34-58

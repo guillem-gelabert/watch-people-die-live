@@ -1,7 +1,7 @@
 ---
 created: 2026-08-21T10:56:28.783Z
 title: Schedule the cause-data refresh and state its vintage in the Who chapter
-priority: 7
+priority: 10
 area: data
 blocked_by: phase-04 plans 04-02, 04-03
 files:

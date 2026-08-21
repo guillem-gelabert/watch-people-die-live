@@ -116,20 +116,24 @@ because `scripts/build-mortality.ts:119` targets exactly the countries the globe
 Twelve items from a reading pass over the story (s10-s12 added later the same day). Unlike the p01–p09 batch these are front-end,
 mostly in `app/roadmap/`, and none is promoted to a plan yet.
 
-| #   | Item                                                       | Prio | Area  | Note              |
-| --- | ---------------------------------------------------------- | ---- | ----- | ----------------- |
-| s01 | Predefined (not sky-derived) proxy strip colours           | high | story |                   |
-| s02 | Unstick the proxy card when the fold completes             | high | story | needs discussion  |
-| s03 | Proxy modal opens on reload; scroll jump on close          | high | story | needs discussion  |
-| s04 | Remove the concept tiles under the deaths-by-age chart     | high | story | smallest of the 9 |
-| s05 | One-word scale toggle with animated curvature              | mid  | story |                   |
-| s06 | Amplitude map: recentre, per-cell, month slider            | mid  | story | overlaps p05, p07 |
-| s07 | Schedule cause refresh; state vintage in the Who chapter   | mid  | data  | blocked by 04-02/03 |
-| s08 | Reachable chart tooltips on touch                          | low  | story | needs discussion  |
-| s09 | Weekly conflict stack: 5% + UN geoscheme rollup            | low  | data  |                   |
-| s10 | Last screen needs a background colour, not black            | mid  | story | prio inferred     |
-| s11 | Pull-to-top fires on scroll inertia; raise its cost         | high | story | prio inferred     |
-| s12 | Pull control off hardcoded white onto palette tokens        | mid  | story | split from s10    |
+| Rank | #   | Item                                                     | Prio | Area  | Note                |
+| ---- | --- | -------------------------------------------------------- | ---- | ----- | ------------------- |
+| 1    | s04 | Remove the concept tiles under the deaths-by-age chart   | high | story | mechanical          |
+| 2    | s11 | Pull-to-top fires on scroll inertia; raise its cost      | high | story | ~5 lines            |
+| 3    | s01 | Predefined (not sky-derived) proxy strip colours         | high | story | gated on colour     |
+| 4    | s10 | Last screen needs a background colour, not black         | mid  | story | gated on colour     |
+| 5    | s12 | Pull control off hardcoded white onto palette tokens     | mid  | story | before s10 if light |
+| 6    | s03 | Proxy modal opens on reload; scroll jump on close        | high | story | needs discussion    |
+| 7    | s02 | Unstick the proxy card when the fold completes           | high | story | needs discussion    |
+| 8    | s05 | One-word scale toggle with animated curvature            | mid  | story |                     |
+| 9    | s06 | Amplitude map: recentre, per-cell, month slider          | mid  | story | enabled by 04-05    |
+| 10   | s07 | Schedule cause refresh; state vintage in the Who chapter | mid  | data  | blocked by 04-02/03 |
+| 11   | s09 | Weekly conflict stack: 5% + UN geoscheme rollup          | low  | data  |                     |
+| 12   | s08 | Reachable chart tooltips on touch                        | low  | story | deepest design      |
+
+`priority:` in the todo files now carries this rank. It is **batch-scoped** - the p01-p09 batch
+keeps its own frozen 1-9, because Phase 04's plan numbers preserve that captured rank. Filenames
+keep their capture id (s01-s12) as the stable reference, so rank and filename no longer match.
 
 Three carry `discuss: true` in frontmatter (s02, s03, s08) — the desired end state is a design
 call, not a mechanical fix. s02 and s03 are the same scroll mechanic (`useProxyFold`) seen from
@@ -162,8 +166,6 @@ priority order. Notes on it:
 - **s10 was split**: it now covers only the colour decision. The pull control's hardcoded white,
   which is what blocks a light colour, became **s12**. Do s12 first if the chosen sky is light;
   skip it if the sky stays dark.
-- The `priority:` fields in the todo files still carry their capture-order numbers and have NOT
-  been renumbered to match this set.
 
 One open question surfaced by the dedup: `docs/ROADMAP.md:265` asserts the GBD table "is exported
 once by hand" — 04-02 makes that sentence false for ~120 countries the moment it ships. Either

@@ -2,7 +2,7 @@
 created: 2026-08-21T11:42:00.000Z
 title: Give the last screen a background colour instead of black
 related: s12 (pull control is hardcoded white)
-priority: 10
+priority: 4
 area: story
 files:
   - docs/ROADMAP.md:295

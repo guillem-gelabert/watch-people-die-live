@@ -1,7 +1,7 @@
 ---
 created: 2026-08-21T10:56:28.783Z
 title: Make a chosen subset of chart tooltips reachable on touch
-priority: 8
+priority: 12
 area: story
 discuss: true
 files:

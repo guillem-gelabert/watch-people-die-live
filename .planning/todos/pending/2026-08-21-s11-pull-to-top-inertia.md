@@ -1,7 +1,7 @@
 ---
 created: 2026-08-21T11:42:00.000Z
 title: Stop scroll inertia arming the pull-to-top, and make the gesture cost more
-priority: 11
+priority: 2
 area: story
 files:
   - app/roadmap/PullToGlobe.tsx:155-160

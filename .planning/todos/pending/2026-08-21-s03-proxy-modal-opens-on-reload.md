@@ -1,7 +1,7 @@
 ---
 created: 2026-08-21T10:56:28.783Z
 title: Stop the proxy modal opening on reload, and fix the scroll jump on close
-priority: 3
+priority: 6
 area: story
 discuss: true
 files:

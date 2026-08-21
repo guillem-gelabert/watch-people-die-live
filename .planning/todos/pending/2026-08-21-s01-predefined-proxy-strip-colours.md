@@ -1,7 +1,7 @@
 ---
 created: 2026-08-21T10:56:28.783Z
 title: Give the proxy strips predefined colours, not sky-derived ones
-priority: 1
+priority: 3
 area: story
 files:
   - app/roadmap/palette.ts:273-276
