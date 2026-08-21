@@ -73,6 +73,7 @@
     "@types/three": "^0.185.0",
     "@types/topojson-client": "^3.1.5",
     "@types/topojson-specification": "^1.0.5",
+    "@types/unzipper": "^0.10.11",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.10",
     "eslint-config-prettier": "^10.1.8",
@@ -85,6 +86,7 @@
     "tsx": "^4.23.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.62.1",
+    "unzipper": "^0.12.5",
     "vitest": "^4.1.9"
   }
 }

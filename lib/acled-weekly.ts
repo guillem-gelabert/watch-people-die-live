@@ -1,6 +1,9 @@
+import { readFile } from "node:fs/promises";
 import { Readable } from "node:stream";
+import { buffer as bufferStream } from "node:stream/consumers";
 import ExcelJS from "exceljs";
 import isoCountries from "i18n-iso-countries";
+import unzipper from "unzipper";
 import { robustEwma } from "./conflict-model";
 
 export const ACLED_SCHEMA_VERSION = 2 as const;
@@ -279,6 +282,56 @@ function numberCell(row: ExcelJS.Row, column: number): number {
   return Number.isFinite(value) ? value : Number.NaN;
 }
 
+// The slice of ExcelJS's streaming WorkbookReader that primeWorkbookReader reaches into. These
+// are the reader's own parse methods and caches, just not part of its published typings.
+interface WorkbookReaderInternals {
+  sharedStrings?: unknown[];
+  workbookRels?: unknown;
+  model?: unknown;
+  _parseRels(entry: Readable): Promise<void>;
+  _parseWorkbook(entry: Readable): Promise<void>;
+  _parseSharedStrings(entry: Readable): AsyncGenerator<unknown>;
+  _parseStyles(entry: Readable): Promise<void>;
+}
+
+// Excel and ExcelJS both write sharedStrings.xml AFTER the worksheets in the ZIP. ExcelJS's
+// streaming reader handles that order by spooling each early worksheet to a temp file and
+// parsing it once the whole archive has been read — but that detour stalls the unzip stream
+// often enough that it fires `end` mid-archive, and the spooled sheet is then parsed with no
+// shared strings and no workbook model at all: every text cell surfaces as {sharedString: n}.
+// So read the tiny metadata parts out of the ZIP's central directory first (random access — no
+// ordering, no streaming) and hand them to the reader before it sees the first entry. Every
+// worksheet then takes the reader's direct streaming path and the temp-file detour is dead code.
+async function primeWorkbookReader(
+  reader: ExcelJS.stream.xlsx.WorkbookReader,
+  archive: Buffer,
+): Promise<void> {
+  const internals = reader as unknown as WorkbookReaderInternals;
+  const directory = await unzipper.Open.buffer(archive);
+  const part = (path: string) =>
+    directory.files.find((file) => file.path.replaceAll("\\", "/") === path);
+
+  const rels = part("xl/_rels/workbook.xml.rels");
+  if (rels) await internals._parseRels(rels.stream() as unknown as Readable);
+  const workbook = part("xl/workbook.xml");
+  if (workbook) await internals._parseWorkbook(workbook.stream() as unknown as Readable);
+  const styles = part("xl/styles.xml");
+  if (styles) await internals._parseStyles(styles.stream() as unknown as Readable);
+  const shared = part("xl/sharedStrings.xml");
+  if (shared) {
+    // In "cache" mode the generator yields nothing; iterating it just runs the parse.
+    for await (const ignored of internals._parseSharedStrings(
+      shared.stream() as unknown as Readable,
+    )) {
+      void ignored;
+    }
+  } else {
+    // No shared-string table (all-inline workbook): an empty cache keeps the reader on its
+    // direct path, which never consults it for inline cells.
+    internals.sharedStrings = [];
+  }
+}
+
 export async function parseRegionalWorkbook(
   input: string | Readable,
   region: string,
@@ -286,26 +339,15 @@ export async function parseRegionalWorkbook(
   start: string,
   end: string,
 ): Promise<ParsedRegionalWorkbook> {
-  const reader = new ExcelJS.stream.xlsx.WorkbookReader(input, {
+  const archive = typeof input === "string" ? await readFile(input) : await bufferStream(input);
+  const reader = new ExcelJS.stream.xlsx.WorkbookReader(Readable.from(archive), {
     entries: "ignore",
     sharedStrings: "cache",
     hyperlinks: "ignore",
     styles: "cache",
     worksheets: "emit",
   });
-  // Some valid ZIP entry orders put a worksheet after its relationships and shared strings but
-  // before workbook.xml. ExcelJS would then parse the sheet against an uninitialised model. Hide
-  // the relationships until workbook.xml has populated that model so ExcelJS takes its native
-  // deferred-worksheet path and parses the sheet once every reference is available.
-  const rawReader = reader as unknown as { model?: unknown; workbookRels?: unknown };
-  let parsedWorkbookRels: unknown;
-  Object.defineProperty(reader, "workbookRels", {
-    configurable: true,
-    get: () => (rawReader.model ? parsedWorkbookRels : undefined),
-    set: (value: unknown) => {
-      parsedWorkbookRels = value;
-    },
-  });
+  await primeWorkbookReader(reader, archive);
   let rowsRead = 0;
   let rowsRetained = 0;
   let invalidRows = 0;
@@ -313,7 +355,6 @@ export async function parseRegionalWorkbook(
   let sawWorksheet = false;
 
   for await (const worksheet of reader) {
-    if (sawWorksheet) break;
     sawWorksheet = true;
     let headers: ReturnType<typeof headerIndexes> | null = null;
     for await (const row of worksheet) {
@@ -350,6 +391,9 @@ export async function parseRegionalWorkbook(
       rowsRetained++;
       rows.push({ week, country, admin1, fatalities, latitude, longitude });
     }
+    // Only the first worksheet carries data; returning here also stops the reader before it
+    // re-parses the shared-string and workbook entries still ahead of it in the archive.
+    break;
   }
   if (!sawWorksheet) throw new Error(`ACLED ${region} workbook contained no worksheet`);
   return { region, latestThrough, rowsRead, rowsRetained, invalidRows, rows };
