@@ -42,10 +42,6 @@ body {
   .story-section a,
   .roadmap-table :is(th, td),
   .story-chapter-sub,
-  .concept-tile,
-  .concept-tile-title,
-  .concept-tile-kind,
-  .concept-tile-copy,
   .chat-bubble,
   .chat-bubble-user,
   .chat-avatar,
@@ -2417,112 +2413,6 @@ footer {
   font-family: var(--font-public-sans), sans-serif;
   font-size: 13.5px;
   line-height: 1.65;
-}
-
-/* ---- Concept tiles: the three asides that close "Who" and the conflicts section ------------ */
-
-.concept-tiles {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 22px;
-}
-
-.concept-tile {
-  display: flex;
-  min-height: 104px;
-  flex-direction: column;
-  overflow: hidden;
-  border-radius: 12px;
-  background: var(--tile);
-  transition:
-    min-height 0.45s cubic-bezier(0.22, 1, 0.36, 1),
-    background 0.3s ease;
-}
-
-/* An open tile takes the whole row and lets its own copy set the height; the two it displaces
-   shrink and step back so the row reads as one card being read, not three competing. */
-.concept-tile[data-open] {
-  min-height: 0;
-  grid-column: span 2;
-  background: var(--tile-open);
-}
-
-.concept-tiles[data-any-open] .concept-tile:not([data-open]) {
-  min-height: 78px;
-  background: var(--tile-muted);
-}
-
-.concept-tile-head {
-  position: relative;
-  flex: 1;
-  padding: 12px 13px 14px;
-  border: 0;
-  background: none;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.concept-tile-kind {
-  display: block;
-  color: var(--mute);
-  font:
-    600 11px/1 var(--font-public-sans),
-    sans-serif;
-}
-
-.concept-tile-title {
-  display: block;
-  margin-top: 7px;
-  color: var(--ink);
-  font:
-    400 19px/1.15 var(--font-bebas-neue),
-    Impact,
-    sans-serif;
-  letter-spacing: 0;
-}
-
-.concept-tile-plus {
-  position: absolute;
-  right: 12px;
-  bottom: 10px;
-  color: var(--mute);
-  font:
-    600 14px/1 var(--font-public-sans),
-    sans-serif;
-  transition:
-    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-    color 0.3s ease;
-}
-
-.concept-tile[data-open] .concept-tile-plus {
-  transform: rotate(45deg);
-  color: var(--ink);
-}
-
-/* Grid rows rather than the design's fixed max-height: the panel is then exactly as tall as its
-   own copy at any width, with nothing to clip and no number to keep in sync with the text. */
-.concept-tile-body {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.concept-tile[data-open] .concept-tile-body {
-  grid-template-rows: 1fr;
-}
-
-.concept-tile-clip {
-  overflow: hidden;
-}
-
-.story .concept-tile-copy {
-  margin: 0;
-  padding: 0 13px 14px;
-  color: var(--body);
-  font-size: 12.5px;
-  line-height: 1.6;
 }
 
 /* The end of the story: pull up and the globe comes back. */
