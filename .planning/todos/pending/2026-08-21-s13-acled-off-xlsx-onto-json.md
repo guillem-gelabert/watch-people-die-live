@@ -76,8 +76,35 @@ parses the whole archive before resolving cells and so is immune to ZIP entry or
 4. Reduce `/api/conflicts` to serving `data/conflicts.json`. `lib/acled-cache.ts` largely goes — with no runtime fetch there is no TTL to honour — but `ConflictsPayload.freshness` is rendered by the story and has to keep meaning something (see s14).
 5. Keep the aggregation tests; drop the workbook fixtures that carried the flake.
 
-### Open decisions
+### Decisions (settled 2026-08-21)
 
-- **ACLED unreachable at build time: fail the deploy, or fall back?** Failing is loud and correct in CI; falling back to the last committed `data/conflicts.json` keeps deploys unblocked but can ship stale numbers silently. Leaning fail-with-fallback-only-if-a-committed-file-exists.
-- **Is `data/conflicts.json` committed?** If generated only at build, local `pnpm dev` needs ACLED credentials or the layer is empty. Committing it matches `data/rate-grid.json` and keeps dev working without secrets, at the cost of a churning binary-ish diff every rebuild.
-- **`exceljs` stays a dependency** — it is needed at build time. It moves off the request path, which is what the rule asks, but `pnpm why exceljs` will still show it. Worth a note in the script header so nobody "cleans it up".
+- **ACLED unreachable at build time: fail the deploy.** No silent fallback. A deploy that
+  cannot reach ACLED does not ship, so a broken integration is visible immediately instead of
+  the site quietly serving month-old fatalities as current.
+- **`data/conflicts.json` is committed** — but as the artifact the request path reads and as
+  what makes `pnpm dev` work without credentials, **not** as a build fallback. The build
+  always regenerates it and fails if it cannot.
+- **`prebuild` only, not `predev`.** In `predev` every `pnpm dev` would pull six workbooks
+  from ACLED — slow, and it spends API quota for nothing, since the committed JSON is already
+  there. The other four scripts are in both because they are offline and cheap.
+- **`exceljs` stays a dependency** — the build needs it. It leaves the request path, which is
+  what the rule asks, but `pnpm why exceljs` will still show it. Note that in the script
+  header so nobody "cleans it up".
+
+### Consequences of failing the deploy
+
+Worth writing down, because this couples the deploy pipeline to a third party:
+
+- **An ACLED outage blocks every deploy**, including hotfixes with nothing to do with
+  conflicts. Railway builds on push, so a push during an outage does not ship.
+- **Credentials are a password grant** (`lib/acled.ts:101`, OAuth `grant_type=password`). If
+  the password rotates or the account lapses, deploys stop until someone notices — which is
+  the intended behaviour, but it should fail with a message that names the cause rather than
+  a generic parse error.
+- **Retry transient failures before giving up.** `lib/acled.ts:74` already has
+  `retry(operation, attempts = 3)`; the script should use it, and should distinguish a
+  transient network failure (retry, then fail) from a 401/403 (fail immediately — retrying an
+  auth failure is pointless and looks like a brute-force attempt).
+- **Consider an explicit escape hatch**, e.g. `SKIP_CONFLICTS_BUILD=1`, so a genuine hotfix
+  can ship during an upstream outage. It keeps fail-by-default while leaving a documented way
+  out that is deliberate rather than silent. Open question — not assumed.

@@ -157,6 +157,14 @@ Building it also fixes the flake properly: a build script can download each work
 ExcelJS's buffered reader, measured 0/20 against 7/20 for the streaming one. `exceljs` stays a
 dependency - it is needed at build time - but leaves the request path.
 
+Settled: **fail the deploy** if ACLED is unreachable - no silent fallback, so a broken
+integration is visible rather than the site serving month-old fatalities as current.
+`data/conflicts.json` is still committed, as the artifact the request path reads and what makes
+`pnpm dev` work without credentials, not as a fallback. `prebuild` only, never `predev`. This
+couples deploys to a third party: an ACLED outage blocks unrelated hotfixes too, so the script
+should retry transient failures, fail fast and loudly on 401/403, and probably offer a documented
+escape hatch.
+
 The cost, which is what s14 now covers: **freshness becomes deploy cadence**, and
 `freshness.refreshedAt` must report the workbook's own `latestThrough` rather than the build
 clock, or a rebuild with no new upstream data would claim to be current.
