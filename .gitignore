@@ -125,9 +125,6 @@ data/era5-t2m-monthly-climatology-05deg.tif
 kg-subzone.png
 acled-api-access-request.txt
 
-# GSD planning docs are local-only for this project.
-.planning/
-
 # Local Claude Code instructions, not meant to be shared/committed.
 CLAUDE.md
 

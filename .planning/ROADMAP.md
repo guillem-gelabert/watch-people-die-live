@@ -1,0 +1,210 @@
+# Roadmap: Watch People Die Live
+
+## Features
+
+The project is two features, each with its own goal and its own forward-looking roadmap (see "Future Roadmaps" below):
+
+- **Globe** — the 3D map of death events. Goal: the most statistically accurate _temporal_ (when) and _spatial_ (where) generation of simulated deaths.
+- **Personas** — the "last deaths" feed text. Goal: the most statistically accurate representative _persona_ (age, sex, cause) for a death, given the country the Globe's logic already picked.
+
+## Overview
+
+Phases 1-3 below are the v1 MVP milestone (complete) — a shared foundation that touched both features (real cause data and methodology for Personas; sharing, public roadmap, and publishing as Shared product surfaces) without yet splitting into independent tracks. Future work (v2) forks into the two feature roadmaps.
+
+## Phases
+
+**Phase Numbering:**
+
+- Integer phases (1, 2, 3): Planned milestone work
+- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+- 999.x phases: Unsequenced backlog parking lot (marked with BACKLOG), see `## Backlog`
+
+Decimal phases appear between their surrounding integers in numeric order.
+
+**Milestone v1.0 — MVP** (complete):
+
+- [x] **Phase 1: Cause Fidelity and Methodology** - Build real cause data and make the methodology match the data pipeline.
+- [x] **Phase 2: Shareable Public Surface** - Add social previews and a public roadmap page.
+- [x] **Phase 3: Publish and Portfolio Handoff** - Verify the deployed MVP and connect it to the portfolio.
+
+**Milestone v2.0 — Persona Realism** (current):
+
+- [ ] **Phase 4: Persona Realism Ladder** - Make persona age, sex and cause vary by region and season instead of one global table.
+
+Backlog (unsequenced, see `## Backlog`): 999.1.
+
+## Phase Details
+
+### Phase 1: Cause Fidelity and Methodology
+
+**Goal**: The deaths feed uses full IHME-derived cause distributions when available, and the public methodology accurately explains the current data fidelity.
+**Feature:** Personas (cause data) + Shared (methodology)
+**Mode:** mvp
+**Depends on**: Nothing (first phase)
+**Requirements**: [DATA-01, DATA-02, DATA-03, DATA-04, METH-01, METH-02, METH-03]
+**UI hint**: yes
+**Success Criteria** (what must be TRUE):
+
+1. `data/causes.json` exists and can be loaded by the existing persona pipeline.
+2. The cause build workflow is documented and repeatable from a GBD CSV source.
+3. Missing or incomplete cause data still falls back without breaking the globe or feed.
+4. `/methodology` accurately describes mortality, density, age/sex, cause, geolocation, and representative-identity caveats.
+   **Plans**: 2 plans
+
+Plans:
+
+- [x] 01-01: Build and verify real cause data
+- [x] 01-02: Update methodology and fallback explanation
+
+### Phase 2: Shareable Public Surface
+
+**Goal**: The app can be shared cleanly and includes a public roadmap explaining shipped and planned realism layers.
+**Feature:** Shared
+**Mode:** mvp
+**Depends on**: Phase 1
+**Requirements**: [SHARE-01, SHARE-02, SHARE-03, ROAD-01, ROAD-02, ROAD-03, ROAD-04]
+**UI hint**: yes
+**Success Criteria** (what must be TRUE):
+
+1. The home page has accurate social preview metadata and a usable preview image.
+2. Shared links describe the project without overstating real-time precision or individual identity.
+3. `/roadmap` loads in the app and shows implemented realism layers separately from planned layers.
+4. Roadmap content stays consistent with `requirements.md` and the methodology page.
+   **Plans**: 2 plans
+
+Plans:
+
+- [x] 02-01: Add social preview metadata and image
+- [x] 02-02: Build public roadmap page
+
+### Phase 3: Publish and Portfolio Handoff
+
+**Goal**: The deployed app is verified as an MVP and ready to serve as the portfolio visualizer piece.
+**Feature:** Shared
+**Mode:** mvp
+**Depends on**: Phase 2
+**Requirements**: [PUB-01, PUB-02, PUB-03]
+**UI hint**: yes
+**Success Criteria** (what must be TRUE):
+
+1. The Railway deployment serves the globe, methodology page, roadmap page, and social metadata.
+2. A final smoke check confirms the primary visualization and public pages work.
+3. The project has a portfolio-ready link target or entry guidance.
+4. Remaining advanced realism layers are explicitly deferred rather than blocking the MVP.
+   **Plans**: 1 plan
+
+Plans:
+
+- [x] 03-01: Verify deployment and prepare portfolio handoff
+
+### Phase 4: Persona Realism Ladder
+
+**Goal**: Persona age, sex and cause vary by region and by season, instead of every death drawing from one global, age-flat cause table and one national age pyramid.
+**Feature:** Personas
+**Mode:** v2
+**Depends on**: Phase 1 (cause data foundation)
+**Requirements**: [PERS-01, PERS-02, PERS-03, REAL-01, REAL-03]
+**UI hint**: no
+**Success Criteria** (what must be TRUE):
+
+1. An infant persona never draws an adult-only cause; the `coverage` flag written by the builder is read by the consumer.
+2. Cause distributions are country-specific for both vital-registration countries (WHO MDB) and countries without registration (GBD).
+3. Age/sex distributions resolve per grid cell rather than per country, validated against observed regional counts for at least four countries.
+4. Persona composition shifts with the season the globe is already simulating.
+5. Estimated inputs are labelled as estimates and excluded from validation statistics.
+   **Plans**: 8 plans
+
+Ordering is by wave, not by plan number. Plan numbers preserve the captured priority ranking p01-p08 (p09 became backlog 999.1), while waves come from the pairwise `files_modified` overlap analysis: no two plans in a wave touch a shared path, so a wave's members are safe to run concurrently.
+
+`app/globe/persona.ts` is the chokepoint — 04-01, 04-04 and 04-07 all modify it, so they cannot share a wave. Max parallelism is 3, in wave 2.
+
+Plans:
+
+- [ ] 04-01: Honour the cause coverage flag in pickCause _(wave 1)_
+- [ ] 04-02: Source country age/sex causes from WHO Mortality Database _(wave 2)_
+- [ ] 04-04: Derive per-cell age/sex death weights from gridded population _(wave 2)_
+- [ ] 04-08: Unfilter age/sex in pipelines that already download it _(wave 2)_
+- [ ] 04-03: Fold in the chunked GBD cause export _(wave 3)_
+- [ ] 04-05: Bake an admin-1 / NUTS-2 region key into the rate grid _(wave 3)_
+- [ ] 04-06: Add Eurostat regional age/sex and cause tables _(wave 4)_
+- [ ] 04-07: Make persona composition seasonal _(wave 5)_
+
+Deliberately **not** a plan: opportunistic subnational sourcing beyond Eurostat moved to backlog
+999.1. Its own scoping said "not a planned sweep", and full subnational coverage is unreachable at
+any effort level (China, India, Indonesia, Pakistan, Ethiopia, Nigeria, DRC have weak or no public
+access per `seasonality-data-guide.md`). Keeping it as a plan implied committed work.
+
+## Progress
+
+**Execution Order:**
+Phases execute in numeric order: 1 -> 2 -> 3 (v1.0, complete) -> 4 (v2.0, current)
+
+Within Phase 4, waves execute in order 1 -> 5; plans inside a wave run in parallel.
+
+| Milestone | Phase                             | Plans Complete | Status      | Completed  |
+| --------- | --------------------------------- | -------------- | ----------- | ---------- |
+| v1.0      | 1. Cause Fidelity and Methodology | 2/2            | Complete    | 2026-06-29 |
+| v1.0      | 2. Shareable Public Surface       | 2/2            | Complete    | 2026-06-29 |
+| v1.0      | 3. Publish and Portfolio Handoff  | 1/1            | Complete    | 2026-06-29 |
+| **v2.0**  | 4. Persona Realism Ladder         | 0/8            | Not started | -          |
+
+v1.0 (MVP): 5/5 plans, complete 2026-06-29. v2.0 (Persona Realism): 0/8 plans.
+
+## Future Roadmaps
+
+With the v1 shared foundation complete, future work forks into two independent roadmaps. Each can progress at its own pace and does not block the other.
+
+### Globe Roadmap — Temporal & Spatial Accuracy
+
+**Goal**: The most statistically accurate generation of _when_ and _where_ a simulated death occurs.
+
+Backlog (see `REQUIREMENTS.md` v2 `REAL-01..07`, not yet phased):
+
+- Sub-national mortality-rate placement (`REAL-01`)
+- Time-of-day modulation for circadian-sensitive causes (`REAL-02`)
+- Seasonal mortality modulation (`REAL-03`)
+- Climate/biome-weighted rates (`REAL-04`)
+- Real-time weather modulation (`REAL-05`)
+- Conflict/excess-mortality overlays (`REAL-06`)
+- Epidemic/pandemic event modes (`REAL-07`)
+
+### Personas Roadmap — Representative Identity Accuracy
+
+**Goal**: The most statistically accurate persona (age, sex, cause) for a death, given the country the Globe already picked.
+
+Now phased as **Phase 4: Persona Realism Ladder** (`PERS-01`, `PERS-02`, `PERS-03`). The original backlog entry was narrower than the work turned out to be:
+
+- `PERS-01` assumed the only gap was an empty `countries` object. Investigation on 2026-07-31 found the committed export is also **age-flat** — `coverage.age: "all_ages_repeated_across_bands"` — so only 12 of 140 shipped cause labels are reachable, and infant personas draw adult causes. Malaria, HIV/AIDS, tuberculosis and suicide are unreachable for every country.
+- `PERS-02` and `PERS-03` were added for the regional age/sex and seasonal-composition gaps, which `PERS-01` did not cover.
+
+Phase 4 overlaps the Globe roadmap at `REAL-01` (sub-national data) and `REAL-03` (seasonal modulation), since the same region keys and seasonal curves serve both features.
+
+## Backlog
+
+Unsequenced ideas that are not ready for active planning. Promote with `/gsd:review-backlog`.
+
+### Phase 999.1: Subnational cause and age sourcing beyond Eurostat (BACKLOG)
+
+**Goal:** Cover selected admin-1 regions outside Eurostat's reach with observed cause and
+age x sex data, taken opportunistically rather than as a sweep.
+**Requirements:** PERS-01, PERS-02 (partial)
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+**Why it is backlog, not a phase:** full subnational coverage is unreachable at any effort level.
+`seasonality-data-guide.md` documents China, India, Indonesia, Pakistan, Ethiopia, Nigeria, DRC,
+Libya and Madagascar as having weak or no public subnational access, and those hold a large share
+of global deaths. Each remaining country is a bespoke parser. Phase 4's plan 04-04 covers the same
+ground by derivation (gridded population x national age-specific rates) for all 981 regions, which
+is why leaving this unsequenced is acceptable rather than a gap.
+
+**Take a country only when** it is already half-done by another plan (Brazil/Mexico via 04-08),
+it is large enough that a single national pyramid reads as visibly false in the feed, or it is
+needed as a 04-04 validation fixture.
+
+A drafted task breakdown is preserved at
+`.planning/phases/999.1-subnational-cause-and-age-sourcing-beyond-eurostat/DRAFT-PLAN.md`
+and the source narrative at `.planning/todos/pending/2026-07-31-p09-*.md`.
