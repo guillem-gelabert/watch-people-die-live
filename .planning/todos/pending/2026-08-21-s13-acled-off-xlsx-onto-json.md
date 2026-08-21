@@ -1,6 +1,6 @@
 ---
 created: 2026-08-21T15:40:00.000Z
-title: Move ACLED off server-side xlsx onto a committed JSON artifact
+title: Move ACLED xlsx parsing off the server into an offline job
 priority: 4
 area: data
 files:
@@ -51,18 +51,45 @@ Steps 1–3 should not be on the server at all. Two further reasons beyond the r
 TBD in detail, but the target is settled: **the server reads a committed JSON artifact and
 nothing else.**
 
-**Use the REST API, not the workbooks.** ACLED publishes an authenticated REST API that
-returns JSON or CSV — `_format=json` / `_format=csv`, base `https://acleddata.com/api/`,
-with `https://acleddata.com/api/acled/` for political-violence events. Checked
-2026-08-21 against their getting-started docs.
+**The REST API cannot be used. Probed 2026-08-21 with this project's own credentials.**
 
-The catch, and it is the main design question: that API serves **raw event-level** rows,
-not the pre-aggregated week × admin-1 tables the current workbooks provide. So the offline
-job has to do the aggregation. Most of that logic already exists and is source-agnostic —
-`buildWeeklyStack`, the region and cell mapping, `countryM49` — it just currently consumes
-workbook rows. Raw events mean more rows over the wire (twelve weeks, global) but as JSON
-that is unremarkable, and it is strictly more information: per-event detail would also
-unblock **s09**, which wants weekly fatalities regrouped by UN geoscheme.
+OAuth succeeds, `https://acleddata.com/api/acled/read?_format=json` returns JSON, and the
+rows carry all 31 fields including every one the model needs — `event_date`, `country`,
+`admin1`, `fatalities`, `latitude`, `longitude`. So on format alone it would be ideal.
+
+It is embargoed. Every response includes:
+
+```json
+"data_query_restrictions": {
+  "date_recency": { "quantity": 12, "unit": "Months",
+                    "description": "12 Months old", "date": "2025-08-21" }
+}
+```
+
+This account may only read events **at least twelve months old**. `year=2026` returns zero
+rows; so does `event_date >= 2026-08-01`. The conflict layer is a rolling *current*
+twelve-**week** window feeding an EWMA prediction of this week's fatalities, so a source
+twelve **months** behind is not a source at all.
+
+That is almost certainly why the existing code scrapes the aggregated `.xlsx` workbooks
+rather than calling the API: ACLED's curated aggregated products are published without the
+recency embargo that applies to raw event access at this tier. The workbooks are the only
+route to current data this project has.
+
+**Consequences for this todo:**
+
+- Replacing the workbook fetch with a JSON fetch is **not available**. Do not plan for it.
+- The xlsx therefore has to be converted **offline**, which is what the architectural rule
+  asks for anyway — the rule and the only feasible design agree.
+- The aggregation stays where it is in shape: the offline job reads the workbooks and emits
+  `data/conflicts.json`. `buildWeeklyStack`, the region and cell mapping and `countryM49`
+  are already source-agnostic and move across unchanged.
+- **s14 stops being optional.** With no runtime fetch possible, a schedule is the only thing
+  that keeps the layer current. s13 without s14 ships a conflict layer that is stale by
+  construction.
+- The API is still worth remembering for anything historical — twelve-month-old event-level
+  data with 31 fields per event is a good source for a retrospective layer, just not for
+  this one.
 
 Shape of the work:
 

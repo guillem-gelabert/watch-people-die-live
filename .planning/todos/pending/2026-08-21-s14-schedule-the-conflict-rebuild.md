@@ -4,6 +4,7 @@ title: Schedule the conflict-layer rebuild so a baked layer stays current
 priority: 5
 area: data
 blocked_by: s13 (there is no offline job to schedule yet)
+mandatory: true (no runtime source of current data exists — see s13)
 files:
   - lib/acled-cache.ts
   - lib/acled.ts
@@ -44,11 +45,14 @@ TBD. Two decisions, and they are independent.
   data is committed" model the project already uses, gives a visible diff per refresh, and
   a failed run is a visible failed run. Needs the ACLED credentials as repo secrets — note
   the repo is public, so they must be secrets, never committed.
-- **Keep a runtime refresh but only for JSON.** The architectural rule
-  (2026-08-21) bans binary parsing on the server, not fetching. If ACLED's REST API can be
-  called directly at runtime, the layer stays live and neither s13's offline job nor this
-  todo is needed for freshness — only for removing `exceljs`. **Evaluate this first: it may
-  make most of both todos unnecessary.**
+- ~~**Keep a runtime refresh but only for JSON.**~~ **Ruled out 2026-08-21.** The rule bans
+  binary parsing on the server, not fetching, so calling ACLED's REST API at runtime would
+  have satisfied it and kept the layer live — but probing with this project's credentials
+  returned `data_query_restrictions.date_recency: 12 Months`, i.e. the account can only read
+  events at least twelve months old. See s13 for the full finding. There is no runtime
+  source of current conflict data, so **this todo is mandatory rather than optional**: the
+  offline job is the only way the layer stays current, and a schedule is the only way the
+  offline job runs.
 
 **What the reader is told.** `ConflictsPayload.freshness` already carries
 `{ status: "fresh" | "stale" | "unavailable", ageHours, refreshedAt }` and the story renders

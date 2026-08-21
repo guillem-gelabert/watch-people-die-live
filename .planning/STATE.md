@@ -125,7 +125,7 @@ mostly in `app/roadmap/`, and none is promoted to a plan yet.
 | 2    | s11 | Pull-to-top fires on scroll inertia; raise its cost      | high | story | DONE - plan 05-02   |
 | 3    | s01 | Predefined (not sky-derived) proxy strip colours         | high | story | DONE - plan 05-03   |
 | 4    | s13 | ACLED off server-side xlsx onto committed JSON           | high | data  | kills the flake too |
-| 5    | s14 | Schedule the conflict rebuild                            | high | data  | blocked by s13      |
+| 5    | s14 | Schedule the conflict rebuild                            | high | data  | mandatory, needs s13 |
 | 6    | s10 | Last screen needs a background colour, not black         | mid  | story | gated on colour     |
 | 7    | s12 | Pull control off hardcoded white onto palette tokens     | mid  | story | before s10 if light |
 | 8    | s03 | Proxy modal opens on reload; scroll jump on close        | high | story | needs discussion    |
@@ -145,8 +145,17 @@ constraints and Key Decisions. `exceljs` in `lib/acled-weekly.ts` is the only vi
 also the cause of a test that failed 7/20 runs and blocked three commits today, and a latent
 production failure (a one-shot HTTP stream with no replay, on a reader that mis-parses a valid ZIP
 entry order). s13 removes it. ACLED's REST API does return JSON (`_format=json`, base
-`https://acleddata.com/api/`), but event-level rather than pre-aggregated, so the offline job owns
-the aggregation - which is mostly written already and source-agnostic.
+`https://acleddata.com/api/`) with every field the model needs, **but it is embargoed**: probed
+2026-08-21 with this project's credentials, every response carries
+`data_query_restrictions.date_recency: 12 Months`, so the account may only read events at least a
+year old. `year=2026` returns zero rows. The conflict layer is a rolling current twelve-**week**
+window, so the API cannot feed it, and that is presumably why the code scrapes the aggregated
+workbooks in the first place.
+
+Net effect on the plan: the xlsx must be converted **offline** (the rule and the only feasible
+design agree), and **s14 is mandatory rather than optional** - with no runtime source of current
+data, a schedule is the only thing keeping the layer from being stale by construction. The API
+remains useful for anything historical: event-level rows with 31 fields, twelve months back.
 
 `priority:` in the todo files now carries this rank. It is **batch-scoped** - the p01-p09 batch
 keeps its own frozen 1-9, because Phase 04's plan numbers preserve that captured rank. Filenames
