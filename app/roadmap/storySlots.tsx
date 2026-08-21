@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import ConceptTiles from "./ConceptTiles";
 import PullToGlobe from "./PullToGlobe";
 import ProxyFigure from "./proxy/ProxyFigure";
 import ProxyRankingCard from "./proxy/ProxyRankingCard";
@@ -251,7 +250,6 @@ export function useStorySlots(): SlotsBySection {
             </section>
           </div>
         ),
-        "[what the clock got wrong]": <ConceptTiles set="clock" />,
       },
 
       "back-to-the-globe": {

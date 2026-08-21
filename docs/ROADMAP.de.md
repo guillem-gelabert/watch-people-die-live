@@ -269,8 +269,6 @@ Beide Tabellen liegen als JSON im Repository, der Feed braucht also keinen API-A
 
 [deaths by age and cause]
 
-[what the clock got wrong]
-
 ### still-missing · Was noch fehlt [Noch offen] · #cf7a68 · chapter-small
 
 :::chapter-sub

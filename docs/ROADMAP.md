@@ -268,8 +268,6 @@ Both tables ship as JSON in the repository, so the feed needs no runtime API cal
 
 [deaths by age and cause]
 
-[what the clock got wrong]
-
 ### still-missing · What is still missing [Still missing] · #cf7a68 · chapter-small
 
 :::chapter-sub

@@ -268,8 +268,6 @@ Totes dues taules s'inclouen com a JSON al repositori, així que el flux no nece
 
 [deaths by age and cause]
 
-[what the clock got wrong]
-
 ### still-missing · Què falta encara [Falta encara] · #cf7a68 · chapter-small
 
 :::chapter-sub
