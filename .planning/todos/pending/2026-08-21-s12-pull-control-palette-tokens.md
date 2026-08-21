@@ -1,7 +1,7 @@
 ---
 created: 2026-08-21T12:05:00.000Z
 title: Move the pull-to-top control off hardcoded white onto palette tokens
-priority: 5
+priority: 7
 area: story
 related: s10 (blocks it whenever the chosen sky is light)
 files:

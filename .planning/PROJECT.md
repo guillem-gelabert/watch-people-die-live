@@ -56,7 +56,7 @@ Some work is `Shared` — product-level surfaces (methodology, sharing, publishi
 
 ## Context
 
-The codebase is a brownfield Node/Express and vanilla browser ES-module app. `server.js` serves the app shell, static data, vendored libraries from `node_modules`, and runtime JSON APIs. `public/app.js` owns the globe lifecycle, data loading, Poisson scheduling, density placement, death flashes, camera behavior, and feed updates. `public/shaders.js` owns the earth and shockwave material logic, while `public/persona.js` owns persona sampling and fallbacks.
+The codebase is a Next.js 16 App Router app in strict TypeScript. Route handlers under `app/api/` serve runtime JSON; `app/globe/` owns the globe lifecycle, Poisson scheduling, density placement, death flashes, camera behaviour and the feed; `app/roadmap/` owns the scrollytelling story and its figures; `lib/` holds the data helpers. (This superseded a brownfield Node/Express and vanilla browser ES-module app, whose `server.js`, `public/app.js`, `public/shaders.js` and `public/persona.js` no longer exist.)
 
 Runtime data joins depend on numeric M49 country ids across World Bank rows, `world-atlas` geometry, density cells, and persona distributions. Most data is precomputed and committed under `data/`; live runtime calls are limited to World Bank mortality/population, ACLED conflict data and best-effort IP geolocation. Build scripts generate the density grid, UN age/sex mortality distribution, and IHME cause distribution.
 
@@ -65,6 +65,11 @@ v1.0 shipped on 2026-06-29 (causes data, share metadata, public roadmap page, pu
 ## Constraints
 
 - **Tech stack**: Keep Node.js >=20, Next.js 16 (App Router, React 19), strict TypeScript, Three.js via react-three-fiber, D3 and TopoJSON unless a concrete feature requires a change - the current stack is deployed and working. (Superseded the original Express + static-browser-module build.)
+- **Server data formats**: The server parses JSON or CSV only. Any upstream source that
+  publishes Excel or another binary format is converted offline - a script under `scripts/` or a
+  notebook - and its output committed, the way `data/rate-grid.json` already works. Set
+  2026-08-21. `exceljs` in `lib/acled-weekly.ts` is the one outstanding violation; see todos
+  s13 and s14.
 - **Data integrity**: Preserve country-level annual death totals and density-weighted placement - this is the core statistical promise of the project.
 - **Identity/privacy**: Personas must remain statistically representative and never imply an identifiable real person - the app is not a surveillance tool.
 - **Data sources**: `data/causes.json` requires a manual IHME GBD CSV export because there is no tokened GBD API - the workflow must account for that human step.
@@ -86,6 +91,7 @@ v1.0 shipped on 2026-06-29 (causes data, share metadata, public roadmap page, pu
 | Keep the MVP web-first and deployed on Railway              | Fastest path to a deployed, shareable visualizer                                                    | Good so far |
 | Treat advanced realism layers as future roadmap work        | Protects MVP scope while preserving the long-term realism ambition                                  | Pending     |
 | Map the brownfield codebase before initialization           | Planning should reflect the existing architecture and shipped behavior                              | Good so far |
+| Parse only JSON or CSV on the server                        | A binary parser on the request path is a reliability risk and cannot be exercised offline; ExcelJS's streaming reader failed 7/20 on a valid ZIP entry order| 2026-08-21  |
 | Open v2.0 for persona realism rather than extend v1.0       | v1.0 shipped; STATE.md claiming an in-progress v1.0 contradicted a complete ROADMAP                 | 2026-07-31  |
 | Derive Phase 4 waves from file overlap, not priority order  | Gives `$gsd-execute-phase`'s intra-wave safety check something real to enforce                       | 2026-07-31  |
 

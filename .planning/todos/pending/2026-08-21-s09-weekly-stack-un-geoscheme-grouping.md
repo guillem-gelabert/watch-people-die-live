@@ -1,7 +1,7 @@
 ---
 created: 2026-08-21T10:56:28.783Z
 title: Group the weekly conflict stack by UN geoscheme above a 5% threshold
-priority: 11
+priority: 13
 area: data
 files:
   - lib/acled-weekly.ts:10

@@ -1,7 +1,7 @@
 ---
 created: 2026-08-21T10:56:28.783Z
 title: Rebuild the amplitude map as a per-cell map with a month slider
-priority: 9
+priority: 11
 area: story
 files:
   - app/roadmap/charts/AmplitudeMap.tsx:57-60

@@ -121,18 +121,32 @@ mostly in `app/roadmap/`, and none is promoted to a plan yet.
 
 | Rank | #   | Item                                                     | Prio | Area  | Note                |
 | ---- | --- | -------------------------------------------------------- | ---- | ----- | ------------------- |
-| 1    | s04 | Remove the concept tiles under the deaths-by-age chart   | high | story | -> plan 05-01       |
-| 2    | s11 | Pull-to-top fires on scroll inertia; raise its cost      | high | story | -> plan 05-02       |
-| 3    | s01 | Predefined (not sky-derived) proxy strip colours         | high | story | -> plan 05-03       |
-| 4    | s10 | Last screen needs a background colour, not black         | mid  | story | gated on colour     |
-| 5    | s12 | Pull control off hardcoded white onto palette tokens     | mid  | story | before s10 if light |
-| 6    | s03 | Proxy modal opens on reload; scroll jump on close        | high | story | needs discussion    |
-| 7    | s02 | Unstick the proxy card when the fold completes           | high | story | needs discussion    |
-| 8    | s05 | One-word scale toggle with animated curvature            | mid  | story |                     |
-| 9    | s06 | Amplitude map: recentre, per-cell, month slider          | mid  | story | enabled by 04-05    |
-| 10   | s07 | Schedule cause refresh; state vintage in the Who chapter | mid  | data  | blocked by 04-02/03 |
-| 11   | s09 | Weekly conflict stack: 5% + UN geoscheme rollup          | low  | data  |                     |
-| 12   | s08 | Reachable chart tooltips on touch                        | low  | story | deepest design      |
+| 1    | s04 | Remove the concept tiles under the deaths-by-age chart   | high | story | DONE - plan 05-01   |
+| 2    | s11 | Pull-to-top fires on scroll inertia; raise its cost      | high | story | DONE - plan 05-02   |
+| 3    | s01 | Predefined (not sky-derived) proxy strip colours         | high | story | DONE - plan 05-03   |
+| 4    | s13 | ACLED off server-side xlsx onto committed JSON           | high | data  | kills the flake too |
+| 5    | s14 | Schedule the conflict rebuild                            | high | data  | blocked by s13      |
+| 6    | s10 | Last screen needs a background colour, not black         | mid  | story | gated on colour     |
+| 7    | s12 | Pull control off hardcoded white onto palette tokens     | mid  | story | before s10 if light |
+| 8    | s03 | Proxy modal opens on reload; scroll jump on close        | high | story | needs discussion    |
+| 9    | s02 | Unstick the proxy card when the fold completes           | high | story | needs discussion    |
+| 10   | s05 | One-word scale toggle with animated curvature            | mid  | story |                     |
+| 11   | s06 | Amplitude map: recentre, per-cell, month slider          | mid  | story | enabled by 04-05    |
+| 12   | s07 | Schedule cause refresh; state vintage in the Who chapter | mid  | data  | one mechanism w/s14 |
+| 13   | s09 | Weekly conflict stack: 5% + UN geoscheme rollup          | low  | data  | easier after s13    |
+| 14   | s08 | Reachable chart tooltips on touch                        | low  | story | deepest design      |
+
+`priority:` in the todo files carries this rank. It is **batch-scoped** - the p01-p09 batch keeps
+its own frozen 1-9, because Phase 04's plan numbers preserve that captured rank. Filenames keep
+their capture id (s01-s14) as the stable reference, so rank and filename do not match.
+
+**Architectural rule set 2026-08-21: the server parses JSON or CSV only.** Recorded in PROJECT.md
+constraints and Key Decisions. `exceljs` in `lib/acled-weekly.ts` is the only violation - it is
+also the cause of a test that failed 7/20 runs and blocked three commits today, and a latent
+production failure (a one-shot HTTP stream with no replay, on a reader that mis-parses a valid ZIP
+entry order). s13 removes it. ACLED's REST API does return JSON (`_format=json`, base
+`https://acleddata.com/api/`), but event-level rather than pre-aggregated, so the offline job owns
+the aggregation - which is mostly written already and source-agnostic.
 
 `priority:` in the todo files now carries this rank. It is **batch-scoped** - the p01-p09 batch
 keeps its own frozen 1-9, because Phase 04's plan numbers preserve that captured rank. Filenames

@@ -1,7 +1,7 @@
 ---
 created: 2026-08-21T10:56:28.783Z
 title: Unstick the proxy card as soon as the fold completes
-priority: 7
+priority: 9
 area: story
 discuss: true
 files:
