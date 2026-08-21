@@ -98,17 +98,22 @@ the ~10-minute 04-01, since wave cost is the slowest member.
 share a wave. Splitting persona.ts into a sampling half and a label/prose half would unlock more
 parallelism than any other refactor here.
 
-**Start:** wave 1 (04-01 is ~10 lines and fixes visibly wrong infant personas). Kick off 04-03's
-GBD export requests the same day — it is wall-clock-bound by the portal quota, not effort-bound,
-and does not fit a wave.
+**Start:** not here. Corrected 2026-08-21 — 04-01 is cheap (~10 lines) but it is a *precondition*
+of the cause ladder, not a standalone win: honouring the `coverage` flag only pays off once there
+is a better export to fall through to (04-02 WHO MDB, 04-03 GBD). Do 04-01 when the IHME ladder
+is set up, in the same sitting, rather than as an easy first task. The earlier "start with wave 1"
+advice over-weighted its line count.
+
+When the ladder does start, kick off 04-03's GBD export requests on day one — it is wall-clock-bound
+by the portal quota, not effort-bound, and does not fit a wave.
 
 Dropped during validation: "top up UN WPP from 172 to ~200 countries" — the 55 grid countries
 lacking age/sex data account for **0.0000%** of global expected deaths (micro-territories only),
 because `scripts/build-mortality.ts:119` targets exactly the countries the globe can render.
 
-#### Story / UI batch — captured 2026-08-21 (s01–s11, not yet promoted)
+#### Story / UI batch — captured 2026-08-21 (s01–s12, not yet promoted)
 
-Eleven items from a reading pass over the story (s10, s11 added later the same day). Unlike the p01–p09 batch these are front-end,
+Twelve items from a reading pass over the story (s10-s12 added later the same day). Unlike the p01–p09 batch these are front-end,
 mostly in `app/roadmap/`, and none is promoted to a plan yet.
 
 | #   | Item                                                       | Prio | Area  | Note              |
@@ -124,6 +129,7 @@ mostly in `app/roadmap/`, and none is promoted to a plan yet.
 | s09 | Weekly conflict stack: 5% + UN geoscheme rollup            | low  | data  |                   |
 | s10 | Last screen needs a background colour, not black            | mid  | story | prio inferred     |
 | s11 | Pull-to-top fires on scroll inertia; raise its cost         | high | story | prio inferred     |
+| s12 | Pull control off hardcoded white onto palette tokens        | mid  | story | split from s10    |
 
 Three carry `discuss: true` in frontmatter (s02, s03, s08) — the desired end state is a design
 call, not a mechanical fix. s02 and s03 are the same scroll mechanic (`useProxyFold`) seen from
@@ -143,6 +149,21 @@ s08 and s09 have no file overlap with the phase. Two corrections were applied:
 - **s06 mis-stated its Phase 04 relationship.** It is enabled by 04-05 (region key on every cell)
   but *not* served by 04-07, whose seasonal-composition tensor reweights who dies rather than
   giving monthly mortality level per cell. Corrected in the todo.
+
+**Agreed working set (2026-08-21):** s04, s11, s01, s10 — confirmed by the user, in that
+priority order. Notes on it:
+
+- **04-01 is explicitly NOT in this set.** It is cheap but it is a precondition of the cause
+  ladder; do it with 04-02/04-03, not as an easy first task. See the corrected `**Start:**` note
+  above.
+- **s04 and s11 are the only two that are finishable in one sitting.** s01's diff is trivial but
+  gated on choosing five hues that clear contrast against every sky in the seasonality chapter;
+  s10 is one value in three files but gated on a design choice.
+- **s10 was split**: it now covers only the colour decision. The pull control's hardcoded white,
+  which is what blocks a light colour, became **s12**. Do s12 first if the chosen sky is light;
+  skip it if the sky stays dark.
+- The `priority:` fields in the todo files still carry their capture-order numbers and have NOT
+  been renumbered to match this set.
 
 One open question surfaced by the dedup: `docs/ROADMAP.md:265` asserts the GBD table "is exported
 once by hand" — 04-02 makes that sentence false for ~120 countries the moment it ships. Either

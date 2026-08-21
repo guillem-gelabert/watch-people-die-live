@@ -1,6 +1,7 @@
 ---
 created: 2026-08-21T11:42:00.000Z
 title: Give the last screen a background colour instead of black
+related: s12 (pull control is hardcoded white)
 priority: 10
 area: story
 files:
@@ -37,11 +38,10 @@ language file, so the work is deciding what it should be.
 
 Constraints the choice has to satisfy:
 
-- **The pull-to-globe chrome is drawn in white.** `roadmap.css:2577` sets
-  `#pull-hint` to `rgb(255 255 255 / …)` and `:2634-2635` gives the track a
-  white wash. Those are hardcoded rather than palette tokens, so a light
-  background breaks the closing control's contrast. Either pick a dark colour,
-  or move `#pull-hint`'s colours onto `--ink`/`--paper` tokens as part of this.
+- **The pull-to-globe chrome is drawn in hardcoded white**, so a light
+  background breaks the closing control's contrast. Split out as **s12** — do
+  that first if the chosen colour is light, or skip it entirely if the colour
+  stays dark. This todo is now only the colour decision.
 - **It is the handoff back to the globe**, which is black space with a lit
   earth. A colour that reads as continuous with the globe is probably better
   than one that contrasts with it — though the argument for contrast is that
