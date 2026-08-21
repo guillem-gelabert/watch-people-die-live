@@ -57,11 +57,39 @@ This is the project's existing pattern rather than a new one — `prebuild` alre
 `build-seasonality-fallbacks`, `build-seasonality-validation`, `build-closeup-outlines` and
 `sync-data`, and derived JSON already lives in `data/` and is copied to `public/data/`.
 
-It also fixes the flake properly rather than by deletion: a build script can download each
-workbook to disk and use ExcelJS's **buffered** reader instead of the streaming one. That was
-measured at 0/20 failures against 7/20 for the streaming path, because the buffered reader
-parses the whole archive before resolving cells and so is immune to ZIP entry order. The
-`workbookRels` monkey-patch in `parseRegionalWorkbook` can go with it.
+**Correction, 2026-08-21: do not switch to the buffered reader.** An earlier note here claimed
+the build should use ExcelJS's buffered reader because it measured 0/20 failures against 7/20
+for the streaming one. That measurement was taken against a tiny generated fixture and the
+conclusion was wrong twice over:
+
+- `buildConflictsSnapshot` processes the six workbooks one at a time precisely because
+  **Africa's sheet alone expands past 100 MB**. The buffered reader materialises the entire
+  workbook model in memory, so it would trade a test-only problem for a real one.
+- **Real ACLED workbooks are not affected by the race at all.** Read the ZIP local headers of a
+  live workbook and the stored order is the safe one:
+
+  ```
+  xl/sharedStrings.xml       <- before
+  xl/workbook.xml            <- before
+  xl/worksheets/sheet1.xml   <- last
+  ```
+
+  Both dependencies precede the worksheet, so ExcelJS resolves every cell on its immediate
+  path. Workbooks written *by ExcelJS* put the worksheet first, which is the pathological order
+  — so the flake lives entirely in `lib/acled-weekly.test.ts`'s generated fixtures, and the
+  streaming reader is correct for the real thing.
+
+So the build keeps the streaming reader, and **the flaky test is a separate, test-only problem**:
+fix the fixture's entry order (needs a zip writer — `jszip` is transitive-only under pnpm), or
+stop generating fixtures with ExcelJS. Filed as its own concern rather than folded in here.
+
+The `workbookRels` monkey-patch stays too. For real workbooks it is a no-op — `workbook.xml`
+arrives before the worksheet anyway, so the getter returns the real value when it matters. It
+only changes behaviour for the pathological order, i.e. for the fixtures.
+
+(What still is not explained: why the deferred path ExcelJS takes for those fixtures fails
+intermittently rather than never, given it re-parses the sheet after both dependencies are
+loaded. Not chased further, because it cannot affect production.)
 
 ### Why not the alternatives
 

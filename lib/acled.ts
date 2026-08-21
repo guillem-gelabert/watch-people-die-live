@@ -194,6 +194,22 @@ async function fetchRegionalWorkbook(
   });
 }
 
+// The cutoff the six landing pages currently advertise, without downloading a single workbook.
+// Six small HTML fetches, where a full build is six workbooks and Africa's sheet alone expands
+// past 100 MB — so `scripts/build-conflicts.ts` asks this first and skips the download entirely
+// when the committed snapshot already covers the same week. ACLED publishes weekly; Railway
+// builds on every push.
+export async function upstreamCutoff(): Promise<string> {
+  const username = process.env.ACLED_USERNAME?.trim();
+  const password = process.env.ACLED_PASSWORD;
+  if (!username || !password) throw new Error("ACLED credentials are not configured");
+  const discovered = await discoverRegionalWorkbooks(await tokenFor(username, password));
+  if (discovered.length !== ACLED_REGION_SOURCES.length) {
+    throw new Error("Not all ACLED regional workbooks were discovered");
+  }
+  return commonCutoff(discovered);
+}
+
 export async function buildConflictsSnapshot(): Promise<ConflictsPayload> {
   const username = process.env.ACLED_USERNAME?.trim();
   const password = process.env.ACLED_PASSWORD;
