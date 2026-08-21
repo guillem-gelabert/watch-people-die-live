@@ -3,7 +3,7 @@ created: 2026-08-21T11:42:00.000Z
 title: Give the last screen a background colour instead of black
 related: s12 (pull control is hardcoded white)
 priority: 6
-resolved: done 2026-08-21
+resolved: closed 2026-08-21 - reverted to #000000 on request; net no-op
 area: story
 files:
   - docs/ROADMAP.md:295
@@ -57,3 +57,21 @@ body deliberately tracks the section sky so the fallback band under the collapse
 URL bar reads as page rather than as chrome (see the note at
 `roadmap.css:2677-2686`). A black final sky currently makes that band invisible
 for free; a colour has to keep that property.
+
+## Outcome
+
+Closed 2026-08-21 without a colour change. `#0c223f` shipped briefly (1b6af761) and was reverted
+to `#000000` on request, so the closing sky is back where it started and this todo nets out as a
+no-op.
+
+What did come out of it is **s12**, which was split off and kept: the pull control's four literal
+whites now derive from `--ink`. That is real and independent of the colour — it means whoever
+revisits this can change the closing sky to anything without stranding the control, which was the
+blocker before.
+
+Worth recording in case the original report meant something else: the last screen *is* painted.
+`.story` carries `background-color: var(--sky, #001)` (roadmap.css:1849) and `StoryClient:225`
+mirrors the active sky onto `document.body` for the iOS Safari-bar band. There is no unpainted
+region at the bottom, so "should have a background colour" could only have meant the hue. If the
+visual complaint persists with black, it is a different bug — look at the `.end-block` region and
+the 0.55s `background-color` transition rather than at the declared sky.

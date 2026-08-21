@@ -290,7 +290,7 @@ Les persones que apareixen fan servir ara una distribució d'edat nacional, aix�
 
 :::
 
-### back-to-the-globe · Tornar al globus · #0c223f · hidden
+### back-to-the-globe · Tornar al globus · #000000 · hidden
 
 :::end-block
 

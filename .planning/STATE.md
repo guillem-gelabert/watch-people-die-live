@@ -126,7 +126,7 @@ mostly in `app/roadmap/`, and none is promoted to a plan yet.
 | 3    | s01 | Predefined (not sky-derived) proxy strip colours         | high | story | DONE - plan 05-03   |
 | 4    | s13 | ACLED xlsx from request path into the build              | high | data  | DONE                |
 | 5    | s14 | Keep the built layer current and honest about its age    | high | data  | PART DONE - cadence |
-| 6    | s10 | Last screen needs a background colour, not black        | mid  | story | DONE - #0c223f      |
+| 6    | s10 | Last screen needs a background colour, not black        | mid  | story | CLOSED - kept black |
 | 7    | s12 | Pull control off hardcoded white onto palette tokens    | mid  | story | DONE                |
 | 8    | s03 | Proxy modal opens on reload; scroll jump on close        | high | story | needs discussion    |
 | 9    | s02 | Unstick the proxy card when the fold completes           | high | story | needs discussion    |
@@ -184,9 +184,12 @@ Phase 05 (s04, s11, s01) implemented, plus the colour model rework and the ACLED
   cadence.** Freshness is now literally deploy frequency, and nothing schedules a redeploy.
 - **s12 done**, and it was the precondition for s10: four literal whites in the pull control moved
   onto `--ink`, byte-identical today because `ink` resolves to `#ffffff` on a dark sky.
-- **s10 done.** Closing sky `#000000` -> `#0c223f`, the outermost stop of the earth thumbnail's own
-  gradient, so the handoff to the globe reads as continuous. Luminance 0.0158 keeps the dark
-  variant and white ink; body 12.53:1, mute 8.80:1.
+- **s10 closed as a no-op.** `#0c223f` shipped briefly and was reverted to `#000000` on request,
+  so the closing sky is unchanged from where the day started. s12 survives it and is the useful
+  half: the sky can now be changed to anything without stranding the pull control. Note for
+  anyone revisiting - the last screen *is* painted (`.story` background-color from `--sky`, plus
+  `StoryClient` mirroring it onto `document.body`), so there is no unpainted region and the
+  original report can only have meant the hue.
 
 Still open, in rank order: s03/s02 (the two `useProxyFold` items, both `discuss: true`, and they
 are the same mechanic seen twice), s05, s06, s07, s09, s08. Phase 04 remains 0/8 - the entire
