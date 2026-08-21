@@ -2464,7 +2464,12 @@ footer {
   align-items: center;
   justify-content: center;
   margin-top: 30px;
-  color: rgb(255 255 255 / calc(60% + 40% * var(--pull-strength, 0)));
+
+  /* --ink, not a literal white: on the closing section's black sky skinFromSky resolves ink to
+     #ffffff, so this is byte-identical to the hardcoded value it replaced — but it now follows the
+     sky, so giving that section a real background colour (s10) cannot strand the control. The
+     pull-strength interpolation is unchanged; it just rides on the token. */
+  color: color-mix(in srgb, var(--ink) calc(60% + 40% * var(--pull-strength, 0)), transparent);
 
   /* The gesture tracks the finger; letting go eases back rather than snapping. */
   transition:
@@ -2504,7 +2509,7 @@ footer {
   width: 118px;
   height: 2px;
   border-radius: 2px;
-  background: rgb(255 255 255 / 16%);
+  background: color-mix(in srgb, var(--ink) 16%, transparent);
 }
 
 #pull-bar {
@@ -2513,16 +2518,17 @@ footer {
   height: 100%;
   border-radius: 2px;
 
-  /* Solid white, not the hint's own faded colour: the fill is the progress readout and has to
-     stay legible against the track while the label around it is still dim. */
-  background: #fff;
+  /* Full-strength ink, not the hint's own faded colour: the fill is the progress readout and has
+     to stay legible against the track while the label around it is still dim. The relationship
+     is what matters here, not the value — bar at 100%, track at 16%, label 60-100%. */
+  background: var(--ink);
   transition: width 0.1s linear;
 }
 
 /* Full stretch, hold and it goes. The pulse is what says the bar is not just full but counting:
    there is a hold left to serve, and the gesture is not over. */
 #pull-hint[data-ready="1"] #pull-track {
-  background: rgb(255 255 255 / 34%);
+  background: color-mix(in srgb, var(--ink) 34%, transparent);
 }
 
 #pull-hint[data-ready="1"] #pull-bar {
