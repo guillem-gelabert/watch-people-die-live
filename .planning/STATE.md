@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persona Realism
 status: in_progress
-stopped_at: Phase 04 wave 1 done (04-01 + the GBD export spec). Wave 2 next: 04-02, 04-08, 04-04.
-last_updated: "2026-08-21T20:30:00.000Z"
-last_activity: 2026-08-21 -- 04-01 executed: pickCause honours coverage; GBD export spec written
+stopped_at: Phase 04 wave 1 done; 04-02/03/04 re-sourced onto WHO GHE + a single GBD subnational pull. Wave 2 next: 04-02, 04-05, 04-08.
+last_updated: "2026-08-22T12:10:00.000Z"
+last_activity: 2026-08-22 -- 04-02/03/04 rewritten around WHO GHE (keyless, CC BY) plus one GBD subnational export
 progress:
   total_phases: 1
   completed_phases: 0
@@ -26,14 +26,18 @@ See: .planning/PROJECT.md (updated 2026-06-28)
 ## Current Position
 
 Phase: 04 (Persona Realism Ladder) — IN PROGRESS, wave 1 done · Phase 05 (Story Reading Experience) — PLANNED, not started
-Plan: 1 of 11 (Phase 04: 1/8, wave 2 next = 04-02 + 04-08 + 04-04; Phase 05: 0/3, all wave 1)
+Plan: 1 of 11 (Phase 04: 1/8, wave 2 next = 04-02 + 04-05 + 04-08; Phase 05: 0/3, all wave 1)
 Status: Phase 04 wave 1 landed — `pickCause` now honours the `coverage` flag, so the committed
 global all-ages export is rejected in favour of the age-gated fallback table, and the quota-bound
-GBD export spec (`gbd-export-spec.md`) is ready for the portal requests to run in parallel with
-waves 2-5. Phase 05 was added 2026-08-21 from the story batch and is deliberately disjoint from
+GBD export spec (`gbd-export-spec.md`) has been rewritten around the one query GBD is still needed
+for. 04-02 and 04-03 were re-sourced on 2026-08-22: the national cause cube now comes from WHO's
+Global Health Estimates (keyless, CC BY 4.0, 183 countries, 175 leaf causes), because the WHO
+Mortality Database has zero rows for Nigeria, Ethiopia, DR Congo and India and the 16-chunk GBD
+export is infeasible at 100k rows per download. GBD is now one ~30,000-row subnational pull, which
+reversed the 04-04/04-05 dependency. Phase 05 was added 2026-08-21 from the story batch and is deliberately disjoint from
 Phase 04 — no shared files, so the two phases can run concurrently. Phase 05's 05-03 is `autonomous: false` (it needs a colour decision); 05-01 and
 05-02 are autonomous.
-Last activity: 2026-08-21 -- 04-01 executed: pickCause honours coverage; GBD export spec written
+Last activity: 2026-08-22 -- 04-02/03/04 rewritten around WHO GHE (keyless, CC BY) plus one GBD subnational export
 
 Progress: [#_________] 9% (1/11 plans in milestone v2.0)
 

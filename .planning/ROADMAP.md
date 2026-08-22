@@ -119,14 +119,24 @@ Ordering is by wave, not by plan number. Plan numbers preserve the captured prio
 
 `app/globe/persona.ts` is the chokepoint — 04-01, 04-04 and 04-07 all modify it, so they cannot share a wave. Max parallelism is 3, in wave 2.
 
+**Re-sourced 2026-08-22.** 04-02 and 04-03 were rewritten after investigation: the national cause
+cube now comes from WHO's Global Health Estimates (`xmart-api-public.who.int/DEX_CMS/GHE_FULL` —
+keyless, CC BY 4.0, 183 countries, 19 disjoint five-year bands, 175 leaf causes), because the WHO
+Mortality Database 04-02 originally targeted has **zero rows** for Nigeria, Ethiopia, DR Congo and
+India, and the 16-chunk GBD cause export 04-03 originally described is infeasible at
+`max_rows_per_download: 100000`. GBD is now used only for what WHO lacks entirely — subnational —
+as a single ~30,000-row download covering 519 admin-1 units across 17 countries. That also reverses
+the 04-04/04-05 dependency: 04-04 needs 04-05's region key to attach a regional pyramid to a cell,
+so 04-05 moves to wave 2 and 04-04 to wave 4.
+
 Plans:
 
 - [x] 04-01: Honour the cause coverage flag in pickCause _(wave 1)_
-- [ ] 04-02: Source country age/sex causes from WHO Mortality Database _(wave 2)_
-- [ ] 04-04: Derive per-cell age/sex death weights from gridded population _(wave 2)_
+- [ ] 04-02: Source country age/sex causes from WHO Global Health Estimates _(wave 2)_
+- [ ] 04-05: Bake an admin-1 / NUTS-2 region key into the rate grid _(wave 2)_
 - [ ] 04-08: Unfilter age/sex in pipelines that already download it _(wave 2)_
-- [ ] 04-03: Fold in the chunked GBD cause export _(wave 3)_
-- [ ] 04-05: Bake an admin-1 / NUTS-2 region key into the rate grid _(wave 3)_
+- [ ] 04-03: Pull GBD subnational age/sex death weights _(wave 3, human sign-in)_
+- [ ] 04-04: Resolve age/sex per cell from regional estimates and gridded population _(wave 4)_
 - [ ] 04-06: Add Eurostat regional age/sex and cause tables _(wave 4)_
 - [ ] 04-07: Make persona composition seasonal _(wave 5)_
 
@@ -134,6 +144,12 @@ Deliberately **not** a plan: opportunistic subnational sourcing beyond Eurostat 
 999.1. Its own scoping said "not a planned sweep", and full subnational coverage is unreachable at
 any effort level (China, India, Indonesia, Pakistan, Ethiopia, Nigeria, DRC have weak or no public
 access per `seasonality-data-guide.md`). Keeping it as a plan implied committed work.
+
+That "unreachable" verdict stands for **observed** data from national statistics offices, which is
+what `seasonality-data-guide.md` catalogues. It does not hold for **modelled** estimates: GBD 2023
+publishes admin-1 age/sex estimates for India, Indonesia, Pakistan, Ethiopia and Nigeria (five of
+the seven named), plus Kenya and the Philippines. 04-03 now takes those, labelled as estimates.
+China and DR Congo remain absent.
 
 ## Progress
 

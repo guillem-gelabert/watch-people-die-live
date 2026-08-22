@@ -111,10 +111,13 @@ plans in a wave share no declared path, so they are safe to run concurrently.
 | Wave | Plans               | Max parallel |
 | ---- | ------------------- | ------------ |
 | 1    | 04-01               | 1            |
-| 2    | 04-02, 04-04, 04-08 | 3            |
-| 3    | 04-03, 04-05        | 2            |
-| 4    | 04-06               | 1            |
+| 2    | 04-02, 04-05, 04-08 | 3            |
+| 3    | 04-03               | 1            |
+| 4    | 04-04, 04-06        | 2            |
 | 5    | 04-07               | 1            |
+
+Revised 2026-08-22 — see **Re-sourced** below. 04-05 moved up to wave 2 and 04-04 down to wave 4,
+because 04-04 now needs 04-05's region key to attach a regional pyramid to a cell.
 
 **`app/globe/persona.ts` is the chokepoint** — 04-01, 04-04 and 04-07 all modify it, so they can
 never share a wave. Splitting it into a sampling half and a label/prose half would unlock more
@@ -174,6 +177,50 @@ reason.
 - **No single global age-sex raster is confirmed.** WorldPop ships per-country GeoTIFFs; GHS-POP has
   no age/sex at all; GPWv4 BDC is one global product from the provider already used for
   `density-grid.json` but is 2010 vintage. 04-04 resolves this before building.
+
+## Re-sourced 2026-08-22 — supersedes the WHO/GBD reasoning above
+
+The section "WHO and GBD are complements, not alternatives" and the 04-03 quota discussion are
+superseded. What changed, all verified by direct call:
+
+**The WHO Mortality Database cannot do the job 04-02 gave it.** It is raw registration data, and
+Nigeria, Ethiopia, DR Congo and India have **zero rows**; Pakistan has 1993–94 survey data only.
+The original reasoning had it covering "~120 vital-registration countries", which is true, but by
+death share the gap is far worse than the country count suggests.
+
+**WHO's Global Health Estimates does, keylessly.** `xmart-api-public.who.int/DEX_CMS/GHE_FULL` is a
+keyless OData API — no account, no token, `$format=csv`, `$top=100000` per page — carrying 183
+countries, every year 2000–2021, 19 disjoint five-year age bands, both sexes, and 175 leaf causes at
+granularity equivalent to GBD level-3's 176. It covers every non-registration country. Licence is
+CC BY 4.0 via `data.who.int`, which permits the derivation and redistribution this project does.
+
+**The 16-chunk GBD cause export was never feasible.** The tool's own open `php/app_settings.php`
+reports `max_rows_per_download: 100000` — per download, with no documented cumulative ceiling — and
+the full national cause cube is tens of thousands of requests, not thirteen.
+
+**GBD's remaining unique value is subnational, and it is one download.** `php/hierarchy/` lists 519
+admin-1 units across 17 countries. Dropping the cause dimension makes the query
+`723 locations × 21 ages × 2 sexes ≈ 30,400 rows` — a single export. This is also why trap 4's
+"04-04 needs archetype clustering, not a naive bake" now applies to a two-tier resolver rather than a
+pure derivation.
+
+Two measurement traps found in the WHO data, both now written into 04-02:
+
+- **WHO's age codes overlap.** `Y0T1` is exactly `D0T27` + `M1T11` (Nigeria 2021 male: 279,531.29 =
+  142,010.37 + 137,520.91). Nineteen codes are disjoint and reconcile to the `TOTAL` row within 0.01.
+- **No WHO flag is a clean partition.** `FLAG_SINGLE_CAUSE eq 1` gives 175 causes at 97.58% of all
+  deaths; level 3 alone 97.10%, level 4 only 22.27%. The 2.4% residual goes to `other causes`.
+
+Corrections to facts asserted above: `app/globe/Globe.tsx` no longer exists (the chain is
+`Earth.tsx` → `GlobeStage.tsx`), `rate-grid.json` is 1,716,255 B raw / 469,249 B gzipped with the
+59,954 cells as stated, and the committed geometry holds 4,596 admin-1 and 334 NUTS-2 features — the
+694 / 287 figures are the CDR-carrying subsets, not the polygon counts.
+
+Not in dispute: the licence position. IHME permits publishing derived results on websites but forbids
+providing third parties the ability to download its data sets from our own hosting, so raw cells must
+never reach `public/data/`. IHME also requires the exact string
+`Source: Institute for Health Metrics and Evaluation. Used with permission. All rights reserved.`,
+which appears nowhere in the repo yet.
 
 ## Source material
 
