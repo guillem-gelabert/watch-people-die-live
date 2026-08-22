@@ -10,11 +10,11 @@ import type { Dictionary } from "@/lib/i18n/en";
 //   • age + sex are drawn from the country's REAL age x sex distribution of deaths
 //     (UN World Population Prospects, data/mortality-age-sex.json), so a death in
 //     Japan skews old and one in Nigeria skews young;
-//   • the cause is drawn from IHME Global Burden of Disease cause weights, but only when
-//     data/causes.json declares in `coverage` that its weights really do vary by age band.
-//     The committed export is global and all-ages — one set of weights repeated across all
-//     nine bands — so it is rejected and the age-gated table below answers instead. A
-//     country x age x sex export drops into the same JSON shape and is used on arrival.
+//   • the cause is drawn from WHO Global Health Estimates weights (data/causes.json), per
+//     country, age band and sex — but only when the file's `coverage` says its weights
+//     really do vary by age band. A global all-ages export repeats one set of weights
+//     across all nine bands, and reading that would hand an infant a pensioner's cause, so
+//     it is rejected and the age-gated table below answers instead.
 //
 // Both files are built offline (scripts/build-mortality.ts, scripts/build-causes.ts)
 // and shipped as static JSON. If they are missing or a country has no data we fall
@@ -62,14 +62,13 @@ interface SamplePersonasData {
 }
 
 // The words the sentence is assembled from, in the reader's language. The cause is not among
-// them: it comes from the Global Burden of Disease export, which is an English taxonomy of some
-// three hundred labels, and a hand-translation of it would be a medical claim rather than a
-// string.
+// them: it comes from the cause export, which is an English taxonomy of a couple of hundred
+// labels, and a hand-translation of it would be a medical claim rather than a string.
 export type PersonaWords = Pick<
   Dictionary["globe"],
   "persona" | "baby" | "girl" | "boy" | "woman" | "man"
 > & {
-  // The GBD cause table, so the sentence can name the cause in the same language as the rest of
+  // The cause table, so the sentence can name the cause in the same language as the rest of
   // it. Keyed by the English label the data file uses; see lib/i18n/causes.ts.
   causes: CauseLabels;
 };
@@ -104,7 +103,7 @@ const AGE_BANDS: AgeBand[] = [
 ];
 
 // Causes of death, each valid for an age range [min, max] and optional sex. Used only
-// as the final fallback when GBD data is unavailable for a country/band.
+// as the final fallback when the cause export has nothing usable for a country/band.
 interface FallbackCause {
   label: string;
   w: number;
@@ -282,8 +281,9 @@ export function makePersona(
 ): Persona {
   const sex = sampleSex(m49);
   const { age, idx } = sampleAge(m49, sex);
-  // Sampled as the English GBD label, then named: `cause` stays the identity so anything reading
-  // a persona downstream can still match on it, and only `text` is in the reader's language.
+  // Sampled as the English source label, then named: `cause` stays the identity so anything
+  // reading a persona downstream can still match on it, and only `text` is in the reader's
+  // language.
   const cause = pickCause(m49, sex, idx, age);
   const who = sexLabel(words, sex, age);
   const text = fill(words.persona, {

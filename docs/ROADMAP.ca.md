@@ -258,11 +258,11 @@ Cada llampec rep una frase, treta de la distribució del lloc on s'ha disparat.
 
 # Edat, després sexe, després una causa
 
-**L'edat i el sexe** surten de la taula de defuncions per edat i sexe de les Perspectives de la Població Mundial de l'ONU. La **causa** surt de l'Estudi de la Càrrega Global de Malaltia de l'IHME, ampliada a les seves causes de nivell 3 — les reconeixibles — i reduïda a les vuit més fortes per país, sexe i franja d'edat, amb tota la resta plegada en «altres causes».
+**L'edat i el sexe** surten de la taula de defuncions per edat i sexe de les Perspectives de la Població Mundial de l'ONU. La **causa** surt de les Estimacions Sanitàries Mundials de l'Organització Mundial de la Salut, preses al seu nivell més específic — les causes reconeixibles, no els grups clínics que hi ha per damunt — i reduïda a les vuit més fortes per país, sexe i franja d'edat, amb tota la resta plegada en «altres causes».
 
 Es mostregen **en aquest ordre**, de manera que una causa només es treu de la franja d'edat i sexe que plausiblement en mor. Treu la causa primer i tens vint-i-cinc-anyencs amb demència.
 
-Totes dues taules s'inclouen com a JSON al repositori, així que el flux no necessita cap crida a una API en temps d'execució i es llegeix igual sense connexió. L'Estudi de la Càrrega Global de Malaltia no té cap API amb testimoni: la seva taula s'exporta un cop a mà des de l'eina de resultats i es puja al repositori.
+Totes dues taules s'inclouen com a JSON al repositori, així que el flux no necessita cap crida a una API en temps d'execució i es llegeix igual sense connexió. La taula de causes venia abans de l'Estudi de la Càrrega Global de Malaltia de l'IHME, exportada a mà d'una eina que tanca cada descàrrega darrere d'un compte i d'un límit de cent mil files. La de l'OMS és una sola petició sense credencials, i això és bona part del motiu que sigui la que hi ha aquí.
 
 [sampling order]
 

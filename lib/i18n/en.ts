@@ -47,8 +47,8 @@ export const en = {
     resume: "Resume",
     pause: "Pause",
     close: "Close",
-    // The persona line, e.g. "Woman 78, breast cancer – Spain". The cause is a Global Burden of
-    // Disease label and arrives in English from the data file; everything around it is ours.
+    // The persona line, e.g. "Woman 78, breast cancer – Spain". The cause arrives in English
+    // from the data file and keeps that label as its identity; everything around it is ours.
     persona: "{who} {age}, {cause} – {country}",
     baby: "Baby",
     girl: "Girl",

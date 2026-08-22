@@ -42,8 +42,8 @@ function likeliest(
     let top = -1;
     for (const [index, weight] of Object.entries(cell)) {
       // "Other causes" is a bucket, not a cause — naming it would say nothing. The test is on
-      // the GBD label, never on the translated one: the bucket keeps its English key in every
-      // language, which is the whole reason the key is the identity.
+      // the English label, never on the translated one: the bucket keeps its English key in
+      // every language, which is the whole reason the key is the identity.
       const label = causes.causes[Number(index)];
       if (!label || label === "other causes") continue;
       if (weight > top) {

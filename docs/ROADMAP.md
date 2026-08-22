@@ -258,11 +258,11 @@ Every flash gets a sentence, drawn from the distribution of the place it fired i
 
 # Age, then sex, then one cause
 
-**Age and sex** come from the UN World Population Prospects table of deaths by age and sex. **Cause** comes from the IHME Global Burden of Disease, expanded to its level-3 causes — the recognisable ones — and reduced to the strongest eight per country, sex and age band, with everything else folded into "other causes".
+**Age and sex** come from the UN World Population Prospects table of deaths by age and sex. **Cause** comes from the World Health Organization's Global Health Estimates, taken at its most specific level — the recognisable causes, not the clinical groupings above them — and reduced to the strongest eight per country, sex and age band, with everything else folded into "other causes".
 
 They are sampled **in that order**, so a cause is only ever drawn from the age and sex band that plausibly dies of it. Draw the cause first and you get twenty-year-olds with dementia.
 
-Both tables ship as JSON in the repository, so the feed needs no runtime API call and reads the same offline. The Global Burden of Disease has no tokened API at all — its table is exported once by hand from the results tool and committed.
+Both tables ship as JSON in the repository, so the feed needs no runtime API call and reads the same offline. The cause table used to come from the IHME Global Burden of Disease, hand-exported from a results tool that puts every download behind a sign-in and a hundred-thousand-row cap. The WHO table is one request and no account, which is most of why it is the one here.
 
 [sampling order]
 

@@ -259,11 +259,11 @@ Jedes Aufblitzen bekommt einen Satz, gezogen aus der Verteilung des Ortes, an de
 
 # Alter, dann Geschlecht, dann eine Ursache
 
-**Alter und Geschlecht** stammen aus der UN-Tabelle der Sterbefälle nach Alter und Geschlecht aus den World Population Prospects. Die **Ursache** stammt aus der Global Burden of Disease des IHME, aufgefächert auf ihre Level-3-Ursachen — die wiedererkennbaren — und reduziert auf die acht stärksten je Land, Geschlecht und Altersgruppe, wobei alles Übrige zu „andere Ursachen" zusammengefasst wird.
+**Alter und Geschlecht** stammen aus der UN-Tabelle der Sterbefälle nach Alter und Geschlecht aus den World Population Prospects. Die **Ursache** stammt aus den Global Health Estimates der Weltgesundheitsorganisation, genommen auf ihrer feinsten Ebene — den wiedererkennbaren Ursachen, nicht den klinischen Gruppen darüber — und reduziert auf die acht stärksten je Land, Geschlecht und Altersgruppe, wobei alles Übrige zu „andere Ursachen" zusammengefasst wird.
 
 Sie werden **in dieser Reihenfolge** gezogen, sodass eine Ursache immer nur aus der Alters- und Geschlechtsgruppe kommt, die plausibel daran stirbt. Zieh die Ursache zuerst, und du bekommst Zwanzigjährige mit Demenz.
 
-Beide Tabellen liegen als JSON im Repository, der Feed braucht also keinen API-Aufruf zur Laufzeit und liest sich offline genauso. Die Global Burden of Disease hat überhaupt keine API mit Token — ihre Tabelle wird einmal von Hand aus dem Ergebniswerkzeug exportiert und eingecheckt.
+Beide Tabellen liegen als JSON im Repository, der Feed braucht also keinen API-Aufruf zur Laufzeit und liest sich offline genauso. Die Ursachentabelle kam früher aus der Global Burden of Disease des IHME, von Hand aus einem Werkzeug exportiert, das jeden Download hinter einer Anmeldung und einer Grenze von hunderttausend Zeilen verschließt. Die WHO-Tabelle ist eine einzige Anfrage ohne Zugangsdaten, und das ist ein guter Teil des Grundes, warum sie hier steht.
 
 [sampling order]
 

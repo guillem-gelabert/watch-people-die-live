@@ -1,9 +1,9 @@
-// Els noms de les causes de mort, tal com apareixen a data/causes.json (IHME Global Burden of
-// Disease, causes de nivell 3) més les de la taula de reserva de app/globe/persona.ts.
+// Els noms de les causes de mort, tal com apareixen a data/causes.json (Estimacions Sanitàries
+// Mundials de l'OMS) més les de la taula de reserva de app/globe/persona.ts.
 //
 // La clau és l'etiqueta anglesa exacta del fitxer de dades: és l'identificador, i no canvia mai.
 // Una causa que no hi sigui es mostra en anglès — vegeu causeLabel() — de manera que una
-// exportació nova del GBD afegeix causes sense trencar res. El test causes.test.ts comprova que
+// exportació nova afegeix causes sense trencar res. El test causes.test.ts comprova que
 // no en falti cap de les que hi ha ara.
 //
 // El registre és el de la frase on cauen: "Dona de 84, càncer de mama – Espanya". Per això van en

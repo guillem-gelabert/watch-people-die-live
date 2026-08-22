@@ -100,8 +100,8 @@ describe("causeLabel", () => {
   });
 
   it("passes an unmapped label through as the English it already was", () => {
-    // What a GBD export adding a cause looks like before anyone translates it.
-    expect(causeLabel(ca.causes, "some new gbd cause")).toBe("some new gbd cause");
+    // What a new export adding a cause looks like before anyone translates it.
+    expect(causeLabel(ca.causes, "some newly exported cause")).toBe("some newly exported cause");
     expect(causeLabel(en.causes, "lung cancer")).toBe("lung cancer");
   });
 

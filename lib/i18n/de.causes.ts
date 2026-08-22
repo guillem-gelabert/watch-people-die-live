@@ -1,9 +1,9 @@
-// Die Todesursachen, wie sie in data/causes.json stehen (IHME Global Burden of Disease,
-// Level-3-Ursachen) plus die aus der Rückfalltabelle in app/globe/persona.ts.
+// Die Todesursachen, wie sie in data/causes.json stehen (Global Health Estimates der WHO)
+// plus die aus der Rückfalltabelle in app/globe/persona.ts.
 //
 // Der Schlüssel ist genau das englische Label aus der Datendatei: es ist die Kennung und ändert
 // sich nie. Eine fehlende Ursache erscheint auf Englisch — siehe causeLabel() — sodass ein neuer
-// GBD-Export Ursachen hinzufügen kann, ohne etwas zu zerbrechen. causes.test.ts prüft, dass von
+// Export Ursachen hinzufügen kann, ohne etwas zu zerbrechen. causes.test.ts prüft, dass von
 // den heute vorhandenen keine fehlt.
 //
 // Das Register ist das des Satzes, in dem sie landen: „Frau, 84, Brustkrebs – Spanien“. Sie
