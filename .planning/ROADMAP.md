@@ -109,7 +109,7 @@ Plans:
 **Success Criteria** (what must be TRUE):
 
 1. An infant persona never draws an adult-only cause; the `coverage` flag written by the builder is read by the consumer.
-2. Cause distributions are country-specific for both vital-registration countries (WHO MDB) and countries without registration (GBD).
+2. Cause distributions are country-specific for all 183 countries WHO GHE covers, including those without vital registration.
 3. Age/sex distributions resolve per grid cell rather than per country, validated against observed regional counts for at least four countries.
 4. Persona composition shifts with the season the globe is already simulating.
 5. Estimated inputs are labelled as estimates and excluded from validation statistics.
