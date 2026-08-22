@@ -155,7 +155,14 @@ describe("makePersona with the shipped data files", () => {
     expect(
       children.filter((p) => ADULT_ONLY.includes(p.cause)).map((p) => `${p.age}: ${p.cause}`),
     ).toEqual([]);
-    expect(infants.filter((p) => !INFANT_CAUSES.includes(p.cause)).map((p) => p.cause)).toEqual([]);
+    // Not the fallback table's narrow list any more — the shipped export now has real per-band
+    // country cells, so an infant draws Nigeria's actual infant mix. The check that matters is
+    // that it is led by a perinatal cause rather than by whatever kills adults there.
+    const commonest = [...new Set(infants.map((p) => p.cause))].sort(
+      (a, b) =>
+        infants.filter((p) => p.cause === b).length - infants.filter((p) => p.cause === a).length,
+    )[0];
+    expect(commonest).toBe("neonatal complications");
   });
 
   it("uses the bundled sample's own banded weights when the built files are absent", async () => {

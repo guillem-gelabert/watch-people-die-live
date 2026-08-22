@@ -7,16 +7,18 @@ import { de } from "./de";
 import { en } from "./en";
 import { LOCALES } from "./config";
 
-// The cause tables are keyed by the GBD labels in data/causes.json, and nothing in the type
-// system connects the two — a new export drops in new labels and every one of them would quietly
-// print in English inside a Catalan sentence. This is the connection.
+// The cause tables are keyed by the labels in data/causes.json, and nothing in the type system
+// connects the two — a new export drops in new labels and every one of them would quietly print in
+// English inside a Catalan sentence. This is the connection.
 //
-// The fallback table in app/globe/persona.ts can also reach a reader, on any country the GBD
-// export has no cell for, so its labels are held to the same standard. They are read out of the
-// source rather than duplicated here, so adding one there is caught here.
+// The fallback table in app/globe/persona.ts can also reach a reader, on any country the export
+// has no cell for, so its labels are held to the same standard. They are read out of the source
+// rather than duplicated here, so adding one there is caught here.
 
 const causesJson = JSON.parse(readFileSync(join(process.cwd(), "data", "causes.json"), "utf8")) as {
   causes: string[];
+  global: { m: Record<string, number>[]; f: Record<string, number>[] };
+  countries: Record<string, { m: Record<string, number>[]; f: Record<string, number>[] }>;
 };
 
 const personaSource = readFileSync(join(process.cwd(), "app", "globe", "persona.ts"), "utf8");
@@ -26,10 +28,26 @@ const reachable = [...new Set([...causesJson.causes, ...fallbackLabels])];
 
 describe("cause labels", () => {
   it("finds both the data file's causes and the fallback table's", () => {
-    expect(causesJson.causes.length).toBeGreaterThan(100);
+    // The builder ships only labels that survive top-8 truncation, so this is a count of causes a
+    // reader can actually be shown. It used to be 140, of which 12 were reachable — the rest were
+    // listed and unreferenced, which is what made the old export look broader than it was.
+    expect(causesJson.causes.length).toBeGreaterThan(60);
     expect(fallbackLabels).toContain("birth asphyxia");
     // The fallback table names causes the export also has, so the union is the smaller number.
     expect(reachable.length).toBeGreaterThanOrEqual(causesJson.causes.length);
+  });
+
+  it("ships no cause that no cell references", () => {
+    const referenced = new Set<number>();
+    const scan = (entry: { m: Record<string, number>[]; f: Record<string, number>[] }): void => {
+      for (const sex of ["m", "f"] as const) {
+        for (const band of entry[sex]) for (const k of Object.keys(band)) referenced.add(Number(k));
+      }
+    };
+    scan(causesJson.global);
+    for (const entry of Object.values(causesJson.countries)) scan(entry);
+    const dead = causesJson.causes.filter((_, i) => !referenced.has(i));
+    expect(dead).toEqual([]);
   });
 
   for (const [name, dictionary] of [

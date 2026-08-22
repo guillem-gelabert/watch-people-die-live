@@ -1,27 +1,21 @@
-// Build a compact cause-of-death distribution by sex and, when the source has it,
-// country and age band.
+// Build a compact cause-of-death distribution by country, age band and sex.
 //
-// Source: IHME Global Burden of Disease (GBD). The UN portal has no cause-of-death
-// data, so causes come from GBD. There is no tokened GBD API — you export a CSV from
-// the GBD Results Tool (free account) and this script aggregates it offline, mirroring
-// how build-density.mjs consumes a committed-source raster.
+// Source: WHO Global Health Estimates 2021, fetched by scripts/fetch-who-ghe.ts from
+// WHO's keyless xMart OData API. 183 countries — including every country with no usable
+// death registration — 19 disjoint five-year age bands, both sexes, 175 leaf causes.
 //
-// How to get the CSV (https://vizhub.healthdata.org/gbd-results/), max 100k rows/req:
-//   Measure  = Deaths
-//   Metric   = Number
-//   Cause    = "All causes" expanded to Level 3 (recognisable causes, ~150)
-//   Location = all countries/territories, or Global for a global fallback table
-//   Age      = <1, 1-4, 5-9, ... in 5-year groups, or All ages for a global fallback
-//   Sex      = Male, Female
-//   Year     = most recent (e.g. 2021)
-// Save it (optionally gzipped) under data/source/, e.g. data/source/gbd-deaths.csv[.gz].
+// This used to be built from a hand-exported IHME GBD CSV. GBD gates every data endpoint
+// behind an interactive sign-in and caps a download at 100,000 rows, which makes the
+// country x age x sex x cause cube tens of thousands of requests; WHO serves the same
+// shape keylessly under CC BY 4.0. The one thing GBD still has that WHO does not is
+// subnational detail, which is a separate export (see .planning phase 04-03).
 //
 // Output: data/causes.json
 //   { source, year, coverage, bands, causes: [<label>...],
 //     global: { m:[ {causeIdx:weight,...} per band ], f:[...] },
-//     countries: { <m49>: { m:[ {causeIdx:weight} per band ], f:[...] }, ... } }
+//     countries: { <m49>: { m:[...], f:[...] }, ... } }
 //
-// Usage: node scripts/build-causes.ts [--src=path] [--top=8] [--force]
+// Usage: node --import tsx scripts/build-causes.ts [--src=path] [--top=8] [--force]
 
 import fs from "node:fs";
 import path from "node:path";
@@ -32,9 +26,9 @@ import isoCountries from "i18n-iso-countries";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
 const OUT = path.join(ROOT, "data", "causes.json");
-const SRC_DIR = path.join(ROOT, "data", "source");
+const SRC_DIR = path.join(ROOT, "data", "source", "who-ghe");
 
-// MUST match BANDS in build-mortality.mjs and AGE_BANDS in app/globe/persona.js.
+// MUST match BANDS in build-mortality.ts and AGE_BANDS in app/globe/persona.ts.
 const BANDS: [number, number][] = [
   [0, 0],
   [1, 4],
@@ -47,46 +41,170 @@ const BANDS: [number, number][] = [
   [85, 200],
 ];
 
+// WHO age code -> band index. WHO ships 22 codes and three of them overlap: Y0T1 is
+// exactly D0T27 + M1T11, so taking all three would count infancy twice. These 19 are
+// disjoint and reconcile to WHO's own TOTAL row; TOTAL, D0T27 and M1T11 are absent on
+// purpose and any code missing from this table fails the build rather than being guessed.
+const AGE_BAND = new Map<string, number>([
+  ["Y0T1", 0],
+  ["Y1T4", 1],
+  ["Y5T9", 2],
+  ["Y10T14", 2],
+  ["Y15T19", 3],
+  ["Y20T24", 3],
+  ["Y25T29", 3],
+  ["Y30T34", 4],
+  ["Y35T39", 4],
+  ["Y40T44", 4],
+  ["Y45T49", 4],
+  ["Y50T54", 5],
+  ["Y55T59", 5],
+  ["Y60T64", 5],
+  ["Y65T69", 6],
+  ["Y70T74", 6],
+  ["Y75T79", 7],
+  ["Y80T84", 7],
+  ["YGE_85", 8],
+]);
+
 type Sex = "m" | "f";
 
-// Keep only the strongest causes per (country, sex, band); the rest fold into "other".
 const topArg = process.argv.find((a) => a.startsWith("--top="));
 const TOP = topArg ? Number(topArg.split("=")[1]) : 8;
 const force = process.argv.includes("--force");
 const srcArg = process.argv.find((a) => a.startsWith("--src="));
 
-// GBD cause names -> short, readable persona labels (with articles where it reads
-// better). Anything not listed keeps its GBD name, lower-cased. Edit here to taste.
-const LABELS = new Map<string, string>([
-  ["ischemic heart disease", "ischaemic heart disease"],
-  ["stroke", "a stroke"],
-  ["road injuries", "a road injury"],
-  ["self-harm", "suicide"],
-  ["interpersonal violence", "interpersonal violence"],
-  ["alzheimer's disease and other dementias", "Alzheimer's & dementia"],
-  ["chronic obstructive pulmonary disease", "COPD"],
-  ["lower respiratory infections", "lower respiratory infection"],
-  ["diarrheal diseases", "a diarrhoeal disease"],
-  ["neonatal disorders", "neonatal complications"],
-  ["congenital birth defects", "a congenital condition"],
-  ["tracheal, bronchus, and lung cancer", "lung cancer"],
-  ["colon and rectum cancer", "colorectal cancer"],
-  ["stomach cancer", "stomach cancer"],
-  ["liver cancer", "liver cancer"],
-  ["breast cancer", "breast cancer"],
-  ["prostate cancer", "prostate cancer"],
-  ["cervical cancer", "cervical cancer"],
-  ["diabetes mellitus", "diabetes"],
-  ["chronic kidney disease", "kidney disease"],
-  ["hiv/aids", "HIV/AIDS"],
-  ["tuberculosis", "tuberculosis"],
-  ["malaria", "malaria"],
-  ["drowning", "drowning"],
-  ["maternal disorders", "maternal complications"],
-  ["leukemia", "leukaemia"],
-]);
+const OTHER = "other causes";
 
-// --- aggregation containers ------------------------------------------------------
+// WHO cause titles -> the persona vocabulary already translated in lib/i18n/{ca,de}.causes.ts.
+// Three jobs: reconcile spelling ("Oesophagus cancer" is the project's "esophageal cancer"),
+// name the thing where WHO names only the site ("Nasopharynx" alone cannot end a sentence),
+// and collapse aetiology splits the feed has no use for (four kinds of liver cancer read the
+// same to a reader). Causes that are real but effectively never fatal — cataracts, dental
+// caries, migraine — go to "other causes", which is where top-8 truncation would put them
+// anyway. Anything absent from this map keeps its WHO title, lower-cased.
+const LABELS = new Map<string, string>([
+  ["acute hepatitis a", "acute hepatitis"],
+  ["acute hepatitis b", "acute hepatitis"],
+  ["acute hepatitis c", "acute hepatitis"],
+  ["acute hepatitis e", "acute hepatitis"],
+  ["alzheimer disease and other dementias", "Alzheimer's & dementia"],
+  ["amphetamine use disorders", "drug use disorders"],
+  ["cannabis use disorders", "drug use disorders"],
+  ["cocaine use disorders", "drug use disorders"],
+  ["opioid use disorders", "drug use disorders"],
+  ["other drug use disorders", "drug use disorders"],
+  ["ascariasis", "intestinal nematode infections"],
+  ["hookworm disease", "intestinal nematode infections"],
+  ["trichuriasis", "intestinal nematode infections"],
+  ["birth asphyxia and birth trauma", "birth asphyxia"],
+  ["brain and nervous system cancers", "brain and central nervous system cancer"],
+  ["cardiomyopathy, myocarditis, endocarditis", "cardiomyopathy and myocarditis"],
+  ["cervix uteri cancer", "cervical cancer"],
+  ["chronic kidney disease due to diabetes", "kidney disease"],
+  ["other chronic kidney disease", "kidney disease"],
+  ["chronic obstructive pulmonary disease", "COPD"],
+  ["cirrhosis due to alcohol use", "cirrhosis and other chronic liver diseases"],
+  ["cirrhosis due to hepatitis b", "cirrhosis and other chronic liver diseases"],
+  ["cirrhosis due to hepatitis c", "cirrhosis and other chronic liver diseases"],
+  ["other liver cirrhosis", "cirrhosis and other chronic liver diseases"],
+  ["cleft lip and cleft palate", "a congenital condition"],
+  ["congenital heart anomalies", "a congenital condition"],
+  ["neural tube defects", "a congenital condition"],
+  ["down syndrome", "a congenital condition"],
+  ["other chromosomal anomalies", "a congenital condition"],
+  ["other congenital anomalies", "a congenital condition"],
+  ["collective violence and legal intervention", "conflict and terrorism"],
+  ["colon and rectum cancers", "colorectal cancer"],
+  ["corpus uteri cancer", "uterine cancer"],
+  ["diabetes mellitus", "diabetes"],
+  ["diarrhoeal diseases", "a diarrhoeal disease"],
+  ["echinococcosis", "cystic echinococcosis"],
+  ["epilepsy", "idiopathic epilepsy"],
+  ["fire, heat and hot substances", "fire, heat, and hot substances"],
+  ["food-bourne trematodes", "other neglected tropical diseases"],
+  ["lymphatic filariasis", "other neglected tropical diseases"],
+  ["onchocerciasis", "other neglected tropical diseases"],
+  ["trachoma", "other neglected tropical diseases"],
+  ["leprosy", "other neglected tropical diseases"],
+  ["gastritis and duodenitis", "upper digestive system diseases"],
+  ["peptic ulcer disease", "upper digestive system diseases"],
+  // Both stroke types collapse: "a stroke" is what the feed already says, and it is the
+  // word a reader expects. The ischaemic/haemorrhagic split is a clinical distinction the
+  // sentence cannot carry.
+  ["haemorrhagic stroke", "a stroke"],
+  ["ischaemic stroke", "a stroke"],
+  ["iron-deficiency anaemia", "other nutritional deficiencies"],
+  ["iodine deficiency", "other nutritional deficiencies"],
+  ["vitamin a deficiency", "other nutritional deficiencies"],
+  ["lip and oral cavity", "lip and oral cavity cancer"],
+  ["liver cancer secondary to alcohol use", "liver cancer"],
+  ["liver cancer secondary to hepatitis b", "liver cancer"],
+  ["liver cancer secondary to hepatitis c", "liver cancer"],
+  ["other liver cancer", "liver cancer"],
+  ["lower respiratory infections", "lower respiratory infection"],
+  ["nasopharynx", "nasopharynx cancer"],
+  ["other pharynx", "other pharynx cancer"],
+  ["natural disasters", "exposure to forces of nature"],
+  ["neonatal sepsis and infections", "neonatal complications"],
+  ["preterm birth complications", "neonatal complications"],
+  ["other neonatal conditions", "neonatal complications"],
+  ["oesophagus cancer", "esophageal cancer"],
+  ["chlamydia", "sexually transmitted infections excluding hiv"],
+  ["genital herpes", "sexually transmitted infections excluding hiv"],
+  ["gonorrhoea", "sexually transmitted infections excluding hiv"],
+  ["syphilis", "sexually transmitted infections excluding hiv"],
+  ["trichomoniasis", "sexually transmitted infections excluding hiv"],
+  ["other stds", "sexually transmitted infections excluding hiv"],
+  ["other circulatory diseases", "other cardiovascular and circulatory diseases"],
+  [
+    "other endocrine, blood and immune disorders",
+    "endocrine, metabolic, blood, and immune disorders",
+  ],
+  ["other haemoglobinopathies and haemolytic anaemias", "hemoglobinopathies and hemolytic anemias"],
+  ["sickle cell disorders and trait", "hemoglobinopathies and hemolytic anemias"],
+  ["thalassaemias", "hemoglobinopathies and hemolytic anemias"],
+  ["other infectious diseases", "other unspecified infectious diseases"],
+  ["other neurological conditions", "other neurological disorders"],
+  ["other respiratory diseases", "other chronic respiratory diseases"],
+  ["other urinary diseases", "urinary diseases and male infertility"],
+  ["urolithiasis", "urinary diseases and male infertility"],
+  ["benign prostatic hyperplasia", "urinary diseases and male infertility"],
+  ["infertility", "urinary diseases and male infertility"],
+  ["ovary cancer", "ovarian cancer"],
+  ["pancreas cancer", "pancreatic cancer"],
+  ["parkinson disease", "parkinson's disease"],
+  ["road injury", "a road injury"],
+  ["self-harm", "suicide"],
+  ["trachea, bronchus, lung cancers", "lung cancer"],
+  ["whooping cough", "pertussis"],
+  // Real deaths, but ones the feed cannot name usefully or that never survive truncation.
+  ["other covid-19 pandemic-related outcomes", OTHER],
+  ["anxiety disorders", OTHER],
+  ["attention deficit/hyperactivity syndrome", OTHER],
+  ["autism and asperger syndrome", OTHER],
+  ["back and neck pain", OTHER],
+  ["bipolar disorder", OTHER],
+  ["cataracts", OTHER],
+  ["conduct disorder", OTHER],
+  ["dental caries", OTHER],
+  ["edentulism", OTHER],
+  ["glaucoma", OTHER],
+  ["gout", OTHER],
+  ["idiopathic intellectual disability", OTHER],
+  ["macular degeneration", OTHER],
+  ["migraine", OTHER],
+  ["non-migraine headache", OTHER],
+  ["osteoarthritis", OTHER],
+  ["other hearing loss", OTHER],
+  ["other mental and behavioural disorders", OTHER],
+  ["other oral disorders", OTHER],
+  ["other sense organ disorders", OTHER],
+  ["other vision loss", OTHER],
+  ["periodontal disease", OTHER],
+  ["schizophrenia", OTHER],
+  ["uncorrected refractive errors", OTHER],
+]);
 
 interface CountryAgg {
   m: Map<number, number>[];
@@ -106,6 +224,7 @@ interface Coverage {
 
 interface CausesOutput {
   source: string;
+  citation: string;
   year: number;
   coverage: Coverage;
   bands: [number, number][];
@@ -114,20 +233,13 @@ interface CausesOutput {
   countries: Record<number, CountryOut>;
 }
 
-interface CsvColumns {
-  measure: number;
-  metric: number | null;
-  sex: number;
+interface Columns {
+  country: number;
   age: number;
-  location: number;
+  sex: number;
   cause: number;
-  val: number;
-  year: number;
-}
-
-interface ParsedCsv {
-  rows: string[][];
-  col: CsvColumns;
+  level: number;
+  deaths: number;
 }
 
 function main(): void {
@@ -136,14 +248,16 @@ function main(): void {
     return;
   }
   const src = resolveSource();
-  console.log(`Reading GBD CSV from ${rel(src)} ...`);
-  const csv = readCsv(src);
+  console.log(`Reading WHO GHE rows from ${rel(src)} ...`);
+  const { rows, col } = readCsv(src);
 
-  // m49 -> { m: [Map<causeIdx,weight> per band], f: [...] }
   const byCountry = new Map<number, CountryAgg>();
   const global = freshCountry();
-  const globalAllAges = freshCountry();
-  const causeIdx = new Map<string, number>(); // label -> index
+  // All-causes totals per cell, so the share the 175 leaf causes do not cover (about 2.4%,
+  // because no WHO flag is a clean partition) is carried as "other causes" instead of lost.
+  const totals = new Map<string, number>();
+  const globalTotals = new Map<string, number>();
+  const causeIdx = new Map<string, number>();
   const causes: string[] = [];
   const idxOf = (label: string): number => {
     let i = causeIdx.get(label);
@@ -154,73 +268,151 @@ function main(): void {
     }
     return i;
   };
+  const otherIdx = idxOf(OTHER);
+  const key = (m49: number, sex: Sex, band: number): string => `${m49}|${sex}|${band}`;
 
-  const { rows, col } = csv;
-  let used = 0;
-  let allAgesRows = 0;
-  let countryRows = 0;
-  let year = 0;
+  let leafRows = 0;
+  let totalRows = 0;
+  const unknownAges = new Set<string>();
+  const unresolvedCountries = new Set<string>();
+
   for (const r of rows) {
-    if (low(r[col.measure]) !== "deaths") continue;
-    if (col.metric != null && low(r[col.metric]) !== "number") continue;
+    const ageCode = String(r[col.age] ?? "").trim();
+    const band = AGE_BAND.get(ageCode);
+    if (band === undefined) {
+      unknownAges.add(ageCode);
+      continue;
+    }
     const sex = sexKey(r[col.sex]);
     if (!sex) continue;
-    const bands = bandsOf(r[col.age]);
-    if (!bands.length) continue;
-    const value = Number(r[col.val]);
-    if (!(value > 0)) continue;
-    const label = labelOf(r[col.cause]);
-    const ci = idxOf(label);
-    year = Math.max(year, Number(r[col.year]) || 0);
-
-    const isAllAges = bands.length === BANDS.length && isAllAgesLabel(r[col.age]);
-    const loc = low(r[col.location]);
-    const isGlobal = loc === "global";
-    const m49 = isGlobal
-      ? 0
-      : Number(isoCountries.alpha3ToNumeric(isoOf(r[col.location]) ?? "") || 0);
-
-    const target = isAllAges ? globalAllAges : global;
-    for (const band of bands) bump(target, sex, band, ci, value);
-
-    if (isAllAges) allAgesRows++;
-    if (m49) {
-      let c = byCountry.get(m49);
-      if (!c) byCountry.set(m49, (c = freshCountry()));
-      for (const band of bands) bump(c, sex, band, ci, value);
-      countryRows++;
+    const iso3 = String(r[col.country] ?? "").trim();
+    const m49 = Number(isoCountries.alpha3ToNumeric(iso3) || 0);
+    if (!m49) {
+      unresolvedCountries.add(iso3);
+      continue;
     }
-    used++;
+    const deaths = Number(r[col.deaths]);
+    if (!Number.isFinite(deaths) || deaths <= 0) continue;
+
+    if (Number(r[col.level]) === 0) {
+      totals.set(key(m49, sex, band), (totals.get(key(m49, sex, band)) ?? 0) + deaths);
+      globalTotals.set(key(0, sex, band), (globalTotals.get(key(0, sex, band)) ?? 0) + deaths);
+      totalRows++;
+      continue;
+    }
+
+    const ci = idxOf(labelOf(r[col.cause]));
+    let c = byCountry.get(m49);
+    if (!c) byCountry.set(m49, (c = freshCountry()));
+    bump(c, sex, band, ci, deaths);
+    bump(global, sex, band, ci, deaths);
+    leafRows++;
   }
-  if (!used) throw new Error("No usable Deaths/Number rows — check the CSV selection.");
+
+  if (unknownAges.size) {
+    throw new Error(
+      `Unrecognised WHO age codes: ${[...unknownAges].join(", ")}. ` +
+        `Add them to AGE_BAND, or exclude them in the fetch — an aggregate folded into one ` +
+        `band is exactly the silent double-count this table exists to prevent.`,
+    );
+  }
+  if (unresolvedCountries.size) {
+    console.warn(`Skipped unresolvable ISO3 codes: ${[...unresolvedCountries].join(", ")}`);
+  }
+  if (!leafRows) throw new Error("No usable leaf-cause rows — check the CSV selection.");
   console.log(
-    `Aggregated ${used.toLocaleString()} rows, ${byCountry.size} countries, ` +
-      `${allAgesRows.toLocaleString()} all-ages rows.`,
+    `Aggregated ${leafRows.toLocaleString()} leaf rows and ` +
+      `${totalRows.toLocaleString()} all-causes rows across ${byCountry.size} countries.`,
   );
 
-  const otherIdx = idxOf("other causes");
-  const countries: Record<number, CountryOut> = {};
-  for (const [m49, c] of byCountry) countries[m49] = trim(c, otherIdx);
+  // Fold the uncovered share into "other causes" before truncating.
+  let residualShare = 0;
+  let grandTotal = 0;
+  for (const [m49, c] of byCountry) {
+    for (const sex of ["m", "f"] as const) {
+      for (let b = 0; b < BANDS.length; b++) {
+        const all = totals.get(key(m49, sex, b)) ?? 0;
+        const bandMap = c[sex][b];
+        if (!bandMap) continue;
+        let sum = 0;
+        for (const v of bandMap.values()) sum += v;
+        grandTotal += all;
+        if (all > sum) {
+          residualShare += all - sum;
+          bandMap.set(otherIdx, (bandMap.get(otherIdx) ?? 0) + (all - sum));
+        }
+      }
+    }
+  }
+  for (const sex of ["m", "f"] as const) {
+    for (let b = 0; b < BANDS.length; b++) {
+      const all = globalTotals.get(key(0, sex, b)) ?? 0;
+      const bandMap = global[sex][b];
+      if (!bandMap) continue;
+      let sum = 0;
+      for (const v of bandMap.values()) sum += v;
+      if (all > sum) bandMap.set(otherIdx, (bandMap.get(otherIdx) ?? 0) + (all - sum));
+    }
+  }
+  console.log(
+    `Residual folded into "${OTHER}": ${((residualShare / grandTotal) * 100).toFixed(2)}% of deaths.`,
+  );
 
-  const outGlobal = hasAnyWeight(global) ? global : globalAllAges;
-  const coverage: Coverage = {
-    location: countryRows > 0 ? "country" : "global",
-    age: allAgesRows === used ? "all_ages_repeated_across_bands" : "age_bands",
-    sex: "male_female",
+  const trimmedCountries = new Map<number, CountryOut>();
+  for (const [m49, c] of byCountry) trimmedCountries.set(m49, trim(c));
+  const trimmedGlobal = trim(global);
+
+  // Only labels that survived truncation can ever reach a reader, so only those are shipped.
+  // The old export listed 140 causes of which 12 were reachable; every label here is real.
+  const used = new Set<number>();
+  const collect = (o: CountryOut): void => {
+    for (const sex of ["m", "f"] as const) {
+      for (const band of o[sex]) for (const k of Object.keys(band)) used.add(Number(k));
+    }
   };
+  collect(trimmedGlobal);
+  for (const o of trimmedCountries.values()) collect(o);
+
+  const oldToNew = new Map<number, number>();
+  const finalCauses: string[] = [];
+  for (const i of [...used].sort((a, b) => a - b)) {
+    oldToNew.set(i, finalCauses.length);
+    finalCauses.push(causes[i] as string);
+  }
+  const reindex = (o: CountryOut): CountryOut => ({
+    m: o.m.map((band) => remap(band, oldToNew)),
+    f: o.f.map((band) => remap(band, oldToNew)),
+  });
+
+  const countries: Record<number, CountryOut> = {};
+  for (const [m49, o] of trimmedCountries) countries[m49] = reindex(o);
+
   const out: CausesOutput = {
-    source: "IHME Global Burden of Disease — Deaths by cause",
-    year,
-    coverage,
+    source: "WHO Global Health Estimates 2021 — deaths by cause, age and sex",
+    citation:
+      "World Health Organization, data.who.int, Global Health Estimates 2021: Deaths by Cause, " +
+      "Age, Sex, by Country and by Region, 2000-2021 (CC BY 4.0).",
+    year: 2021,
+    coverage: { location: "country", age: "age_bands", sex: "male_female" },
     bands: BANDS,
-    causes,
-    global: trim(outGlobal, otherIdx),
+    causes: finalCauses,
+    global: reindex(trimmedGlobal),
     countries,
   };
   fs.writeFileSync(OUT, JSON.stringify(out));
   console.log(
-    `Wrote ${rel(OUT)}: ${causes.length} causes, ${Object.keys(countries).length} countries.`,
+    `Wrote ${rel(OUT)}: ${finalCauses.length} reachable causes, ` +
+      `${Object.keys(countries).length} countries, ${(fs.statSync(OUT).size / 1024).toFixed(0)} KB.`,
   );
+}
+
+function remap(band: Record<number, number>, to: Map<number, number>): Record<number, number> {
+  const out: Record<number, number> = {};
+  for (const [k, v] of Object.entries(band)) {
+    const n = to.get(Number(k));
+    if (n !== undefined) out[n] = v;
+  }
+  return out;
 }
 
 function freshCountry(): CountryAgg {
@@ -237,7 +429,8 @@ function bump(c: CountryAgg, sex: Sex, band: number, ci: number, value: number):
 }
 
 // Keep the TOP causes per band, fold the remainder into "other causes", round weights.
-function trim(c: CountryAgg, otherIdx: number): CountryOut {
+function trim(c: CountryAgg): CountryOut {
+  const otherIdx = 0; // OTHER is interned first, so its index is stable.
   const out: CountryOut = { m: [], f: [] };
   for (const sex of ["m", "f"] as const) {
     for (let b = 0; b < BANDS.length; b++) {
@@ -245,10 +438,13 @@ function trim(c: CountryAgg, otherIdx: number): CountryOut {
       const entries = [...bandMap].sort((a, z) => z[1] - a[1]);
       const obj: Record<number, number> = {};
       let other = 0;
-      entries.forEach(([ci, w], i) => {
-        if (i < TOP) obj[ci] = Math.round(w);
-        else other += w;
-      });
+      let kept = 0;
+      for (const [ci, w] of entries) {
+        if (ci !== otherIdx && kept < TOP) {
+          obj[ci] = Math.round(w);
+          kept++;
+        } else other += w;
+      }
       if (other > 0) obj[otherIdx] = (obj[otherIdx] || 0) + Math.round(other);
       out[sex].push(obj);
     }
@@ -256,54 +452,31 @@ function trim(c: CountryAgg, otherIdx: number): CountryOut {
   return out;
 }
 
-function hasAnyWeight(c: CountryAgg): boolean {
-  for (const sex of ["m", "f"] as const) {
-    for (const band of c[sex]) {
-      for (const value of band.values()) {
-        if (value > 0) return true;
-      }
-    }
-  }
-  return false;
-}
-
-// --- CSV parsing -----------------------------------------------------------------
-
-function readCsv(file: string): ParsedCsv {
-  let text: string;
-  if (file.endsWith(".gz")) text = zlib.gunzipSync(fs.readFileSync(file)).toString("utf8");
-  else text = fs.readFileSync(file, "utf8");
+function readCsv(file: string): { rows: string[][]; col: Columns } {
+  const text = file.endsWith(".gz")
+    ? zlib.gunzipSync(fs.readFileSync(file)).toString("utf8")
+    : fs.readFileSync(file, "utf8");
   const lines = text.split(/\r?\n/);
-  const headerLine = lines[0] ?? "";
-  const header = splitCsvLine(headerLine).map((h) => h.trim().toLowerCase());
-  const find = (...names: string[]): number | null => {
-    for (const n of names) {
-      const i = header.indexOf(n);
-      if (i >= 0) return i;
-    }
-    return null;
+  const header = splitCsvLine(lines[0] ?? "").map((h) => h.trim().toUpperCase());
+  const find = (name: string): number => {
+    const i = header.indexOf(name);
+    if (i < 0) throw new Error(`CSV is missing a "${name}" column. Got: ${header.join(", ")}`);
+    return i;
   };
-  const col = {
-    measure: find("measure_name", "measure"),
-    metric: find("metric_name", "metric"),
-    sex: find("sex_name", "sex"),
-    age: find("age_name", "age", "age_group_name"),
-    location: find("location_name", "location"),
-    cause: find("cause_name", "cause"),
-    val: find("val", "value"),
-    year: find("year", "year_id"),
+  const col: Columns = {
+    country: find("DIM_COUNTRY_CODE"),
+    age: find("DIM_AGEGROUP_CODE"),
+    sex: find("DIM_SEX_CODE"),
+    cause: find("DIM_GHECAUSE_TITLE"),
+    level: find("FLAG_LEVEL"),
+    deaths: find("VAL_DTHS_COUNT_NUMERIC"),
   };
-  for (const [k, v] of Object.entries(col)) {
-    if (v == null && k !== "metric") {
-      throw new Error(`CSV is missing a "${k}" column. Got: ${header.join(", ")}`);
-    }
-  }
   const rows: string[][] = [];
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     if (line) rows.push(splitCsvLine(line));
   }
-  return { rows, col: col as CsvColumns };
+  return { rows, col };
 }
 
 // Minimal CSV splitter that respects double-quoted fields (cause names contain commas).
@@ -330,8 +503,6 @@ function splitCsvLine(line: string): string[] {
   return out;
 }
 
-// --- field mappers ---------------------------------------------------------------
-
 function low(s: string | undefined): string {
   return String(s || "")
     .trim()
@@ -350,93 +521,27 @@ function labelOf(cause: string | undefined): string {
   return LABELS.get(v) || v;
 }
 
-// GBD location_name -> ISO3. Most names resolve directly; a few common GBD spellings
-// differ from the i18n-iso-countries table, so patch those explicitly.
-const NAME_FIX = new Map<string, string>([
-  ["united states of america", "USA"],
-  ["russian federation", "RUS"],
-  ["republic of korea", "KOR"],
-  ["democratic people's republic of korea", "PRK"],
-  ["iran (islamic republic of)", "IRN"],
-  ["bolivia (plurinational state of)", "BOL"],
-  ["venezuela (bolivarian republic of)", "VEN"],
-  ["united republic of tanzania", "TZA"],
-  ["syrian arab republic", "SYR"],
-  ["viet nam", "VNM"],
-  ["lao people's democratic republic", "LAO"],
-  ["republic of moldova", "MDA"],
-  ["czechia", "CZE"],
-  ["türkiye", "TUR"],
-  ["turkiye", "TUR"],
-  ["taiwan (province of china)", "TWN"],
-  ["côte d'ivoire", "CIV"],
-  ["cote d'ivoire", "CIV"],
-  ["democratic republic of the congo", "COD"],
-  ["congo", "COG"],
-]);
-
-function isoOf(location: string | undefined): string | null {
-  const v = low(location);
-  if (NAME_FIX.has(v)) return NAME_FIX.get(v) ?? null;
-  return isoCountries.getAlpha3Code(location ?? "", "en") || null;
-}
-
-// Parse a GBD age label to one or more band indexes. Handles "<1 year", "1 to 4",
-// "5-9 years", "80 plus", "95+ years", and "All ages".
-function bandsOf(age: string | undefined): number[] {
-  const v = low(age);
-  if (!v || v.includes("age-standardized")) return [];
-  if (isAllAgesLabel(age)) return BANDS.map((_, i) => i);
-  let start: number;
-  if (/^<\s*1/.test(v) || v.includes("neonatal") || v.includes("post neonatal")) start = 0;
-  else if (/^<\s*5/.test(v)) start = 0;
-  else {
-    const m = v.match(/(\d+)/);
-    if (!m || !m[1]) return [];
-    start = Number(m[1]);
-  }
-  for (let b = 0; b < BANDS.length; b++) {
-    const band = BANDS[b];
-    if (band && start >= band[0] && start <= band[1]) return [b];
-  }
-  return [];
-}
-
-function isAllAgesLabel(age: string | undefined): boolean {
-  return low(age).includes("all ages");
-}
-
 function resolveSource(): string {
   if (srcArg) {
     const p = path.resolve(ROOT, srcArg.split("=")[1] ?? "");
     if (!fs.existsSync(p)) throw new Error(`--src file not found: ${p}`);
     return p;
   }
-  const dirs = [
-    SRC_DIR,
-    ...fs
-      .readdirSync(ROOT, { withFileTypes: true })
-      .filter((d) => d.isDirectory() && /^IHME-GBD/i.test(d.name))
-      .map((d) => path.join(ROOT, d.name)),
-  ];
-  const cands: string[] = [];
-  for (const dir of dirs) {
-    if (!fs.existsSync(dir)) continue;
-    for (const f of fs.readdirSync(dir)) {
-      if (/gbd.*\.csv(\.gz)?$/i.test(f) || /\.csv(\.gz)?$/i.test(f)) {
-        cands.push(path.join(dir, f));
-      }
-    }
-  }
-  // Prefer a file whose name mentions gbd or cause/death.
-  const pick = cands.find((f) => /gbd|cause|death/i.test(path.basename(f))) || cands[0];
+  const files = fs.existsSync(SRC_DIR)
+    ? fs
+        .readdirSync(SRC_DIR)
+        .filter((f) => /\.csv(\.gz)?$/i.test(f))
+        .sort()
+        .reverse()
+    : [];
+  const pick = files[0];
   if (!pick) {
     throw new Error(
-      `No GBD CSV found. Export Deaths-by-cause from the GBD Results Tool and save ` +
-        `it under ${rel(SRC_DIR)} or an IHME-GBD_* folder, or pass --src=<path>.`,
+      `No WHO GHE CSV found under ${rel(SRC_DIR)}. ` +
+        `Run: pnpm run fetch:who-ghe  (keyless, no account needed)`,
     );
   }
-  return pick;
+  return path.join(SRC_DIR, pick);
 }
 
 function rel(p: string): string {
