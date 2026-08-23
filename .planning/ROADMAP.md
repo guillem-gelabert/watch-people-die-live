@@ -134,7 +134,7 @@ Plans:
 - [x] 04-01: Honour the cause coverage flag in pickCause _(wave 1)_
 - [x] 04-02: Source country age/sex causes from WHO Global Health Estimates _(wave 2)_
 - [x] 04-05: Bake an admin-1 / NUTS-2 region key into the rate grid _(wave 2)_
-- [ ] 04-08: Unfilter age/sex in pipelines that already download it _(wave 2)_
+- [x] 04-08: Unfilter age/sex in pipelines that already download it _(wave 2)_
 - [ ] 04-03: Pull GBD subnational age/sex death weights _(wave 3, human sign-in)_
 - [ ] 04-04: Resolve age/sex per cell from regional estimates and gridded population _(wave 4)_
 - [ ] 04-06: Add Eurostat regional age/sex and cause tables _(wave 4)_
@@ -185,10 +185,10 @@ Within Phase 4, waves execute in order 1 -> 5; plans inside a wave run in parall
 | v1.0      | 1. Cause Fidelity and Methodology | 2/2            | Complete    | 2026-06-29 |
 | v1.0      | 2. Shareable Public Surface       | 2/2            | Complete    | 2026-06-29 |
 | v1.0      | 3. Publish and Portfolio Handoff  | 1/1            | Complete    | 2026-06-29 |
-| **v2.0**  | 4. Persona Realism Ladder         | 3/8            | In progress | -          |
+| **v2.0**  | 4. Persona Realism Ladder         | 4/8            | In progress | -          |
 | **v2.0**  | 5. Story Reading Experience       | 0/3            | Not started | -          |
 
-v1.0 (MVP): 5/5 plans, complete 2026-06-29. v2.0: 3/11 plans (Phase 4 persona realism 3/8, Phase 5 story 0/3).
+v1.0 (MVP): 5/5 plans, complete 2026-06-29. v2.0: 4/11 plans (Phase 4 persona realism 4/8, Phase 5 story 0/3).
 
 ## Future Roadmaps
 
