@@ -11,7 +11,9 @@ from pathlib import Path
 import pandas as pd
 
 from ..cache import verify_manual
-from ..contract import Source
+from ..age_bands import BANDS as _PROJECT_BANDS
+from ..age_bands import band_of, icd_chapter
+from ..contract import AgeSexRow, Source
 
 SOURCE = Source(
     key="brazil",
@@ -57,16 +59,20 @@ def fetch(cache_dir: Path) -> list:
     )
 
 
-def load(cache_dir: Path) -> list[dict]:
+def _read(cache_dir: Path, extra: tuple[str, ...] = ()) -> pd.DataFrame:
     parts = []
     for year in _YEARS:
         d = pd.read_csv(
             _file(cache_dir, year), sep=";", encoding="latin-1",
-            usecols=["DTOBITO", "CODMUNRES"], dtype=str,
+            usecols=["DTOBITO", "CODMUNRES", *extra], dtype=str,
         )
         d["year"] = year
         parts.append(d)
-    br = pd.concat(parts, ignore_index=True)
+    return pd.concat(parts, ignore_index=True)
+
+
+def load(cache_dir: Path) -> list[dict]:
+    br = _read(cache_dir)
     br["dtobito"] = br.DTOBITO.str.strip()
     br = br[br.dtobito.str.fullmatch(r"\d{8}", na=False)]
     br["period"] = br.dtobito.str[2:4].astype(int)  # DTOBITO is ddmmyyyy
@@ -85,3 +91,68 @@ def load(cache_dir: Path) -> list[dict]:
                 "period_type": "month", "deaths": float(deaths),
             })
     return rows
+
+
+# SIM codes IDADE as one unit digit plus a two-digit value: 4 = years, 5 = years past 100,
+# and 0-3 are minutes/hours/days/months, i.e. all under one year old.
+def _age_years(idade: str | float | None) -> int | None:
+    if not isinstance(idade, str):
+        return None
+    v = idade.strip()
+    if len(v) != 3 or not v.isdigit():
+        return None
+    unit, value = v[0], int(v[1:])
+    if unit in "0123":
+        return 0
+    if unit == "4":
+        return value
+    if unit == "5":
+        return 100 + value
+    return None
+
+
+_SEXO = {"1": "m", "2": "f"}
+
+
+def load_age_sex(cache_dir: Path) -> tuple[list[AgeSexRow], list[str]]:
+    """Deaths by state x age band x sex x ICD-10 chapter, from columns load() discards.
+
+    SIM records an exact age and a full ICD-10 code per death, so unlike StatCan this folds
+    straight onto the project's nine bands. Cause is reduced to the 21 ICD-10 chapters: the full
+    code set is ~1,500 values, which multiplied by 27 states x 9 bands x 2 sexes is a fixture
+    nobody would read, while the chapter is enough to cross-check a cause split.
+    """
+    br = _read(cache_dir, extra=("IDADE", "SEXO", "CAUSABAS"))
+    br["uf"] = br.CODMUNRES.str.strip().str[:2]
+    br["band"] = br.IDADE.map(_age_years).map(lambda a: band_of(a) if a is not None else None)
+    br["sex"] = br.SEXO.str.strip().map(_SEXO)
+    br["chapter"] = br.CAUSABAS.map(icd_chapter)
+
+    total = len(br)
+    usable = br[br.band.notna() & br.sex.notna()]
+    rows: list[AgeSexRow] = []
+    for (uf, band, sex, chapter), sub in usable.groupby(
+        ["uf", "band", "sex", "chapter"], dropna=False
+    ):
+        iso = BR_UF2ISO.get(str(uf))
+        if not iso:
+            continue
+        row: AgeSexRow = {
+            "country": "BRA", "geo": "adm1", "iso_region": iso, "region_key": None,
+            "region_name": iso, "band": int(band), "sex": str(sex), "deaths": float(len(sub)),
+        }
+        if isinstance(chapter, str):
+            row["icd_chapter"] = chapter
+        rows.append(row)
+
+    dropped = total - len(usable)
+    notes = [f"BRA: {dropped:,} of {total:,} records ({dropped / total:.2%}) lack a usable age or sex"]
+    if dropped / total > 0.02:
+        raise ValueError(
+            f"Brazil: {dropped / total:.1%} of records have no usable age or sex, which is more "
+            f"than SIM's known incompleteness -- check the IDADE/SEXO decoding"
+        )
+    return rows, notes
+
+
+AGE_SEX_BANDS = _PROJECT_BANDS

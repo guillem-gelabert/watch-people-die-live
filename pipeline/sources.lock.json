@@ -36,9 +36,9 @@
   "australia": [
     {
       "file": "australia-prov-mortality-wk.json",
-      "retrieved": "2026-07-19",
-      "sha256": "7058484415ca1994a6a1384a591e438766739bfa31a8f8e71312f62c9bf1b461",
-      "url": "https://data.api.abs.gov.au/rest/data/ABS,PROV_MORTALITY_WK,1.0.0/1.3.TT.1+2+3+4+5+6+7+8.."
+      "retrieved": "2026-08-23",
+      "sha256": "b5230ee863a750347f2301370210f4bb644ed336559f2b710c44ee303991a9ed",
+      "url": "https://data.api.abs.gov.au/rest/data/ABS,PROV_MORTALITY_WK,1.0.0/1.1+2+3.TT.1+2+3+4+5+6+7+8.."
     }
   ],
   "brazil": [

@@ -33,6 +33,28 @@ class LongRow(TypedDict, total=False):
     rate: float  # rate sources (mutually exclusive with deaths)
 
 
+class AgeSexRow(TypedDict, total=False):
+    """One observed death count for a region x age band x sex cell.
+
+    Emitted by `load_age_sex()`, which only the sources whose raw files already carry age and
+    sex implement. Deliberately separate from `LongRow`: the curve machinery is one-dimensional
+    and folding an extra dimension into it would change committed seasonality output. Bands are
+    each source's own -- StatCan publishes 0-44/45-64/65-84/85+ and nothing finer, while the
+    Brazilian and Mexican microdata carry an exact age -- so a consumer aggregates its own
+    estimate up to `bands` rather than the other way round.
+    """
+
+    country: str  # ISO3
+    geo: Geo
+    iso_region: str | None
+    region_key: str | None
+    region_name: str
+    band: int  # index into the source's `bands` array
+    sex: Literal["m", "f"]
+    deaths: float
+    icd_chapter: str  # ICD-10 chapter, e.g. "IX"; only where the source carries cause
+
+
 @dataclass
 class FetchedFile:
     path: Path

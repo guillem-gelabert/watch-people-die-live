@@ -13,7 +13,9 @@ import pandas as pd
 import requests
 
 from ..cache import sha256_of, today
-from ..contract import FetchedFile, Source
+from ..age_bands import BANDS as _PROJECT_BANDS
+from ..age_bands import band_of, icd_chapter
+from ..contract import AgeSexRow, FetchedFile, Source
 
 BASE_URL = "https://repodatos.atdt.gob.mx/all_data/secretaria_salud/6fecbbb3-afd9-44a1-8665-679a80ce4a15"
 
@@ -106,3 +108,81 @@ def load(cache_dir: Path) -> list[dict]:
                 "period_type": "month", "deaths": float(deaths),
             })
     return rows
+
+
+# INEGI codes EDAD as one unit digit plus a three-digit value: 4 = years (998/999 = unknown),
+# 1-3 = hours/days/months, i.e. under one year old.
+def _age_years(edad: float | None) -> int | None:
+    try:
+        v = int(edad)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    unit, value = v // 1000, v % 1000
+    if unit in (1, 2, 3):
+        return 0
+    if unit == 4:
+        return None if value >= 998 else value
+    return None
+
+
+_SEXO = {1: "m", 2: "f"}
+
+
+def load_age_sex(cache_dir: Path) -> tuple[list[AgeSexRow], list[str]]:
+    """Deaths by state x age band x sex x ICD-10 chapter, from columns load() discards.
+
+    Applies the same occurrence-year window as load(), for the reason documented there: each
+    file is keyed by year of registration, so occurrence years outside the downloaded range
+    appear only as a thin, biased late-registration tail.
+    """
+    parts = []
+    for year in _YEARS:
+        parts.append(
+            pd.read_csv(
+                _file(cache_dir, year),
+                usecols=["ENT_RESID", "MES_OCURR", "ANIO_OCUR", "EDAD", "SEXO", "CAUSA_DEF"],
+                low_memory=False,
+            )
+        )
+    mx = pd.concat(parts, ignore_index=True)
+    mx["year"] = pd.to_numeric(mx["ANIO_OCUR"], errors="coerce")
+    mx["month"] = pd.to_numeric(mx["MES_OCURR"], errors="coerce")
+    mx["ent"] = pd.to_numeric(mx["ENT_RESID"], errors="coerce")
+    mx = mx[
+        mx["month"].between(1, 12)
+        & mx["ent"].isin(ENT2ISO)
+        & mx["year"].between(_YEARS[0], _YEARS[-1])
+    ]
+
+    mx["band"] = mx["EDAD"].map(_age_years).map(lambda a: band_of(a) if a is not None else None)
+    mx["sex"] = pd.to_numeric(mx["SEXO"], errors="coerce").map(_SEXO)
+    mx["chapter"] = mx["CAUSA_DEF"].map(icd_chapter)
+
+    total = len(mx)
+    usable = mx[mx["band"].notna() & mx["sex"].notna()]
+    rows: list[AgeSexRow] = []
+    for (ent, band, sex, chapter), sub in usable.groupby(
+        ["ent", "band", "sex", "chapter"], dropna=False
+    ):
+        iso = ENT2ISO.get(int(ent))
+        if not iso:
+            continue
+        row: AgeSexRow = {
+            "country": "MEX", "geo": "adm1", "iso_region": iso, "region_key": None,
+            "region_name": iso, "band": int(band), "sex": str(sex), "deaths": float(len(sub)),
+        }
+        if isinstance(chapter, str):
+            row["icd_chapter"] = chapter
+        rows.append(row)
+
+    dropped = total - len(usable)
+    notes = [f"MEX: {dropped:,} of {total:,} records ({dropped / total:.2%}) lack a usable age or sex"]
+    if dropped / total > 0.02:
+        raise ValueError(
+            f"Mexico: {dropped / total:.1%} of records have no usable age or sex -- check the "
+            f"EDAD/SEXO decoding"
+        )
+    return rows, notes
+
+
+AGE_SEX_BANDS = _PROJECT_BANDS

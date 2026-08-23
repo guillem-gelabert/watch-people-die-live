@@ -18,6 +18,7 @@
     "build:region-keys": "node --import tsx scripts/build-region-keys.ts",
     "fetch:who-ghe": "node --import tsx scripts/fetch-who-ghe.ts",
     "build:seasonality-subnational": "uv run python -m pipeline build",
+    "build:observed-age-sex": "uv run python -m pipeline age-sex",
     "build:seasonality-fallbacks": "node --import tsx scripts/build-seasonality-fallbacks.ts",
     "build:seasonality-validation": "node --import tsx scripts/build-seasonality-validation.ts",
     "build:closeup-outlines": "node --import tsx scripts/build-closeup-outlines.ts",

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from .age_sex import write_age_sex
 from .build import find_root, write_seasonality
 from .cache import cache_dir as resolve_cache_dir
 from .manifest import record
@@ -38,6 +39,11 @@ def cmd_build(root: Path, keys: list[str] | None) -> None:
     print(f"wrote {out_path}")
 
 
+def cmd_age_sex(root: Path, keys: list[str]) -> None:
+    out_path = write_age_sex(root, keys or None)
+    print(f"wrote {out_path}")
+
+
 def cmd_argentina_latitudes(root: Path) -> None:
     out_path = argentina_partido_latitudes.build(root)
     print(f"wrote {out_path}")
@@ -51,6 +57,8 @@ def main() -> None:
     fetch_p.add_argument("source", nargs="*")
     build_p = sub.add_parser("build")
     build_p.add_argument("source", nargs="*")
+    age_sex_p = sub.add_parser("age-sex")
+    age_sex_p.add_argument("source", nargs="*")
     sub.add_parser("argentina-latitudes")
     args = parser.parse_args()
 
@@ -61,6 +69,8 @@ def main() -> None:
         cmd_fetch(root, args.source)
     elif args.command == "build":
         cmd_build(root, args.source or None)
+    elif args.command == "age-sex":
+        cmd_age_sex(root, args.source)
     elif args.command == "argentina-latitudes":
         cmd_argentina_latitudes(root)
 
