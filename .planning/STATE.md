@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persona Realism
 status: in_progress
-stopped_at: 05-01 and 05-02 found already shipped and recorded. Only 04-06 is autonomously runnable; 04-03 and 05-03 need the user.
-last_updated: "2026-08-23T11:05:00.000Z"
-last_activity: 2026-08-23 -- /gsd:autonomous: 05-01 and 05-02 found already shipped, recorded retroactively
+stopped_at: Phase 05 complete (3/3). Phase 04 at 4/8: 04-06 is runnable, 04-03 needs a human GBD sign-in and blocks 04-04 then 04-07.
+last_updated: "2026-08-23T11:40:00.000Z"
+last_activity: 2026-08-23 -- 05-03 colour decision taken (keep design, document AA cost); phase 05 complete
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 6
-  percent: 55
+  completed_plans: 7
+  percent: 64
 ---
 
 # Project State
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-06-28)
 ## Current Position
 
 Phase: 04 (Persona Realism Ladder) — IN PROGRESS, wave 1 done · Phase 05 (Story Reading Experience) — PLANNED, not started
-Plan: 6 of 11 (Phase 04: 4/8; Phase 05: 2/3, only 05-03 left and it needs a colour decision)
+Plan: 7 of 11 (Phase 04: 4/8, next runnable = 04-06; Phase 05: 3/3 COMPLETE)
 Status: Phase 04 wave 1 landed — `pickCause` now honours the `coverage` flag, so the committed
 global all-ages export is rejected in favour of the age-gated fallback table, and the quota-bound
 GBD export spec (`gbd-export-spec.md`) has been rewritten around the one query GBD is still needed
@@ -39,7 +39,7 @@ Phase 04 — no shared files, so the two phases can run concurrently. Phase 05's
 05-02 are autonomous.
 Last activity: 2026-08-22 -- 04-02/03/04 rewritten around WHO GHE (keyless, CC BY) plus one GBD subnational export
 
-Progress: [######____] 55% (6/11 plans in milestone v2.0)
+Progress: [######____] 64% (7/11 plans in milestone v2.0)
 
 v1.0 MVP: phases 1-3, 5/5 plans, complete 2026-06-29. Progress above is v2.0-scoped, matching how
 v1.0 was tracked. Backlog 999.1 is unsequenced and excluded from the count.
@@ -48,7 +48,7 @@ v1.0 was tracked. Backlog 999.1 is unsequenced and excluded from the count.
 
 **Velocity:**
 
-- Total plans completed: 11
+- Total plans completed: 12
 - Average duration: n/a
 - Total execution time: 0.0 hours
 

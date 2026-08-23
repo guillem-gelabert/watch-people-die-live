@@ -30,7 +30,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Milestone v2.0 — Persona Realism** (current):
 
 - [ ] **Phase 4: Persona Realism Ladder** - Make persona age, sex and cause vary by region and season instead of one global table.
-- [ ] **Phase 5: Story Reading Experience** - Fix the three story defects that are cheap and independent: a dead aside block, a gesture that fires itself, and proxy colours that drift with the sky.
+- [x] **Phase 5: Story Reading Experience** - Fix the three story defects that are cheap and independent: a dead aside block, a gesture that fires itself, and proxy colours that drift with the sky.
 
 Backlog (unsequenced, see `## Backlog`): 999.1.
 
@@ -176,7 +176,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 (v1.0, complete) -> 4 (v2.0, curren
 | ----- | ---- | -------------------------------------------- | ---------- |
 | 05-01 | s04  | Remove the concept tiles from the who section | yes — done |
 | 05-02 | s11  | Reject scroll inertia in the pull-to-globe gesture | yes — done |
-| 05-03 | s01  | Freeze the proxy identity colours             | no — colour choice |
+| 05-03 | s01  | Freeze the proxy identity colours             | no — done, colour choice made |
 
 Within Phase 4, waves execute in order 1 -> 5; plans inside a wave run in parallel.
 
@@ -186,9 +186,9 @@ Within Phase 4, waves execute in order 1 -> 5; plans inside a wave run in parall
 | v1.0      | 2. Shareable Public Surface       | 2/2            | Complete    | 2026-06-29 |
 | v1.0      | 3. Publish and Portfolio Handoff  | 1/1            | Complete    | 2026-06-29 |
 | **v2.0**  | 4. Persona Realism Ladder         | 4/8            | In progress | -          |
-| **v2.0**  | 5. Story Reading Experience       | 2/3            | In progress | -          |
+| **v2.0**  | 5. Story Reading Experience       | 3/3            | Complete    | 2026-08-23 |
 
-v1.0 (MVP): 5/5 plans, complete 2026-06-29. v2.0: 6/11 plans (Phase 4 persona realism 4/8, Phase 5 story 2/3).
+v1.0 (MVP): 5/5 plans, complete 2026-06-29. v2.0: 7/11 plans (Phase 4 persona realism 4/8, Phase 5 story 3/3 complete).
 
 ## Future Roadmaps
 

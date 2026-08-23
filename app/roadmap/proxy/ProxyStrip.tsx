@@ -28,6 +28,12 @@ interface ProxyStripProps {
 // White on every strip, as in the design. The fills are all vivid analogous members at one
 // lightness, so they read as a set; switching some rows to dark ink by measured luminance broke
 // that set apart and was the visible difference against the design.
+//
+// It is worth knowing what that costs before changing it back: white here is below WCAG AA on
+// three of the five fills — p2 at 1.61 and p4 at 1.44, against the 4.5:1 the 14.5px
+// `.proxy-strip-body` needs. Reaffirmed as a deliberate trade-off on 2026-08-23 with both
+// alternatives measured; the numbers and the rejected options are in the PROXY_COLORS comment in
+// palette.ts. Do not "fix" this in isolation — the fills and the ink are one decision.
 const STRIP_INK = "#ffffff";
 
 // Long titles drop a size in the modal rather than wrapping to two lines and pushing the row out

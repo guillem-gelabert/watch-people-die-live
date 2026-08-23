@@ -332,9 +332,32 @@ export function harmony(n: number, sky: Rgb, vivid = false, anchor?: string): st
 // does mean these five are no longer a harmony of anything, and a future palette rework has to
 // decide what they should be rather than assuming the generator still knows.
 //
-// One constraint if they are ever re-picked: `ProxyStrip` paints white ink on every fill, and a
-// narrow hue band is what keeps the five near one perceived lightness. Widening the separation
-// makes the white ink fail — measured, p2 and p4 are already at 1.61 and 1.44 against white.
+// One constraint if they are ever re-picked: `proxy/ProxyStrip` paints white ink on every fill, and
+// a narrow hue band is what keeps the five near one perceived lightness. Widening the separation
+// makes the white ink fail.
+//
+// These five do not clear WCAG AA against that white ink, and that is a decision rather than an
+// oversight (2026-08-23). Measured contrast against #ffffff:
+//
+//     p0 #088ef7  3.37      p1 #0816f7  8.51      p2 #07e4d6  1.61
+//     p3 #7108f7  6.82      p4 #08f771  1.44
+//
+// Three of the five are below the 4.5:1 that `.proxy-strip-body` needs at 14.5px, and the strip's
+// 24px title only reaches the large-text 3:1 bar on two of them. The cause is that "one lightness"
+// in the design means one HSL lightness, which is not one luminance — a cyan and a deep blue at
+// L=50 differ ninefold in relative luminance.
+//
+// Two fixes were measured and both were declined in favour of the design as drawn:
+//   - darkening p0/p2/p4 to #0778d2/#04857d/#04893f reaches 4.51 on all five and actually
+//     tightens the luminance spread from 9.3x to 2.5x, but turns the cyan teal and the green
+//     forest;
+//   - keeping the fills and switching p0/p2/p4 to near-black ink reaches 5.83/12.25/13.63 and
+//     preserves every hue exactly, but flips three of five rows and is the change that was
+//     already tried and reverted (see the STRIP_INK note) for breaking the set apart.
+//
+// So this is a known accessibility trade-off, not a gap to be quietly closed. Anyone reopening it
+// is choosing between the design's uniform white ink and AA on the strip text; there is no
+// arrangement of five vivid analogous hues that gives both.
 const PROXY_COLORS: readonly string[] = [
   "rgb(8,142,247)",
   "rgb(8,22,247)",

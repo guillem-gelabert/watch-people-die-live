@@ -268,6 +268,26 @@ describe("proxyColors", () => {
     }
   });
 
+  // Pinned deliberately. These five carry white ink (proxy/ProxyStrip's STRIP_INK) and three of
+  // them are below the 4.5:1 that the strip's 14.5px body text needs — a known trade-off, taken on
+  // 2026-08-23 in favour of the design's uniform white over either darkening the fills or flipping
+  // three rows to dark ink. Both alternatives are measured in the PROXY_COLORS comment.
+  //
+  // This test exists so the number cannot drift quietly: change a fill and it fails, forcing
+  // whoever does it to look at what they did to the contrast rather than discovering it later.
+  it("has the contrast against white that the recorded decision accepted", () => {
+    const WHITE = relativeLuminance(parseSky("#ffffff"));
+    const expected = [3.37, 8.51, 1.61, 6.82, 1.44];
+    proxyColors().forEach((col, i) => {
+      const ratio = contrastRatio(lumOf(col), WHITE);
+      expect(ratio, `p${i} ${col} vs white`).toBeCloseTo(expected[i] as number, 1);
+    });
+    // Two of the five are near-invisible under white ink. Asserted, not implied, so nobody reads
+    // the block above as hypothetical.
+    expect(contrastRatio(lumOf(proxyColors()[2] as string), WHITE)).toBeLessThan(3);
+    expect(contrastRatio(lumOf(proxyColors()[4] as string), WHITE)).toBeLessThan(3);
+  });
+
   it("hands out a copy, so a caller cannot mutate the identities", () => {
     const first = proxyColors();
     first[0] = "rgb(0,0,0)";
