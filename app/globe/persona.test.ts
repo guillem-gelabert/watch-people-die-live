@@ -155,14 +155,20 @@ describe("makePersona with the shipped data files", () => {
     expect(
       children.filter((p) => ADULT_ONLY.includes(p.cause)).map((p) => `${p.age}: ${p.cause}`),
     ).toEqual([]);
-    // Not the fallback table's narrow list any more — the shipped export now has real per-band
-    // country cells, so an infant draws Nigeria's actual infant mix. The check that matters is
-    // that it is led by a perinatal cause rather than by whatever kills adults there.
-    const commonest = [...new Set(infants.map((p) => p.cause))].sort(
-      (a, b) =>
-        infants.filter((p) => p.cause === b).length - infants.filter((p) => p.cause === a).length,
-    )[0];
-    expect(commonest).toBe("neonatal complications");
+    // Not the fallback table's narrow list any more — the shipped export has real per-band
+    // country cells, so an infant draws Nigeria's actual infant mix: perinatal causes alongside
+    // the infections that kill babies there. Asserting which single cause is commonest would be
+    // flaky, because neonatal complications (22%) and lower respiratory infection (18%) are close
+    // enough that the mode flips between samples. The robust invariant is that a large share is
+    // perinatal — something only a real infant band produces.
+    const PERINATAL = [
+      "neonatal complications",
+      "birth asphyxia",
+      "a congenital condition",
+      "sudden infant death syndrome",
+    ];
+    const perinatal = infants.filter((p) => PERINATAL.includes(p.cause)).length / infants.length;
+    expect(perinatal).toBeGreaterThan(0.25);
   });
 
   it("uses the bundled sample's own banded weights when the built files are absent", async () => {

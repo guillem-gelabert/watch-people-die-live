@@ -83,6 +83,21 @@ Recent decisions affecting current work:
   order, so `$gsd-execute-phase`'s intra-wave safety check has something real to enforce.
 - 2026-07-31: p09 routed to backlog 999.1 instead of a plan — full subnational coverage is
   unreachable, so a plan would have implied committed work.
+- 2026-08-22: **National cause data comes from WHO Global Health Estimates, not IHME GBD.**
+  Verified by direct call: WHO's `xmart-api-public.who.int/DEX_CMS/GHE_FULL` is keyless, CC BY 4.0,
+  183 countries, 19 disjoint five-year bands, 175 leaf causes. The WHO Mortality Database that
+  04-02 originally targeted has zero rows for Nigeria, Ethiopia, DR Congo and India; GBD's results
+  tool gates every data endpoint behind a sign-in and caps a download at `max_rows_per_download:
+  100000`, making the national cause cube tens of thousands of requests.
+- 2026-08-22: **GBD kept only for subnational**, as one ~30,000-row export covering 519 admin-1
+  units across 17 countries — WHO has no subnational data at any resolution. The roadmap's
+  "unreachable at any effort level" verdict holds for observed national-statistics data, not for
+  modelled estimates: GBD publishes admin-1 for India, Indonesia, Pakistan, Ethiopia and Nigeria.
+- 2026-08-22: **04-04/04-05 dependency reversed.** Attaching a regional pyramid to a cell needs
+  04-05's region key, so 04-05 moved to wave 2 and 04-04 to wave 4.
+- 2026-08-22: **Derived data ships as files aligned to grid cell order, never as extra rate-grid
+  columns.** `pipeline/climate_fallback.py` unpacks each cell as exactly four values, and the baked
+  ACLED layer snaps onto cells by a `"lon,lat"` key that a grid rewrite can silently invalidate.
 
 ### Pending Todos
 
@@ -91,13 +106,15 @@ Eight promoted to Phase 04 plans on 2026-07-31; the ninth (p09) became backlog 9
 the executable artifact. Plan numbers preserve the captured priority rank; **waves come from the
 pairwise `files_modified` overlap analysis, not from priority.**
 
-| Wave | Plans (parallel within a wave) | Why these can run together                            |
-| ---- | ------------------------------ | ----------------------------------------------------- |
-| 1    | 04-01                          | alone — clears persona.ts; ~10 lines, minutes         |
-| 2    | 04-02, 04-04, 04-08            | build-causes vs rate-grid vs pipeline/\*.py, disjoint |
-| 3    | 04-03, 04-05                   | build-causes/causes.json vs rate-grid                 |
-| 4    | 04-06                          | needs 04-02 + 04-05 + 04-08                           |
-| 5    | 04-07                          | needs persona.ts free after 04-04                     |
+Revised 2026-08-22 after the WHO re-source reversed the 04-04/04-05 dependency:
+
+| Wave | Plans (parallel within a wave) | Why these can run together                            | Status |
+| ---- | ------------------------------ | ----------------------------------------------------- | ------ |
+| 1    | 04-01                          | alone — clears persona.ts; ~10 lines, minutes         | done   |
+| 2    | 04-02, 04-05, 04-08            | build-causes vs rate-grid vs pipeline/\*.py, disjoint | 04-02, 04-05 done; 04-08 open |
+| 3    | 04-03                          | alone — human sign-in for one GBD export              | open   |
+| 4    | 04-04, 04-06                   | age-sex-cells/globe vs pipeline/eurostat, disjoint    | open   |
+| 5    | 04-07                          | needs persona.ts free after 04-04                     | open   |
 
 Max parallelism is 3 (wave 2); five waves total. 04-08 sits in wave 2 rather than wave 1 deliberately: it has no
 dependencies, but pairing it with the two substantial wave-2 plans is faster than pairing it with
