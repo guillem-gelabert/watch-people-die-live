@@ -81,6 +81,44 @@
       "url": "https://www150.statcan.gc.ca/n1/tbl/csv/13100768-eng.zip"
     }
   ],
+  "eurostat": [
+    {
+      "file": "eurostat-demo_r_magec-2022.json",
+      "retrieved": "2026-08-25",
+      "sha256": "57231e84d59af5c9d2b94298a7ec62aeffeec33d45245a924a7583c425f3b9c9",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_magec?format=JSON&time=2022&sex=M&sex=F"
+    },
+    {
+      "file": "eurostat-hlth_cd_asdr2-2022.json",
+      "retrieved": "2026-08-25",
+      "sha256": "dfb9bf9b97dae00654cc533e44ba7c7535cfc0f9a49b7be8e2c9557e80d9fbf2",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/hlth_cd_asdr2?format=JSON&time=2022&sex=M&sex=F"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2022-01.json",
+      "retrieved": "2026-08-25",
+      "sha256": "bcf1d17c9ae3a7e55418bdb3194cabc57b5a299bc01b82c51a1b37ff89c9a6d7",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2022-W01&time=2022-W02&time=2022-W03&time=2022-W04&time=2022-W05&time=2022-W06&time=2022-W07&time=2022-W08&time=2022-W09&time=2022-W10&time=2022-W11&time=2022-W12&time=2022-W13"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2022-02.json",
+      "retrieved": "2026-08-25",
+      "sha256": "490d7e4e654f0628b0b3bba2dd87dbc5ec2d9e21a4385bed46a1cb0c71eef499",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2022-W14&time=2022-W15&time=2022-W16&time=2022-W17&time=2022-W18&time=2022-W19&time=2022-W20&time=2022-W21&time=2022-W22&time=2022-W23&time=2022-W24&time=2022-W25&time=2022-W26"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2022-03.json",
+      "retrieved": "2026-08-25",
+      "sha256": "9c220ee11cf6a2538a6b0e7cab2e7036a31448232de99baf092feb74fdb7df61",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2022-W27&time=2022-W28&time=2022-W29&time=2022-W30&time=2022-W31&time=2022-W32&time=2022-W33&time=2022-W34&time=2022-W35&time=2022-W36&time=2022-W37&time=2022-W38&time=2022-W39"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2022-04.json",
+      "retrieved": "2026-08-25",
+      "sha256": "685ee99f81341de4fe1f86d7d3d565999f1b38f55fcbd517f24f2735c400a896",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2022-W40&time=2022-W41&time=2022-W42&time=2022-W43&time=2022-W44&time=2022-W45&time=2022-W46&time=2022-W47&time=2022-W48&time=2022-W49&time=2022-W50&time=2022-W51&time=2022-W52"
+    }
+  ],
   "mexico": [
     {
       "file": "mexico-defunciones-2015.csv",

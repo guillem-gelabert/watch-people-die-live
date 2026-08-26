@@ -1,4 +1,7 @@
-"""CLI: python -m pipeline {status | fetch [source...] | build [source...] | argentina-latitudes}"""
+"""CLI: python -m pipeline
+{status | fetch [source...] | build [source...] | age-sex [source...] |
+ fetch-eurostat | eurostat | argentina-latitudes}
+"""
 
 from __future__ import annotations
 
@@ -10,7 +13,7 @@ from .build import find_root, write_seasonality
 from .cache import cache_dir as resolve_cache_dir
 from .manifest import record
 from .registry import MODULES, REGISTRY
-from .sources import argentina_partido_latitudes
+from .sources import argentina_partido_latitudes, eurostat
 
 
 def cmd_status(root: Path) -> None:
@@ -44,6 +47,21 @@ def cmd_age_sex(root: Path, keys: list[str]) -> None:
     print(f"wrote {out_path}")
 
 
+def cmd_fetch_eurostat(root: Path) -> None:
+    """Eurostat is not in REGISTRY -- it feeds its own artifact, not the seasonality curve --
+    so it gets its own fetch/build pair rather than riding `fetch`/`build`."""
+    c_dir = resolve_cache_dir(root)
+    files = eurostat.fetch(c_dir)
+    record("eurostat", files)
+    for f in files:
+        print(f"fetched {f.path.name}")
+
+
+def cmd_eurostat(root: Path) -> None:
+    out_path = eurostat.build(root, resolve_cache_dir(root))
+    print(f"wrote {out_path}")
+
+
 def cmd_argentina_latitudes(root: Path) -> None:
     out_path = argentina_partido_latitudes.build(root)
     print(f"wrote {out_path}")
@@ -59,6 +77,8 @@ def main() -> None:
     build_p.add_argument("source", nargs="*")
     age_sex_p = sub.add_parser("age-sex")
     age_sex_p.add_argument("source", nargs="*")
+    sub.add_parser("fetch-eurostat")
+    sub.add_parser("eurostat")
     sub.add_parser("argentina-latitudes")
     args = parser.parse_args()
 
@@ -71,6 +91,10 @@ def main() -> None:
         cmd_build(root, args.source or None)
     elif args.command == "age-sex":
         cmd_age_sex(root, args.source)
+    elif args.command == "fetch-eurostat":
+        cmd_fetch_eurostat(root)
+    elif args.command == "eurostat":
+        cmd_eurostat(root)
     elif args.command == "argentina-latitudes":
         cmd_argentina_latitudes(root)
 
