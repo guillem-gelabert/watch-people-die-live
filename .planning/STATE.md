@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persona Realism
 status: in_progress
-stopped_at: Phase 05 complete (3/3). Phase 04 at 4/8: 04-06 is runnable, 04-03 needs a human GBD sign-in and blocks 04-04 then 04-07.
-last_updated: "2026-08-23T11:40:00.000Z"
-last_activity: 2026-08-23 -- 05-03 colour decision taken (keep design, document AA cost); phase 05 complete
+stopped_at: Phase 05 complete (3/3). Phase 04 at 6/8: 04-03 and 04-06 shipped. 04-04 is now unblocked, then 04-07.
+last_updated: "2026-08-25T00:00:00.000Z"
+last_activity: 2026-08-26 -- 04-03 shipped: GBD export landed, 444 units at 98.44% of subnational deaths
 progress:
   total_phases: 1
   completed_phases: 0
   total_plans: 8
-  completed_plans: 7
-  percent: 64
+  completed_plans: 9
+  percent: 82
 ---
 
 # Project State
@@ -98,6 +98,47 @@ Recent decisions affecting current work:
 - 2026-08-22: **Derived data ships as files aligned to grid cell order, never as extra rate-grid
   columns.** `pipeline/climate_fallback.py` unpacks each cell as exactly four values, and the baked
   ACLED layer snaps onto cells by a `"lon,lat"` key that a grid rewrite can silently invalidate.
+- 2026-08-25: **04-03 runs against GBD's HTTP API, not the Results Tool UI.** Probed directly:
+  `php/metadata/`, `php/hierarchy/`, `php/app_settings.php` and `php/get_download_result.php` need no
+  auth; only `POST php/download.php` returns 401 without a bearer token. `php/data.php` is also
+  behind Cloudflare Turnstile, so the pre-download row counter is out of reach and the export spec's
+  checker validates the delivered file instead. Manual surface: one sign-in, one token in `.env`.
+  Stays `autonomous: false` — the IHME account is where the non-commercial agreement is accepted, and
+  no client-credentials path exists, so routing around the sign-in would circumvent the terms.
+- 2026-08-26: **The GBD export landed and 04-03 is done.** Superseding the note below: a 500 from
+  `download.php` is not a reliable failure signal — at least one 500 had enqueued a task, which
+  completed and was emailed. `Origin`/`Referer` headers are required, `version: 8352` is correct
+  (not 8016), results are retrievable with no auth from `get_download_result.php`, and only task
+  creation needs a token. A 723-location request 500s deterministically without enqueuing, so a
+  re-run must chunk by location.
+- 2026-08-26: **GBD subnational joins on hierarchy leaves, not depth >= 4.** Brazil, Italy and the
+  UK publish macro-regions and the real units one level below; taking every depth-4 node
+  double-counts. 508 leaves, 444 matched, 98.44% of subnational deaths.
+- 2026-08-26: **Italy, Poland and the UK join to NUTS-2, not Natural Earth**, because that is the
+  layer whose level matches what GBD publishes. Italy scores 0/21 against Natural Earth's 110
+  provinces and 21/21 against NUTS-2. The UK and Poland's Mazowieckie roll *down* to NUTS-2
+  children — sound only because the output is a distribution, so nothing is duplicated.
+- 2026-08-26: **The national cross-check is a permanent part of the artifact.** Rolled-up
+  subnational vs UN WPP agrees to 1-4% where civil registration exists (JPN, USA, GBR, POL, ITA,
+  BRA) and parts by 15-23% where GBD models around its absence (PAK, NGA, ETH, IDN). Nigeria's
+  subnational total is 0.67x the UN national one. The gradient is the finding, not a defect.
+- 2026-08-25: **`download.php` could not be driven headlessly; use a permalink instead.**
+  `Origin` and `Referer` headers turned the bare Flask 500 into real responses, and `version` is
+  8016 rather than the advertised 8352 — but after ~20 requests the endpoint began 500ing on a body
+  that had just been accepted, which reads as throttling. The route that works: `permalink.php` is
+  unauthenticated and stores the query server-side, so a script builds and verifies the exact
+  selection and a human presses Download once. The verified permalink (22 ages x 723 locations =
+  31,812 rows) is recorded in `gbd-export-spec.md`.
+- 2026-08-25: **Eurostat joins to the committed geometry (334 keys), not the CDR's 287.** NL31,
+  NL33, PT16-PT18 and NO0B exist in `nuts2-20m.json` and not in `subnational-cdr.json`, so joining
+  to the CDR would discard rows for regions the globe can already draw.
+- 2026-08-25: **Standardised rates average across regions but add across disjoint causes.** Both
+  rules apply to `hlth_cd_asdr2` and the first implementation applied only the first, which
+  silently halved every label fed by two ICD groupings. Guarded by `pipeline/test_eurostat.py`.
+- 2026-08-25: **The GBD age selection is 22 ids, not 21.** GBD 2023 has no `1-4 years` group; below
+  five the disjoint set is `<1 year` + `12-23 months` + `2-4 years`. GBD's `type` field cannot select
+  it — `<1 year` and `95+` are typed `aggregate` and are wanted, `80+`/`85+`/`20+`/`10-19` are typed
+  `specific` and are not. The ids are frozen in `gbd-export-spec.md` with the nine-band fold table.
 
 ### Pending Todos
 
@@ -112,8 +153,8 @@ Revised 2026-08-22 after the WHO re-source reversed the 04-04/04-05 dependency:
 | ---- | ------------------------------ | ----------------------------------------------------- | ------ |
 | 1    | 04-01                          | alone — clears persona.ts; ~10 lines, minutes         | done   |
 | 2    | 04-02, 04-05, 04-08            | build-causes vs rate-grid vs pipeline/\*.py, disjoint | done   |
-| 3    | 04-03                          | alone — human sign-in for one GBD export              | open   |
-| 4    | 04-04, 04-06                   | age-sex-cells/globe vs pipeline/eurostat, disjoint    | open   |
+| 3    | 04-03                          | alone — scripted GBD export, one pasted token         | done   |
+| 4    | 04-04, 04-06                   | age-sex-cells/globe vs pipeline/eurostat, disjoint    | 04-06 done, 04-04 open |
 | 5    | 04-07                          | needs persona.ts free after 04-04                     | open   |
 
 Max parallelism is 3 (wave 2); five waves total. 04-08 sits in wave 2 rather than wave 1 deliberately: it has no
@@ -130,8 +171,20 @@ is a better export to fall through to (04-02 WHO MDB, 04-03 GBD). Do 04-01 when 
 is set up, in the same sitting, rather than as an easy first task. The earlier "start with wave 1"
 advice over-weighted its line count.
 
-When the ladder does start, kick off 04-03's GBD export requests on day one — it is wall-clock-bound
-by the portal quota, not effort-bound, and does not fit a wave.
+Superseded 2026-08-25: 04-03 is no longer wall-clock-bound. It was rewritten around GBD's HTTP API
+after probing the endpoints — `php/metadata/`, `php/hierarchy/` and `php/app_settings.php` need no
+auth, `php/get_download_result.php` needs no auth, and only `POST php/download.php` wants a bearer
+token. So it is a normal implementation plan with one manual step at the front: sign in once, paste
+the token into `.env` as `GBD_TOKEN`, and the script does the query, the polling and the download.
+It stays `autonomous: false` — the IHME account is where the non-commercial agreement is accepted,
+and there is no client-credentials path — but "kick it off on day one" no longer applies, because
+there is no queue to wait on. Tokens last about an hour, so a run must finish inside one.
+
+The same pass found the export spec's age set was wrong: GBD 2023 has no `1-4 years` group, so the
+disjoint selection is 22 ids (`<1 year` + `12-23 months` + `2-4 years` below five), not 21. GBD's
+own `type` field cannot pick that set — `<1 year` and `95+` are typed `aggregate` and are wanted,
+while `80+`, `85+`, `20+` and `10-19` are typed `specific` and are not. `gbd-export-spec.md` now
+carries the frozen id list and the nine-band fold table.
 
 Dropped during validation: "top up UN WPP from 172 to ~200 countries" — the 55 grid countries
 lacking age/sex data account for **0.0000%** of global expected deaths (micro-territories only),

@@ -125,9 +125,17 @@ keyless, CC BY 4.0, 183 countries, 19 disjoint five-year bands, 175 leaf causes)
 Mortality Database 04-02 originally targeted has **zero rows** for Nigeria, Ethiopia, DR Congo and
 India, and the 16-chunk GBD cause export 04-03 originally described is infeasible at
 `max_rows_per_download: 100000`. GBD is now used only for what WHO lacks entirely — subnational —
-as a single ~30,000-row download covering 519 admin-1 units across 17 countries. That also reverses
+as a single ~31,800-row query covering 519 admin-1 units across 17 countries. That also reverses
 the 04-04/04-05 dependency: 04-04 needs 04-05's region key to attach a regional pyramid to a cell,
 so 04-05 moves to wave 2 and 04-04 to wave 4.
+
+**04-03 rewritten around the API, 2026-08-25.** GBD's endpoints are ordinary HTTP and its dimension
+metadata (`php/metadata/`, `php/hierarchy/`, `php/app_settings.php`) is served with no auth at all.
+Only `php/download.php` needs a bearer token, and the result poll does not. So 04-03 is a script with
+one manual step — sign in once, paste the token — rather than a UI session. It stays
+`autonomous: false` because the IHME account is where the non-commercial agreement is accepted, but
+it is no longer wall-clock-bound by portal quota. The same pass corrected the age set: GBD 2023 has
+no `1-4 years` group, so the disjoint selection is 22 ids, not the 21 the spec had.
 
 Plans:
 
@@ -135,9 +143,9 @@ Plans:
 - [x] 04-02: Source country age/sex causes from WHO Global Health Estimates _(wave 2)_
 - [x] 04-05: Bake an admin-1 / NUTS-2 region key into the rate grid _(wave 2)_
 - [x] 04-08: Unfilter age/sex in pipelines that already download it _(wave 2)_
-- [ ] 04-03: Pull GBD subnational age/sex death weights _(wave 3, human sign-in)_
+- [x] 04-03: Pull GBD subnational age/sex death weights _(wave 3)_
 - [ ] 04-04: Resolve age/sex per cell from regional estimates and gridded population _(wave 4)_
-- [ ] 04-06: Add Eurostat regional age/sex and cause tables _(wave 4)_
+- [x] 04-06: Add Eurostat regional age/sex and cause tables _(wave 4)_
 - [ ] 04-07: Make persona composition seasonal _(wave 5)_
 
 Deliberately **not** a plan: opportunistic subnational sourcing beyond Eurostat moved to backlog
