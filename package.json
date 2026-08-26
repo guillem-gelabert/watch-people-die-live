@@ -16,6 +16,7 @@
     "build:mortality": "tsx scripts/build-mortality.ts",
     "build:causes": "node --import tsx scripts/build-causes.ts",
     "build:region-keys": "node --import tsx scripts/build-region-keys.ts",
+    "build:age-sex-cells": "node --import tsx scripts/build-age-sex-cells.ts",
     "fetch:who-ghe": "node --import tsx scripts/fetch-who-ghe.ts",
     "build:seasonality-subnational": "uv run python -m pipeline build",
     "build:observed-age-sex": "uv run python -m pipeline age-sex",
