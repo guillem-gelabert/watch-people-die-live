@@ -63,7 +63,9 @@ export interface GeoPayload {
 }
 
 export interface Sampler {
-  sampleCell: () => [lon: number, lat: number, m49: number];
+  // cellIndex is this cell's position in data/rate-grid.json's cells, threaded through to
+  // makePersona() so it can resolve a per-cell age/sex pyramid (data/age-sex-cells.json).
+  sampleCell: () => [lon: number, lat: number, m49: number, cellIndex: number];
   total: number;
 }
 
@@ -228,7 +230,7 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
         }
         const total = sum;
 
-        function sampleCell(): [number, number, number] {
+        function sampleCell(): [number, number, number, number] {
           const r = Math.random() * total;
           let lo = 0;
           let hi = n - 1;
@@ -241,6 +243,7 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
             (lonArr[lo] as number) + Math.random() * cs,
             (latArr[lo] as number) + Math.random() * cs,
             m49Arr[lo] as number,
+            lo,
           ];
         }
 

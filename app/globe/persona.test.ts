@@ -76,6 +76,15 @@ function causeExport(coverage: Coverage, label: string, countryLabel?: string) {
 const personas = (n: number, m49?: number): Persona[] =>
   Array.from({ length: n }, () => makePersona(m49, "Testland", WORDS));
 
+const personasAt = (n: number, m49: number | undefined, cellIndex: number | undefined): Persona[] =>
+  Array.from({ length: n }, () => makePersona(m49, "Testland", WORDS, cellIndex));
+
+// A pyramid with every death at one exact band, packaged as an age-sex-cells.json archetype.
+const archetype = (band: number) => {
+  const w = Array.from({ length: 9 }, (_, i) => (i === band ? 1 : 0));
+  return { m: w, f: w };
+};
+
 const causesOf = (drawn: Persona[]) => new Set(drawn.map((p) => p.cause));
 
 afterEach(() => vi.unstubAllGlobals());
@@ -189,5 +198,54 @@ describe("makePersona with the shipped data files", () => {
     const drawn = personas(1000, NGA);
     expect(drawn.every((p) => p.cause.length > 0 && p.text.includes("Testland"))).toBe(true);
     expect(drawn.filter((p) => p.age < 15).filter((p) => ADULT_ONLY.includes(p.cause))).toEqual([]);
+  });
+});
+
+// 04-04: a per-cell pyramid (data/age-sex-cells.json) can override the flat national one that
+// mortality-age-sex.json alone would give every death in a country.
+describe("per-cell age/sex pyramid", () => {
+  it("draws visibly different ages for two cells with different archetypes", async () => {
+    serve({
+      "/data/mortality-age-sex.json": pyramid(4), // national: everyone drawn from band 4 (30-49)
+      "/data/age-sex-cells.json": {
+        archetypes: [archetype(0), archetype(8)], // cell 0: infants; cell 1: 85+
+        classId: [0, 1],
+      },
+    });
+    await initPersona();
+
+    const infantCell = personasAt(50, NGA, 0);
+    const elderlyCell = personasAt(50, NGA, 1);
+    expect(infantCell.every((p) => p.age === 0)).toBe(true);
+    expect(elderlyCell.every((p) => p.age >= 85)).toBe(true);
+  });
+
+  it("falls back to the national pyramid when the cell index is out of range", async () => {
+    serve({
+      "/data/mortality-age-sex.json": pyramid(4), // national: 30-49
+      "/data/age-sex-cells.json": { archetypes: [archetype(0)], classId: [0] },
+    });
+    await initPersona();
+
+    const drawn = personasAt(50, NGA, 99);
+    expect(drawn.every((p) => p.age >= 30 && p.age <= 49)).toBe(true);
+  });
+
+  it("falls back to the national pyramid when no cell index is given", async () => {
+    serve({
+      "/data/mortality-age-sex.json": pyramid(4),
+      "/data/age-sex-cells.json": { archetypes: [archetype(0)], classId: [0] },
+    });
+    await initPersona();
+
+    const drawn = personasAt(50, NGA, undefined);
+    expect(drawn.every((p) => p.age >= 30 && p.age <= 49)).toBe(true);
+  });
+
+  it("never throws with a garbage cell index and no cell file at all", async () => {
+    serve({});
+    await initPersona();
+
+    expect(() => personasAt(50, NGA, 999999)).not.toThrow();
   });
 });

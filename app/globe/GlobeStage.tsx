@@ -52,10 +52,10 @@ function GlobeStage({ phaseRef }: GlobeStageProps) {
   }, [globeData]);
 
   const onPushDeath = useCallback(
-    (m49: number, lon: number, lat: number) => {
+    (m49: number, lon: number, lat: number, cellIndex: number) => {
       const country = nameByIdRef.current.get(m49) || d.charts.common.unknown;
       publishDeath({
-        ...makePersona(m49, country, { ...d.globe, causes: d.causes }),
+        ...makePersona(m49, country, { ...d.globe, causes: d.causes }, cellIndex),
         lon,
         lat,
         at: performance.now(),

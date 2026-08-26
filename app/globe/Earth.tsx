@@ -93,7 +93,7 @@ interface EarthProps {
   globeData: GlobeData | { error: true } | null;
   geo: GeoPayload | null;
   onFirstFrame: () => void;
-  onPushDeath: (m49: number, lon: number, lat: number) => void;
+  onPushDeath: (m49: number, lon: number, lat: number, cellIndex: number) => void;
   camTarget: RefObject<THREE.Vector3 | null>;
   controlsRef: RefObject<OrbitControlsRef | null>;
   // Scroll progress out of the hero, 0..1. A ref rather than a prop value because the
@@ -345,9 +345,9 @@ export default function Earth({
     const paused = pausedRef.current || phaseRef.current > 0.4 || stillRef.current;
     while (t >= s.next) {
       if (!paused && t - s.next <= CATCHUP_CAP && s.blasts.length < MAX_DOTS) {
-        const [lon, lat, m49] = s.sampler.sampleCell();
+        const [lon, lat, m49, cellIndex] = s.sampler.sampleCell();
         spawnBlast(lon, lat, s.next);
-        onPushDeath(m49, lon, lat);
+        onPushDeath(m49, lon, lat, cellIndex);
       }
       s.next += expGap(s.mean);
     }

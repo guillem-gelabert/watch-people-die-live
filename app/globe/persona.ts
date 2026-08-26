@@ -61,6 +61,18 @@ interface SamplePersonasData {
   causes?: CauseData;
 }
 
+// data/age-sex-cells.json, built by scripts/build-age-sex-cells.ts: a per-cell age/sex pyramid
+// resolved from real regional data where 04-03's GBD export covers it, a derived regional
+// estimate elsewhere, or the national one — see that script's header for the tier definitions
+// and the WorldPop-infeasibility deviation. `classId` and `tier` are aligned to
+// data/rate-grid.json's cell order, so `classId[cellIndex]` is only meaningful when `cellIndex`
+// came from that same grid.
+interface AgeSexCellsData {
+  archetypes: AgeSexEntry[];
+  classId: number[];
+  tier?: number[];
+}
+
 // The words the sentence is assembled from, in the reader's language. The cause is not among
 // them: it comes from the cause export, which is an English taxonomy of a couple of hundred
 // labels, and a hand-translation of it would be a medical claim rather than a string.
@@ -165,6 +177,7 @@ const CAUSES: FallbackCause[] = [
 // --- Real data, loaded once by initPersona() --------------------------------------
 let MORT: MortalityData | null = null;
 let CAUSE: CauseData | null = null;
+let CELLS: AgeSexCellsData | null = null;
 
 async function loadJson<T>(url: string): Promise<T | null> {
   try {
@@ -179,14 +192,18 @@ async function loadJson<T>(url: string): Promise<T | null> {
 // Fetch the real distributions once. Prefers the full build outputs, falls back to the
 // bundled sample, then leaves things null (callers use the tables above). Never throws.
 export async function initPersona(): Promise<void> {
-  const [mort, cause] = await Promise.all([
+  const [mort, cause, cells] = await Promise.all([
     loadJson<MortalityData>("/data/mortality-age-sex.json"),
     loadJson<CauseData>("/data/causes.json"),
+    loadJson<AgeSexCellsData>("/data/age-sex-cells.json"),
   ]);
   let sample: SamplePersonasData | null = null;
   if (!mort || !cause) sample = await loadJson<SamplePersonasData>("/data/sample-personas.json");
   MORT = mort || sample?.mortality || null;
   CAUSE = cause || sample?.causes || null;
+  // No sample-file fallback for this one: it is a bonus refinement layer, not a required data
+  // file, so a missing/failed fetch just means every death falls back to the national pyramid.
+  CELLS = cells;
 }
 
 function weightedPick<T>(items: T[], weightOf: (item: T) => number): T {
@@ -221,8 +238,21 @@ function mortFor(m49: number | undefined): AgeSexEntry | null {
   return (m49 !== undefined && MORT.countries[m49]) || MORT.global || null;
 }
 
-function sampleSex(m49: number | undefined): Sex {
-  const e = mortFor(m49);
+// The cell's own resolved pyramid (regional, derived or national — see
+// scripts/build-age-sex-cells.ts), falling back to the country pyramid when the cell layer is
+// unavailable or the index is out of range. `cellIndex` is the death's index into
+// data/rate-grid.json's cells, threaded from useGlobeData.ts's sampler.
+function pyramidFor(m49: number | undefined, cellIndex: number | undefined): AgeSexEntry | null {
+  if (cellIndex !== undefined && CELLS) {
+    const classId = CELLS.classId[cellIndex];
+    const archetype = classId !== undefined ? CELLS.archetypes[classId] : undefined;
+    if (archetype) return archetype;
+  }
+  return mortFor(m49);
+}
+
+function sampleSex(m49: number | undefined, cellIndex: number | undefined): Sex {
+  const e = pyramidFor(m49, cellIndex);
   if (e) {
     const sm = e.m.reduce((a, b) => a + b, 0);
     const sf = e.f.reduce((a, b) => a + b, 0);
@@ -232,8 +262,12 @@ function sampleSex(m49: number | undefined): Sex {
 }
 
 // Choose an age-band index for this country + sex, then a uniform age within the band.
-function sampleAge(m49: number | undefined, sex: Sex): { age: number; idx: number } {
-  const e = mortFor(m49);
+function sampleAge(
+  m49: number | undefined,
+  sex: Sex,
+  cellIndex: number | undefined,
+): { age: number; idx: number } {
+  const e = pyramidFor(m49, cellIndex);
   let idx = e ? pickIndex(e[sex]) : -1;
   if (idx < 0) idx = AGE_BANDS.indexOf(weightedPick(AGE_BANDS, (b) => b.w));
   const band = AGE_BANDS[idx] || (AGE_BANDS[AGE_BANDS.length - 1] as AgeBand);
@@ -274,13 +308,17 @@ function pickCause(m49: number | undefined, sex: Sex, bandIdx: number, age: numb
 
 // Build one persona for a death in country `m49` (display name like "Spain").
 // `m49` may be omitted/unknown — then the global distribution (or the tables) is used.
+// `cellIndex` is this death's index into data/rate-grid.json's cells (from the sampler in
+// useGlobeData.ts); when it resolves to a cell pyramid, age/sex are drawn from that instead of
+// the flat national one. Cause sampling is unaffected — it stays country + band + sex.
 export function makePersona(
   m49: number | undefined,
   country: string,
   words: PersonaWords,
+  cellIndex?: number,
 ): Persona {
-  const sex = sampleSex(m49);
-  const { age, idx } = sampleAge(m49, sex);
+  const sex = sampleSex(m49, cellIndex);
+  const { age, idx } = sampleAge(m49, sex, cellIndex);
   // Sampled as the English source label, then named: `cause` stays the identity so anything
   // reading a persona downstream can still match on it, and only `text` is in the reader's
   // language.
