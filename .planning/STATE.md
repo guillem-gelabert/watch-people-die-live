@@ -2,16 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persona Realism
-status: in_progress
-stopped_at: Phase 05 complete (3/3). Phase 04 at 6/8: 04-03 and 04-06 shipped. 04-04 is now unblocked, then 04-07.
-last_updated: "2026-08-25T00:00:00.000Z"
-last_activity: 2026-08-26 -- 04-03 shipped: GBD export landed, 444 units at 98.44% of subnational deaths
+status: executing
+last_updated: "2026-08-26T10:06:45.312Z"
+last_activity: 2026-08-26
 progress:
-  total_phases: 1
-  completed_phases: 0
-  total_plans: 8
-  completed_plans: 9
-  percent: 82
+  total_phases: 6
+  completed_phases: 4
+  total_plans: 17
+  completed_plans: 15
+  percent: 67
 ---
 
 # Project State
@@ -21,13 +20,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-06-28)
 
 **Core value:** Make the reality of global mortality feel immediate while staying statistically honest about timing, placement, and representative identity.
-**Current focus:** Phase 04 — persona realism. v1.0 MVP shipped; production URL verification remains a documented follow-up.
+**Current focus:** Phase 04 — persona-realism-ladder
 
 ## Current Position
 
-Phase: 04 (Persona Realism Ladder) — IN PROGRESS, wave 1 done · Phase 05 (Story Reading Experience) — PLANNED, not started
-Plan: 7 of 11 (Phase 04: 4/8, next runnable = 04-06; Phase 05: 3/3 COMPLETE)
-Status: Phase 04 wave 1 landed — `pickCause` now honours the `coverage` flag, so the committed
+Phase: 04 (persona-realism-ladder) — EXECUTING
+Plan: 2 of 8
+Status: Ready to execute
 global all-ages export is rejected in favour of the age-gated fallback table, and the quota-bound
 GBD export spec (`gbd-export-spec.md`) has been rewritten around the one query GBD is still needed
 for. 04-02 and 04-03 were re-sourced on 2026-08-22: the national cause cube now comes from WHO's
@@ -37,9 +36,9 @@ export is infeasible at 100k rows per download. GBD is now one ~30,000-row subna
 reversed the 04-04/04-05 dependency. Phase 05 was added 2026-08-21 from the story batch and is deliberately disjoint from
 Phase 04 — no shared files, so the two phases can run concurrently. Phase 05's 05-03 is `autonomous: false` (it needs a colour decision); 05-01 and
 05-02 are autonomous.
-Last activity: 2026-08-22 -- 04-02/03/04 rewritten around WHO GHE (keyless, CC BY) plus one GBD subnational export
+Last activity: 2026-08-26
 
-Progress: [######____] 64% (7/11 plans in milestone v2.0)
+Progress: [█████████░] 88%
 
 v1.0 MVP: phases 1-3, 5/5 plans, complete 2026-06-29. Progress above is v2.0-scoped, matching how
 v1.0 was tracked. Backlog 999.1 is unsequenced and excluded from the count.
@@ -64,6 +63,7 @@ v1.0 was tracked. Backlog 999.1 is unsequenced and excluded from the count.
 - Trend: complete
 
 _Updated after each plan completion_
+| Phase 04 P04 | 35min | 4 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -79,25 +79,32 @@ Recent decisions affecting current work:
   Metadata applied by hand, not via `$gsd-new-milestone` — that workflow spawns a roadmapper to
   build a fresh roadmap and can archive phase directories, which would have destroyed the
   already-written Phase 4 plans.
+
 - 2026-07-31: Phase 4 waves derived from pairwise `files_modified` overlap, not from priority
   order, so `$gsd-execute-phase`'s intra-wave safety check has something real to enforce.
+
 - 2026-07-31: p09 routed to backlog 999.1 instead of a plan — full subnational coverage is
   unreachable, so a plan would have implied committed work.
+
 - 2026-08-22: **National cause data comes from WHO Global Health Estimates, not IHME GBD.**
   Verified by direct call: WHO's `xmart-api-public.who.int/DEX_CMS/GHE_FULL` is keyless, CC BY 4.0,
   183 countries, 19 disjoint five-year bands, 175 leaf causes. The WHO Mortality Database that
   04-02 originally targeted has zero rows for Nigeria, Ethiopia, DR Congo and India; GBD's results
   tool gates every data endpoint behind a sign-in and caps a download at `max_rows_per_download:
   100000`, making the national cause cube tens of thousands of requests.
+
 - 2026-08-22: **GBD kept only for subnational**, as one ~30,000-row export covering 519 admin-1
   units across 17 countries — WHO has no subnational data at any resolution. The roadmap's
   "unreachable at any effort level" verdict holds for observed national-statistics data, not for
   modelled estimates: GBD publishes admin-1 for India, Indonesia, Pakistan, Ethiopia and Nigeria.
+
 - 2026-08-22: **04-04/04-05 dependency reversed.** Attaching a regional pyramid to a cell needs
   04-05's region key, so 04-05 moved to wave 2 and 04-04 to wave 4.
+
 - 2026-08-22: **Derived data ships as files aligned to grid cell order, never as extra rate-grid
   columns.** `pipeline/climate_fallback.py` unpacks each cell as exactly four values, and the baked
   ACLED layer snaps onto cells by a `"lon,lat"` key that a grid rewrite can silently invalidate.
+
 - 2026-08-25: **04-03 runs against GBD's HTTP API, not the Results Tool UI.** Probed directly:
   `php/metadata/`, `php/hierarchy/`, `php/app_settings.php` and `php/get_download_result.php` need no
   auth; only `POST php/download.php` returns 401 without a bearer token. `php/data.php` is also
@@ -105,23 +112,28 @@ Recent decisions affecting current work:
   checker validates the delivered file instead. Manual surface: one sign-in, one token in `.env`.
   Stays `autonomous: false` — the IHME account is where the non-commercial agreement is accepted, and
   no client-credentials path exists, so routing around the sign-in would circumvent the terms.
+
 - 2026-08-26: **The GBD export landed and 04-03 is done.** Superseding the note below: a 500 from
   `download.php` is not a reliable failure signal — at least one 500 had enqueued a task, which
   completed and was emailed. `Origin`/`Referer` headers are required, `version: 8352` is correct
   (not 8016), results are retrievable with no auth from `get_download_result.php`, and only task
   creation needs a token. A 723-location request 500s deterministically without enqueuing, so a
   re-run must chunk by location.
+
 - 2026-08-26: **GBD subnational joins on hierarchy leaves, not depth >= 4.** Brazil, Italy and the
   UK publish macro-regions and the real units one level below; taking every depth-4 node
   double-counts. 508 leaves, 444 matched, 98.44% of subnational deaths.
+
 - 2026-08-26: **Italy, Poland and the UK join to NUTS-2, not Natural Earth**, because that is the
   layer whose level matches what GBD publishes. Italy scores 0/21 against Natural Earth's 110
   provinces and 21/21 against NUTS-2. The UK and Poland's Mazowieckie roll *down* to NUTS-2
   children — sound only because the output is a distribution, so nothing is duplicated.
+
 - 2026-08-26: **The national cross-check is a permanent part of the artifact.** Rolled-up
   subnational vs UN WPP agrees to 1-4% where civil registration exists (JPN, USA, GBR, POL, ITA,
   BRA) and parts by 15-23% where GBD models around its absence (PAK, NGA, ETH, IDN). Nigeria's
   subnational total is 0.67x the UN national one. The gradient is the finding, not a defect.
+
 - 2026-08-25: **`download.php` could not be driven headlessly; use a permalink instead.**
   `Origin` and `Referer` headers turned the bare Flask 500 into real responses, and `version` is
   8016 rather than the advertised 8352 — but after ~20 requests the endpoint began 500ing on a body
@@ -129,16 +141,21 @@ Recent decisions affecting current work:
   unauthenticated and stores the query server-side, so a script builds and verifies the exact
   selection and a human presses Download once. The verified permalink (22 ages x 723 locations =
   31,812 rows) is recorded in `gbd-export-spec.md`.
+
 - 2026-08-25: **Eurostat joins to the committed geometry (334 keys), not the CDR's 287.** NL31,
   NL33, PT16-PT18 and NO0B exist in `nuts2-20m.json` and not in `subnational-cdr.json`, so joining
   to the CDR would discard rows for regions the globe can already draw.
+
 - 2026-08-25: **Standardised rates average across regions but add across disjoint causes.** Both
   rules apply to `hlth_cd_asdr2` and the first implementation applied only the first, which
   silently halved every label fed by two ICD groupings. Guarded by `pipeline/test_eurostat.py`.
+
 - 2026-08-25: **The GBD age selection is 22 ids, not 21.** GBD 2023 has no `1-4 years` group; below
   five the disjoint set is `<1 year` + `12-23 months` + `2-4 years`. GBD's `type` field cannot select
   it — `<1 year` and `95+` are typed `aggregate` and are wanted, `80+`/`85+`/`20+`/`10-19` are typed
   `specific` and are not. The ids are frozen in `gbd-export-spec.md` with the nine-band fold table.
+
+- [Phase 04-04]: WorldPop 2020 age/sex population (the locked plan source) is infeasible: ~118 GB across 36 age-sex bands with no HTTP range support, and the coarser GPWv4 BDC alternative's host is unreachable from this environment. — Derived tier instead shifts each national pyramid by the region's own subnational-cdr.json CDR gap, calibrated against 04-03's real regional weights -- zero new external data, fully reproducible offline, and the resulting weak fit (R2=0.034) is reported rather than hidden.
 
 ### Pending Todos
 
@@ -254,12 +271,15 @@ Phase 05 (s04, s11, s01) implemented, plus the colour model rework and the ACLED
   build: the route no longer appears, and `app/` imports nothing from `lib/acled` but an erased
   type, so `exceljs` is off the request path. `upstreamCutoff()` skips six workbook downloads when
   the committed snapshot already covers the advertised week - 3s instead of minutes.
+
 - **s14 half done.** Its sharpest point is closed: `freshness` was *removed* rather than
   repointed, because a baked artifact has no honest status to carry and nothing read the field.
   `commonThrough` is the honest one and `ConflictMap` already shows it. **Outstanding: the deploy
   cadence.** Freshness is now literally deploy frequency, and nothing schedules a redeploy.
+
 - **s12 done**, and it was the precondition for s10: four literal whites in the pull control moved
   onto `--ink`, byte-identical today because `ink` resolves to `#ffffff` on a dark sky.
+
 - **s10 closed as a no-op.** `#0c223f` shipped briefly and was reverted to `#000000` on request,
   so the closing sky is unchanged from where the day started. s12 survives it and is the useful
   half: the sky can now be changed to anything without stranding the pull control. Note for

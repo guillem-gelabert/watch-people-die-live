@@ -144,7 +144,7 @@ Plans:
 - [x] 04-05: Bake an admin-1 / NUTS-2 region key into the rate grid _(wave 2)_
 - [x] 04-08: Unfilter age/sex in pipelines that already download it _(wave 2)_
 - [x] 04-03: Pull GBD subnational age/sex death weights _(wave 3)_
-- [ ] 04-04: Resolve age/sex per cell from regional estimates and gridded population _(wave 4)_
+- [x] 04-04: Resolve age/sex per cell from regional estimates and gridded population _(wave 4)_
 - [x] 04-06: Add Eurostat regional age/sex and cause tables _(wave 4)_
 - [ ] 04-07: Make persona composition seasonal _(wave 5)_
 
