@@ -62,9 +62,9 @@ interface SamplePersonasData {
 }
 
 // data/age-sex-cells.json, built by scripts/build-age-sex-cells.ts: a per-cell age/sex pyramid
-// resolved from real regional data where 04-03's GBD export covers it, a derived regional
-// estimate elsewhere, or the national one — see that script's header for the tier definitions
-// and the WorldPop-infeasibility deviation. `classId` and `tier` are aligned to
+// resolved from real regional data where 04-03's GBD export covers it, a WorldPop-population- or
+// CDR-gap-derived regional estimate elsewhere, or the national one — see that script's header
+// for the tier definitions and 04-09's WorldPop correction. `classId` and `tier` are aligned to
 // data/rate-grid.json's cell order, so `classId[cellIndex]` is only meaningful when `cellIndex`
 // came from that same grid.
 interface AgeSexCellsData {
