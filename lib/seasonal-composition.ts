@@ -154,11 +154,13 @@ export function buildSeasonalComposition(
 
 // Runtime entry point: fetches the three inputs (measured tensor, world geometry, Köppen class
 // map -- the last two already shipped for the timing curve and served from the browser's HTTP
-// cache on a second request) and builds the transfer once. Cached at module scope like
-// persona.ts's own MORT/CAUSE/CELLS singletons; never throws, resolves to null on any failure so
-// callers can fall back to "no reweighting".
-let cached: Promise<SeasonalCompositionRuntime | null> | null = null;
-
+// cache on a second request, so this costs no extra network round trip) and builds the transfer.
+// Deliberately uncached at module scope -- unlike a persisted singleton, this matches
+// persona.ts's MORT/CAUSE/CELLS, which also refetch and rebuild on every initPersona() call
+// rather than memoizing forever, so a second call (a remount, a test) always sees fresh data
+// rather than a stale first answer. The transfer itself is cheap (well under 100ms for the
+// full ~30-dimension cascade). Never throws; resolves to null on any failure so callers can
+// fall back to "no reweighting".
 async function fetchJson<T>(url: string): Promise<T | null> {
   try {
     const res = await fetch(url);
@@ -170,40 +172,36 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 }
 
 export async function loadSeasonalComposition(): Promise<SeasonalCompositionRuntime | null> {
-  if (cached) return cached;
-  cached = (async () => {
-    try {
-      const [data, topo, climate] = await Promise.all([
-        fetchJson<SeasonalCompositionData>("/data/seasonal-composition.json"),
-        fetchJson<Topology>("/data/countries-110m.json"),
-        fetchJson<ClimateFallbackModel>("/data/seasonality-climate-fallback.json"),
-      ]);
-      if (!data || !topo || !climate) return null;
-      const topojson = await import("topojson-client");
-      const countriesObject = topo.objects.countries as NonNullable<typeof topo.objects.countries>;
-      const countryFeatures = topojson.feature(topo, countriesObject) as unknown as {
-        features: Feature<Geometry>[];
-      };
-      const geometries = (countriesObject as GeometryCollection).geometries;
-      const neighborIndexes = topojson.neighbors(geometries);
-      const neighborsByM49 = new Map<number, number[]>(
-        geometries.map((geometry, index) => [
-          Number(geometry.id),
-          (neighborIndexes[index] ?? [])
-            .map((neighborIndex) => geometries[neighborIndex]?.id)
-            .filter((id): id is string | number => id != null)
-            .map(Number),
-        ]),
-      );
-      return buildSeasonalComposition(
-        data,
-        countryFeatures.features,
-        neighborsByM49,
-        climate.classByM49,
-      );
-    } catch {
-      return null;
-    }
-  })();
-  return cached;
+  try {
+    const [data, topo, climate] = await Promise.all([
+      fetchJson<SeasonalCompositionData>("/data/seasonal-composition.json"),
+      fetchJson<Topology>("/data/countries-110m.json"),
+      fetchJson<ClimateFallbackModel>("/data/seasonality-climate-fallback.json"),
+    ]);
+    if (!data || !topo || !climate) return null;
+    const topojson = await import("topojson-client");
+    const countriesObject = topo.objects.countries as NonNullable<typeof topo.objects.countries>;
+    const countryFeatures = topojson.feature(topo, countriesObject) as unknown as {
+      features: Feature<Geometry>[];
+    };
+    const geometries = (countriesObject as GeometryCollection).geometries;
+    const neighborIndexes = topojson.neighbors(geometries);
+    const neighborsByM49 = new Map<number, number[]>(
+      geometries.map((geometry, index) => [
+        Number(geometry.id),
+        (neighborIndexes[index] ?? [])
+          .map((neighborIndex) => geometries[neighborIndex]?.id)
+          .filter((id): id is string | number => id != null)
+          .map(Number),
+      ]),
+    );
+    return buildSeasonalComposition(
+      data,
+      countryFeatures.features,
+      neighborsByM49,
+      climate.classByM49,
+    );
+  } catch {
+    return null;
+  }
 }

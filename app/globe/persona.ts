@@ -1,6 +1,11 @@
 import { fill } from "@/lib/i18n/fill";
 import { causeLabel, type CauseLabels } from "@/lib/i18n/causes";
 import type { Dictionary } from "@/lib/i18n/en";
+import { utcYearPhase } from "@/lib/seasonal-curve";
+import {
+  loadSeasonalComposition,
+  type SeasonalCompositionRuntime,
+} from "@/lib/seasonal-composition";
 
 // Generates a short, plausible persona for one (synthetic) death, e.g.
 //   "Woman 78, breast cancer – Spain"
@@ -178,6 +183,11 @@ const CAUSES: FallbackCause[] = [
 let MORT: MortalityData | null = null;
 let CAUSE: CauseData | null = null;
 let CELLS: AgeSexCellsData | null = null;
+// Month-conditioned reweighting of age and cause (04-07): data/seasonal-composition.json's
+// measured curves, transferred to every country via lib/seasonal-composition.ts's donor cascade.
+// Optional in every sense CELLS is: a bonus refinement layer, never required for a persona to be
+// drawn, so a missing/failed load just means every death keeps today's flat annual distribution.
+let SEASONAL: SeasonalCompositionRuntime | null = null;
 
 async function loadJson<T>(url: string): Promise<T | null> {
   try {
@@ -192,10 +202,11 @@ async function loadJson<T>(url: string): Promise<T | null> {
 // Fetch the real distributions once. Prefers the full build outputs, falls back to the
 // bundled sample, then leaves things null (callers use the tables above). Never throws.
 export async function initPersona(): Promise<void> {
-  const [mort, cause, cells] = await Promise.all([
+  const [mort, cause, cells, seasonal] = await Promise.all([
     loadJson<MortalityData>("/data/mortality-age-sex.json"),
     loadJson<CauseData>("/data/causes.json"),
     loadJson<AgeSexCellsData>("/data/age-sex-cells.json"),
+    loadSeasonalComposition().catch(() => null),
   ]);
   let sample: SamplePersonasData | null = null;
   if (!mort || !cause) sample = await loadJson<SamplePersonasData>("/data/sample-personas.json");
@@ -204,6 +215,9 @@ export async function initPersona(): Promise<void> {
   // No sample-file fallback for this one: it is a bonus refinement layer, not a required data
   // file, so a missing/failed fetch just means every death falls back to the national pyramid.
   CELLS = cells;
+  // Same story: loadSeasonalComposition() already never throws and resolves null on any
+  // failure, so a missing/failed load just means every death keeps the flat annual distribution.
+  SEASONAL = seasonal;
 }
 
 function weightedPick<T>(items: T[], weightOf: (item: T) => number): T {
@@ -261,14 +275,31 @@ function sampleSex(m49: number | undefined, cellIndex: number | undefined): Sex 
   return Math.random() < 0.5 ? "f" : "m";
 }
 
+// Multiplies a 9-band weight array by the month's per-band reweighting (04-07), so winter can
+// shift the age draw toward older bands and summer toward younger ones without changing which
+// pyramid is used. `eventDate` absent, or no seasonal signal for this country/band, leaves the
+// weights untouched -- Math.max(0, ...) guards a pathological transferred curve from ever
+// producing a negative weight, which pickIndex()'s cumulative-sum walk cannot handle.
+function seasonalAgeWeights(
+  weights: number[],
+  m49: number | undefined,
+  eventDate: Date | undefined,
+): number[] {
+  if (!eventDate || !SEASONAL) return weights;
+  const phase = utcYearPhase(eventDate);
+  return weights.map((w, band) => w * Math.max(0, SEASONAL!.ageMultiplier(m49, band, phase)));
+}
+
 // Choose an age-band index for this country + sex, then a uniform age within the band.
 function sampleAge(
   m49: number | undefined,
   sex: Sex,
   cellIndex: number | undefined,
+  eventDate: Date | undefined,
 ): { age: number; idx: number } {
   const e = pyramidFor(m49, cellIndex);
-  let idx = e ? pickIndex(e[sex]) : -1;
+  const weights = e ? seasonalAgeWeights(e[sex], m49, eventDate) : null;
+  let idx = weights ? pickIndex(weights) : -1;
   if (idx < 0) idx = AGE_BANDS.indexOf(weightedPick(AGE_BANDS, (b) => b.w));
   const band = AGE_BANDS[idx] || (AGE_BANDS[AGE_BANDS.length - 1] as AgeBand);
   return { age: band.min + Math.floor(Math.random() * (band.max - band.min + 1)), idx };
@@ -282,7 +313,13 @@ function sexLabel(words: PersonaWords, sex: Sex, age: number): string {
 }
 
 // Cause from the real data, but only for a band the export can actually speak to.
-function pickCause(m49: number | undefined, sex: Sex, bandIdx: number, age: number): string {
+function pickCause(
+  m49: number | undefined,
+  sex: Sex,
+  bandIdx: number,
+  age: number,
+  eventDate: Date | undefined,
+): string {
   // The band axis is only real when the builder says so. An all-ages export repeats one set of
   // weights across every band, so reading it would hand an infant a pensioner's cause — the
   // age-gated table below is strictly better than that.
@@ -294,7 +331,19 @@ function pickCause(m49: number | undefined, sex: Sex, bandIdx: number, age: numb
     if (cell) {
       const idxs = Object.keys(cell);
       if (idxs.length) {
-        const pick = weightedPick(idxs, (i) => cell[i] as number);
+        // 04-07: reweight by the month's cause multiplier — leaf group when the label is one
+        // (drowning, exposure to forces of nature), else its ICD-10 chapter, else unchanged.
+        // Applied here rather than to `cell` itself so the data file's weights stay untouched
+        // for the next persona drawn in a different month.
+        const phase = eventDate ? utcYearPhase(eventDate) : null;
+        const weightOf = (i: string) => {
+          const base = cell[i] as number;
+          if (phase === null || !SEASONAL) return base;
+          const label = CAUSE!.causes[Number(i)];
+          if (!label) return base;
+          return base * Math.max(0, SEASONAL.causeMultiplier(m49, label, phase));
+        };
+        const pick = weightedPick(idxs, weightOf);
         const label = CAUSE.causes[Number(pick)];
         if (label) return label;
       }
@@ -310,19 +359,25 @@ function pickCause(m49: number | undefined, sex: Sex, bandIdx: number, age: numb
 // `m49` may be omitted/unknown — then the global distribution (or the tables) is used.
 // `cellIndex` is this death's index into data/rate-grid.json's cells (from the sampler in
 // useGlobeData.ts); when it resolves to a cell pyramid, age/sex are drawn from that instead of
-// the flat national one. Cause sampling is unaffected — it stays country + band + sex.
+// the flat national one. `eventDate` is the simulated death's real-world date (Earth.tsx's
+// per-frame clock); when present it reweights age and cause toward the measured or transferred
+// month shape from data/seasonal-composition.json (04-07) — winter skewing older and more
+// respiratory/circulatory where measured, summer toward drowning/heat exposure where measured.
+// Both `cellIndex` and `eventDate` are optional and independent, so neither call site depends on
+// the other, and sex sampling is unaffected by either — only age and cause are month-conditioned.
 export function makePersona(
   m49: number | undefined,
   country: string,
   words: PersonaWords,
   cellIndex?: number,
+  eventDate?: Date,
 ): Persona {
   const sex = sampleSex(m49, cellIndex);
-  const { age, idx } = sampleAge(m49, sex, cellIndex);
+  const { age, idx } = sampleAge(m49, sex, cellIndex, eventDate);
   // Sampled as the English source label, then named: `cause` stays the identity so anything
   // reading a persona downstream can still match on it, and only `text` is in the reader's
   // language.
-  const cause = pickCause(m49, sex, idx, age);
+  const cause = pickCause(m49, sex, idx, age, eventDate);
   const who = sexLabel(words, sex, age);
   const text = fill(words.persona, {
     who,

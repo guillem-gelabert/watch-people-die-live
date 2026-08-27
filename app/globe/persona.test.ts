@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { en } from "@/lib/i18n/en";
@@ -55,6 +56,20 @@ const readData = (name: string): unknown =>
     fs.readFileSync(fileURLToPath(new URL(`../../data/${name}`, import.meta.url)), "utf8"),
   );
 
+// The real world topology and Köppen class map, exactly what /data/countries-110m.json and
+// /data/seasonality-climate-fallback.json serve at runtime (the former via a route handler over
+// node_modules/world-atlas, the latter a committed data/ file) — so 04-07's transfer machinery
+// sees a real Nigeria feature (m49 566) rather than a hand-built topology fixture.
+const WORLD_ATLAS = JSON.parse(
+  fs.readFileSync(
+    path.join(
+      fileURLToPath(new URL("../../", import.meta.url)),
+      "node_modules/world-atlas/countries-110m.json",
+    ),
+    "utf8",
+  ),
+) as unknown;
+
 // A pyramid with every death in one band, so a test can fix the age it is asking about.
 function pyramid(band: number) {
   const w = Array.from({ length: 9 }, (_, i) => (i === band ? 1 : 0));
@@ -78,6 +93,14 @@ const personas = (n: number, m49?: number): Persona[] =>
 
 const personasAt = (n: number, m49: number | undefined, cellIndex: number | undefined): Persona[] =>
   Array.from({ length: n }, () => makePersona(m49, "Testland", WORDS, cellIndex));
+
+const personasAtDate = (
+  n: number,
+  m49: number | undefined,
+  cellIndex: number | undefined,
+  eventDate: Date | undefined,
+): Persona[] =>
+  Array.from({ length: n }, () => makePersona(m49, "Testland", WORDS, cellIndex, eventDate));
 
 // A pyramid with every death at one exact band, packaged as an age-sex-cells.json archetype.
 const archetype = (band: number) => {
@@ -247,5 +270,150 @@ describe("per-cell age/sex pyramid", () => {
     await initPersona();
 
     expect(() => personasAt(50, NGA, 999999)).not.toThrow();
+  });
+});
+
+// 04-07: eventDate reweights age and cause toward data/seasonal-composition.json's measured or
+// transferred month shape. lib/seasonal-composition.ts does its own fetch (independent of
+// initPersona()'s loadJson calls), so every test in this block also serves the world topology
+// and Köppen class map that fetch needs.
+describe("seasonal age/cause reweighting", () => {
+  const JAN = new Date(Date.UTC(2027, 0, 1)); // yearPhase ~0 -> cos(2π·phase) ~1 (curve peak)
+  const JUL = new Date(Date.UTC(2027, 6, 2)); // yearPhase ~0.5 -> cos(2π·phase) ~-1 (curve trough)
+
+  // A pyramid split 50/50 between the infant band (0) and the 85+ band (8), so a seasonal
+  // reweight that favours one over the other is visible as a shift in the age split.
+  const splitPyramid = {
+    global: {
+      m: [1, 0, 0, 0, 0, 0, 0, 0, 1],
+      f: [1, 0, 0, 0, 0, 0, 0, 0, 1],
+    },
+    countries: {},
+  };
+
+  // Peaks in January (coefficient 0.5 on the cosine term), flat the rest of the time this test
+  // cares about. Only band 8 carries a curve; band 0 (and every other band) stays unmeasured, so
+  // its multiplier is always 1 -- the shift comes entirely from band 8 moving.
+  const winterOldCurve = { order: 4, coefficients: [1, 0.5, 0, 0, 0, 0, 0, 0, 0] };
+  const ageBands: [number, number][] = [
+    [0, 0],
+    [1, 4],
+    [5, 14],
+    [15, 29],
+    [30, 49],
+    [50, 64],
+    [65, 74],
+    [75, 84],
+    [85, 200],
+  ];
+
+  function seasonalFiles(overrides: Record<string, unknown> = {}) {
+    return {
+      "/data/countries-110m.json": WORLD_ATLAS,
+      "/data/seasonality-climate-fallback.json": readData("seasonality-climate-fallback.json"),
+      ...overrides,
+    };
+  }
+
+  it("skews the age draw older in January than in July for a measured winter-peaking band", async () => {
+    serve({
+      "/data/mortality-age-sex.json": splitPyramid,
+      ...seasonalFiles({
+        "/data/seasonal-composition.json": {
+          meta: {
+            ageBands,
+            causeChapters: [],
+            causeLeafGroups: [],
+            chapterOfCauseLabel: {},
+            ageCountriesMeasured: ["NGA"],
+            causeCountriesMeasured: [],
+          },
+          age: {
+            countries: { NGA: [null, null, null, null, null, null, null, null, winterOldCurve] },
+          },
+          cause: { countries: {} },
+        },
+      }),
+    });
+    await initPersona();
+
+    const january = personasAtDate(400, NGA, undefined, JAN);
+    const july = personasAtDate(400, NGA, undefined, JUL);
+    const oldShare = (drawn: Persona[]) => drawn.filter((p) => p.age >= 85).length / drawn.length;
+    // Unweighted 50/50 split; January boosts band 8 to ~1.5x, July suppresses it to ~0.5x.
+    expect(oldShare(january)).toBeGreaterThan(0.55);
+    expect(oldShare(july)).toBeLessThan(0.45);
+    expect(oldShare(january)).toBeGreaterThan(oldShare(july));
+  });
+
+  it("leaves the draw unaffected when eventDate is omitted, even with seasonal data loaded", async () => {
+    serve({
+      "/data/mortality-age-sex.json": splitPyramid,
+      ...seasonalFiles({
+        "/data/seasonal-composition.json": {
+          meta: {
+            ageBands,
+            causeChapters: [],
+            causeLeafGroups: [],
+            chapterOfCauseLabel: {},
+            ageCountriesMeasured: ["NGA"],
+            causeCountriesMeasured: [],
+          },
+          age: {
+            countries: { NGA: [null, null, null, null, null, null, null, null, winterOldCurve] },
+          },
+          cause: { countries: {} },
+        },
+      }),
+    });
+    await initPersona();
+
+    const drawn = personasAtDate(400, NGA, undefined, undefined);
+    const oldShare = drawn.filter((p) => p.age >= 85).length / drawn.length;
+    expect(oldShare).toBeGreaterThan(0.4);
+    expect(oldShare).toBeLessThan(0.6);
+  });
+
+  it("reweights cause selection by the label's chapter curve", async () => {
+    const cells = () => Array.from({ length: 9 }, () => ({ 0: 1, 1: 1 })); // 50/50 A vs B
+    serve({
+      "/data/mortality-age-sex.json": pyramid(4),
+      "/data/causes.json": {
+        causes: ["cause a", "cause b"],
+        coverage: { location: "global", age: "age_bands", sex: "male_female" },
+        global: { m: cells(), f: cells() },
+        countries: {},
+      },
+      ...seasonalFiles({
+        "/data/seasonal-composition.json": {
+          meta: {
+            ageBands,
+            causeChapters: ["IX"],
+            causeLeafGroups: [],
+            chapterOfCauseLabel: { "cause a": "IX" },
+            ageCountriesMeasured: [],
+            causeCountriesMeasured: ["NGA"],
+          },
+          age: { countries: {} },
+          cause: { countries: { NGA: { chapters: { IX: winterOldCurve }, leaf: {} } } },
+        },
+      }),
+    });
+    await initPersona();
+
+    const shareA = (drawn: Persona[]) =>
+      drawn.filter((p) => p.cause === "cause a").length / drawn.length;
+    const january = personasAtDate(400, NGA, undefined, JAN);
+    const july = personasAtDate(400, NGA, undefined, JUL);
+    expect(shareA(january)).toBeGreaterThan(shareA(july));
+  });
+
+  it("never throws when an eventDate is given but the seasonal files fail to load", async () => {
+    serve({ "/data/mortality-age-sex.json": splitPyramid });
+    await initPersona();
+
+    expect(() => personasAtDate(200, NGA, undefined, JAN)).not.toThrow();
+    const drawn = personasAtDate(200, NGA, undefined, JAN);
+    expect(drawn.every((p) => Number.isFinite(p.age))).toBe(true);
   });
 });
