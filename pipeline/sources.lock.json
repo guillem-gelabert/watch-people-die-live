@@ -186,5 +186,439 @@
       "sha256": "f1b486495a7618a6fc75fe4cf37d6a8700368dc715fb1b5800ecb57612c54640",
       "url": "https://data.cdc.gov/NCHS/Weekly-Counts-of-Deaths-by-Jurisdiction-and-Cause-/u6jv-9ijr"
     }
+  ],
+  "worldpop": [
+    {
+      "file": "AFG-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "41d0d7abcf9a9351b2ba1bf2a40ec1b39cb1ad853b95a254efaf6d2ebab20919",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/AFG/"
+    },
+    {
+      "file": "AGO-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "69de2b38fe50e5d783242d1b9ada8767905a3818deb1e7e99f13b356c658ce7b",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/AGO/"
+    },
+    {
+      "file": "ARG-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "b4ed615736ad6bb79bfce9c1a2f0b09be60ff0dea8f03c2911b37c7ad3215b20",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/ARG/"
+    },
+    {
+      "file": "AUS-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "3e3886f73ef47f0401863f21aa692de6634ced29eb42ae6a3efc96e547314865",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/AUS/"
+    },
+    {
+      "file": "BDI-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "aeb4d0d0631f8e6d4ebbd0c32310e349a9a57f65cd5d91a7edb81c46c9aaac1d",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/BDI/"
+    },
+    {
+      "file": "BEL-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "0e87f780a0fceb3fdeca51362483b2584d343083469edc8b04fd09c7d48f3e77",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/BEL/"
+    },
+    {
+      "file": "BEN-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "ee38911ff20e162ba9324a9e3b9e22a2448b9a031b4d8a7851eba1e3086f49d8",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/BEN/"
+    },
+    {
+      "file": "BFA-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "4e813221e3363324c18721db2a3e68fc8354c4c63197f1cac59b1f269ce229fb",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/BFA/"
+    },
+    {
+      "file": "BGD-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "c60402a997972e98f24ea59363b53ebe295813cf47812ace288d4e4a85ff593e",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/BGD/"
+    },
+    {
+      "file": "BGR-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "549db1a364412b41ea00c33b862134662ddcc315a16033145a9bc8d6f18e67c1",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/BGR/"
+    },
+    {
+      "file": "BLR-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "e64d7183ed34f0a6bf6c84263a3003de504574006ac6902f7b47351d458b8923",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/BLR/"
+    },
+    {
+      "file": "CAN-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "31f08d69f0bf0137ef1d607f3692d091dfea4653727e71fa46aa8d0f901d2668",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/CAN/"
+    },
+    {
+      "file": "CHL-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "c689587af6130691c788a8f580667c3315450dc68e47157e8ac4c277c2d29fb8",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/CHL/"
+    },
+    {
+      "file": "CHN-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "f1d52376dcedb99aaf4d97e9e1dc199adb992bb0fbc681cb8be5db6c24b6acd6",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/CHN/"
+    },
+    {
+      "file": "CIV-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "3ec79802094bf4d8facb334473bfad3cefe41b78b027cddc242d74fd1fae28ea",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/CIV/"
+    },
+    {
+      "file": "CMR-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "d844b529c6c159d78b14476b0b026237151ea6acb16e42beff3acc2f4539713d",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/CMR/"
+    },
+    {
+      "file": "COD-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "75f7e9bd266313d2f85e939efa3e4cec3506b1add8d119764c2db079fb0cd042",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/COD/"
+    },
+    {
+      "file": "COL-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "373b73825dff78e4014f32bcb840a2f63617da7585d6ecfefeb9acd29e90a673",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/COL/"
+    },
+    {
+      "file": "CUB-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "d2639ab82d735072c3ab58a5e4ceca43f0df84ad280b232f5b14e44e08c5415b",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/CUB/"
+    },
+    {
+      "file": "CZE-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "c7a1b4cd423c076c1a438a18e0c922d9ba14fa2e6a35e2f28f5d7e1b31c278b2",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/CZE/"
+    },
+    {
+      "file": "DEU-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "f33141ef3ee661aa08037e8c250e61d75a95f57e3fadd4288ec8b1adc3ab4c72",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/DEU/"
+    },
+    {
+      "file": "DZA-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "68ec050314d338ca93a6caa13e0f9e8c7971439ae61a2192e7729551edb3bd28",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/DZA/"
+    },
+    {
+      "file": "ECU-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "be4ef3c7b284a6690b6ff774157d0bf4a32611aff3061f25d5651da5bf71fce2",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/ECU/"
+    },
+    {
+      "file": "EGY-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "fefdf5f74c377eb34284055bd176d3ab821f33c5cf8fcd88fd9a0c675a23ce6f",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/EGY/"
+    },
+    {
+      "file": "ESP-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "b06e4e8784377fa1d4d158eb63b56d38e35e339dd97f839df85928535e18337b",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/ESP/"
+    },
+    {
+      "file": "FRA-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "9bed3e6a69505eb3814bf142f13deb7977681a6a0251b6abca97bd47911e59f6",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/FRA/"
+    },
+    {
+      "file": "GBR-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "26b67594ba9d83cc83ef126fee3cfdac343c4d8d49af6fab37eb16da2686d569",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/GBR/"
+    },
+    {
+      "file": "GHA-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "c4428ae4276bd064b29415fddefc58af4443215c47b7b6d44ee04286a11b4c2e",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/GHA/"
+    },
+    {
+      "file": "GIN-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "7300ed88f9b13c3d64a335998d89478631ade9df205d425cdd7505e72f28e166",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/GIN/"
+    },
+    {
+      "file": "GRC-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "4a6cfe0c8140939a9a8dc63cbe7b4347cd11156e90d5650012615724d4f25e34",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/GRC/"
+    },
+    {
+      "file": "GTM-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "267d2f1a1062449ff80a16f68954b7cef002db869b9833d5387d802ea1bb308e",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/GTM/"
+    },
+    {
+      "file": "HTI-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "0eb1758fe53cb3e769097c33bd370c2c0d1febc358bf6e33834806efec54ca03",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/HTI/"
+    },
+    {
+      "file": "HUN-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "12bc94e50445ab32fb776da1880f777d7f1853f8d726aa5ab83e307636199c3e",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/HUN/"
+    },
+    {
+      "file": "IRQ-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "bd45110522b2b4c4b4075b4f8ee9b5fae366a2d7fb6dacad4c177848016b4570",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/IRQ/"
+    },
+    {
+      "file": "KAZ-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "a0d5b8c43843401e008fe75b5865b69ede044b7babe93d888d771c3de956faa7",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/KAZ/"
+    },
+    {
+      "file": "KEN-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "6f01ec9f46e6859e1446da2053081c3a9e0109b9d2aeb243fe85c9ac617d53e7",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/KEN/"
+    },
+    {
+      "file": "KHM-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "129ed8705b472cf36e2bbce4d9076fe6e52604ff6886261a24c1538381e6319e",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/KHM/"
+    },
+    {
+      "file": "KOR-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "99576bb1abbcee7ed130f8ef43a4443f09f7c1f126e737e764e7a9bd4b5ab0cb",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/KOR/"
+    },
+    {
+      "file": "LKA-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "c9c32d698579f51d079ea204486c139d992e11b8ad4696db006ffa0ec6c22519",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/LKA/"
+    },
+    {
+      "file": "MAR-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "98f63bb5c261e4857457de272609481574b87c388a57bb51e1bfc966c33f3151",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/MAR/"
+    },
+    {
+      "file": "MDG-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "9fe2b8c8fda2a19b2b6c7a3bef5d7d138cbf1fe366f26a2aa78fc8f4aa9631e4",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/MDG/"
+    },
+    {
+      "file": "MLI-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "dd9a91fd01c18162b9de447cd63e7ed9c8361d8001b2399b1e636e3f4f9c70bc",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/MLI/"
+    },
+    {
+      "file": "MMR-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "50c3066339d9fe8644039e18f42384c0522b2da9eb6cef0fad75cbce4fba59b5",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/MMR/"
+    },
+    {
+      "file": "MOZ-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "883055526a38a0f6c1fb0430c2235fa5526248da781ba7c4ef6a516d4bf580c1",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/MOZ/"
+    },
+    {
+      "file": "MWI-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "8dd790b23d76227f1b33cbd60be03a33e78f5860804430d60d3e47a9ba099a87",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/MWI/"
+    },
+    {
+      "file": "MYS-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "aadff652c90245b52c9e2e23c3a9943219c5e4a47b0f4ed9cc5e3868db80a770",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/MYS/"
+    },
+    {
+      "file": "NER-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "24b655a86e214e0011c50dd4000ca4f851d33c98126f6bade3a2e763234e1879",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/NER/"
+    },
+    {
+      "file": "NLD-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "31ea7a3bf3c590e1143afd16295ff2f53e6991b0251bc3b1f986d57c095c8815",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/NLD/"
+    },
+    {
+      "file": "NPL-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "a2939d39ed2c1f0ac27119ad8dcaa75d36b3a020fbba9dae4f0a9da382e69eff",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/NPL/"
+    },
+    {
+      "file": "PER-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "5a012ea259e1841c6e89618a52ff0b6760a90b2e5b4352cc0542335ef0c72b81",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/PER/"
+    },
+    {
+      "file": "PRK-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "982ff38a8df552be56fdb042737bd5f26693ee0abc888ad4979e58fc7434c31f",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/PRK/"
+    },
+    {
+      "file": "PRT-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "01403983a9ef039adc10279d5c39c19c0b65829ccb4f1a24b22935bbdeff97c9",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/PRT/"
+    },
+    {
+      "file": "ROU-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "7f4e8c02ffa04bf84faa6a4fd4fa1af9d44dc54e6ac477d460bf74f21eecd555",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/ROU/"
+    },
+    {
+      "file": "RUS-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "d82322f96dc14eb5ffa5158c96837af77cfd0bb14016c609f31d4c7e787ca534",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/RUS/"
+    },
+    {
+      "file": "SDN-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "d64b19d366352daf4459c30df44532780d9dc8389bf939ba27ae7c4adc635aa9",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/SDN/"
+    },
+    {
+      "file": "SEN-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "ff1855255c1533770235b40ba0a5ddbf5bb03afc1785d81a6f8edebc1aaac1fe",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/SEN/"
+    },
+    {
+      "file": "SOM-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "7c3afed66b1540b5b6e9bd350ea8ace4a147ca03317c0949194bf84891de28b9",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/SOM/"
+    },
+    {
+      "file": "SRB-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "b4c5f3e61898cc28669a905a90c151f7b3ef56d0f113d09cbdb47a36c3f48ca1",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/SRB/"
+    },
+    {
+      "file": "SWE-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "da91c442201969db74d08bf27f1feef9e6d5916c6d94c358a1026755d93fbb0b",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/SWE/"
+    },
+    {
+      "file": "SYR-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "a3f8c1b67c04fe41d69a21e839a095a79afcbc73daaf187700d21e594eac162c",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/SYR/"
+    },
+    {
+      "file": "TCD-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "c98215e1edb9aa1120d3401c7a41f2dec0e6492db507fa11fb18728829b1cdcd",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/TCD/"
+    },
+    {
+      "file": "THA-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "6036a6b7599d3691b9157f5756da527648e6738e8b3d66276f8ac45fc7cf1d43",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/THA/"
+    },
+    {
+      "file": "TUR-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "67050cc2de217ba5367c8df96985aef408e4b54935484ab75b0643f546f2cfe1",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/TUR/"
+    },
+    {
+      "file": "TZA-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "398ff38c620d7756c53534caa2b69a265d20a10b41a25b624cf3c8ede4520f75",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/TZA/"
+    },
+    {
+      "file": "UGA-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "5e791a9e678152984519a2ef0052f7ea79c4b16ccaaa7a3b453102840149c672",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/UGA/"
+    },
+    {
+      "file": "UKR-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "eeb6cf76ab2a289fe5ae80db6c1f385903de939bfe5a8a91b7bfddec1490b944",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/UKR/"
+    },
+    {
+      "file": "UZB-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "c44fb7c4dee2e9be4e36892901e5a0ab6c651b1903a2448f893b8bf80b94f02f",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/UZB/"
+    },
+    {
+      "file": "VEN-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "4180546701b99d559926989f5d865b511f82ef600cc65db06ee0a26f4511fae4",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/VEN/"
+    },
+    {
+      "file": "VNM-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "3508ff6b39eb116107a4ad0baca7b8ba0ab4d61e1bcc5089d51e68fe1708dbf1",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/VNM/"
+    },
+    {
+      "file": "YEM-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "bf5577696070127c4f381dc0c5972dfbf10acec06ed3e9fdfbac67140b45c2bd",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/YEM/"
+    },
+    {
+      "file": "ZMB-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "e581e2e0743d0eb849e2dfc442cdfd6fe5f7e8c9be1ae5a74397be4cdc809906",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/ZMB/"
+    },
+    {
+      "file": "ZWE-36bands",
+      "retrieved": "2026-08-27",
+      "sha256": "832a94a9887b9f07be1fad048d410c2956cb276fda77a1132649abf1e4467bce",
+      "url": "https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/ZWE/"
+    }
   ]
 }

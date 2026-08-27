@@ -1,6 +1,6 @@
 """CLI: python -m pipeline
 {status | fetch [source...] | build [source...] | age-sex [source...] |
- fetch-eurostat | eurostat | argentina-latitudes}
+ fetch-eurostat | eurostat | fetch-worldpop | worldpop | argentina-latitudes}
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from .build import find_root, write_seasonality
 from .cache import cache_dir as resolve_cache_dir
 from .manifest import record
 from .registry import MODULES, REGISTRY
-from .sources import argentina_partido_latitudes, eurostat
+from .sources import argentina_partido_latitudes, eurostat, worldpop
 
 
 def cmd_status(root: Path) -> None:
@@ -62,6 +62,24 @@ def cmd_eurostat(root: Path) -> None:
     print(f"wrote {out_path}")
 
 
+def cmd_fetch_worldpop(root: Path) -> None:
+    """WorldPop is not in REGISTRY either -- like eurostat, it feeds its own artifact. Unlike
+    eurostat's fetch, this one also reduces and deletes each country's rasters before moving to
+    the next (see pipeline/sources/worldpop.py's docstring for why fetch/build cannot cleanly
+    split here the way eurostat's does)."""
+    summary = worldpop.fetch(root)
+    print(
+        f"worldpop fetch: {len(summary['coveredCountries'])} countries covered, "
+        f"{len(summary['skippedCountries'])} skipped, "
+        f"{summary['cumulativeBytes'] / 1e9:.2f} GB, {summary['elapsedSeconds']:.0f}s"
+    )
+
+
+def cmd_worldpop(root: Path) -> None:
+    out_path = worldpop.build(root)
+    print(f"wrote {out_path}")
+
+
 def cmd_argentina_latitudes(root: Path) -> None:
     out_path = argentina_partido_latitudes.build(root)
     print(f"wrote {out_path}")
@@ -79,6 +97,8 @@ def main() -> None:
     age_sex_p.add_argument("source", nargs="*")
     sub.add_parser("fetch-eurostat")
     sub.add_parser("eurostat")
+    sub.add_parser("fetch-worldpop")
+    sub.add_parser("worldpop")
     sub.add_parser("argentina-latitudes")
     args = parser.parse_args()
 
@@ -95,6 +115,10 @@ def main() -> None:
         cmd_fetch_eurostat(root)
     elif args.command == "eurostat":
         cmd_eurostat(root)
+    elif args.command == "fetch-worldpop":
+        cmd_fetch_worldpop(root)
+    elif args.command == "worldpop":
+        cmd_worldpop(root)
     elif args.command == "argentina-latitudes":
         cmd_argentina_latitudes(root)
 
