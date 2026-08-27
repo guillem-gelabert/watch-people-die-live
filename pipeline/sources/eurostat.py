@@ -32,7 +32,7 @@ from pathlib import Path
 
 import requests
 
-from ..age_bands import BANDS
+from ..age_bands import BANDS, icd_chapter
 from ..cache import sha256_of, today
 from ..contract import FetchedFile
 
@@ -211,6 +211,182 @@ _ROLLUP_CODES = frozenset({
 def _file(cache_dir: Path, table: str, part: int = 0) -> Path:
     suffix = "" if len(_TABLES[table]) == 1 else f"-{part + 1:02d}"
     return cache_dir / f"eurostat-{table}-{YEAR}{suffix}.json"
+
+
+# --- Non-COVID weekly pull for 04-07's age x month tensor --------------------------------
+#
+# `demo_r_mwk2_05` above is pinned to YEAR = 2022, which is *inside* pipeline.curve.COVID_YEARS
+# ({2020, 2021, 2022}) -- fine for the age x sex and cause layers built above (neither varies by
+# month), wrong for a month-conditioned tensor, whose whole point is a normal-year shape. Rather
+# than moving YEAR (04-06 already flagged that touches both annual tables and this file's own
+# tests), this re-pulls the same table for five complete non-COVID years -- the exact window
+# brazil.py/mexico.py/australia.py already pool (`_YEARS = (2015, ..., 2019)`), so it is a
+# parameter change to the existing chunked fetch, not new machinery, and it never touches the
+# YEAR-2022 cache files or data/eurostat-regional.json.
+SEASONAL_YEARS: tuple[int, ...] = (2015, 2016, 2017, 2018, 2019)
+
+
+def _seasonal_weeks(year: int) -> tuple[str, ...]:
+    return tuple(f"{year}-W{w:02d}" for w in range(1, 53))
+
+
+def _seasonal_urls(year: int) -> tuple[str, ...]:
+    weeks = _seasonal_weeks(year)
+    chunks = tuple(weeks[i : i + 13] for i in range(0, len(weeks), 13))
+    return tuple(
+        f"{API}/demo_r_mwk2_05?format=JSON&sex=M&sex=F" + "".join(f"&time={w}" for w in chunk)
+        for chunk in chunks
+    )
+
+
+def _seasonal_file(cache_dir: Path, year: int, part: int) -> Path:
+    return cache_dir / f"eurostat-demo_r_mwk2_05-{year}-{part + 1:02d}.json"
+
+
+def fetch_seasonal(cache_dir: Path) -> list[FetchedFile]:
+    """Fetch demo_r_mwk2_05 for SEASONAL_YEARS. Skips any chunk already cached, so a partial
+    or repeated run only fetches what's missing -- mirrors worldpop.py's resume behaviour."""
+    out: list[FetchedFile] = []
+    for year in SEASONAL_YEARS:
+        for part, url in enumerate(_seasonal_urls(year)):
+            dest = _seasonal_file(cache_dir, year, part)
+            if not dest.exists():
+                response = requests.get(url, timeout=180, headers={"Accept": "application/json"})
+                response.raise_for_status()
+                dest.write_bytes(response.content)
+            out.append(FetchedFile(path=dest, url=url, sha256=sha256_of(dest), retrieved=today()))
+    return out
+
+
+def read_seasonal_payloads(cache_dir: Path) -> list[dict]:
+    """Every cached SEASONAL_YEARS chunk, parsed. Raises if fetch_seasonal() hasn't run."""
+    payloads = []
+    for year in SEASONAL_YEARS:
+        for part in range(len(_seasonal_urls(year))):
+            path = _seasonal_file(cache_dir, year, part)
+            if not path.exists():
+                raise FileNotFoundError(
+                    f"{path} missing -- run `python -m pipeline fetch-seasonal-composition` first"
+                )
+            payloads.append(json.loads(path.read_text()))
+    return payloads
+
+
+def nuts2_country_iso2(root: Path) -> dict[str, str]:
+    """NUTS_ID -> CNTR_CODE (ISO 3166-1 alpha-2), straight from the committed geometry."""
+    topo = json.loads((root / "data" / "nuts2-20m.json").read_text())
+    return {
+        g["properties"]["NUTS_ID"]: g["properties"]["CNTR_CODE"]
+        for g in topo["objects"]["nuts2_20m"]["geometries"]
+    }
+
+
+# ISO2 -> ISO3 for exactly the country codes demo_r_mwk2_05 can emit (EU + EFTA + candidates),
+# matching the set already enumerated in _JOIN_REASONS above. Small and static like BR_UF2ISO /
+# ENT2ISO in the Brazil/Mexico source modules, rather than a new runtime dependency for a ~35-row
+# table that does not change.
+NUTS2_ISO2_TO_ISO3: dict[str, str] = {
+    "AT": "AUT", "BE": "BEL", "BG": "BGR", "CH": "CHE", "CY": "CYP", "CZ": "CZE", "DE": "DEU",
+    "DK": "DNK", "EE": "EST", "EL": "GRC", "ES": "ESP", "FI": "FIN", "FR": "FRA", "HR": "HRV",
+    "HU": "HUN", "IE": "IRL", "IS": "ISL", "IT": "ITA", "LI": "LIE", "LT": "LTU", "LU": "LUX",
+    "LV": "LVA", "ME": "MNE", "MK": "MKD", "MT": "MLT", "NL": "NLD", "NO": "NOR", "PL": "POL",
+    "PT": "PRT", "RO": "ROU", "SE": "SWE", "SI": "SVN", "SK": "SVK", "TR": "TUR", "UK": "GBR",
+}
+
+
+# The 8 project bands demo_r_mwk2_05's WEEKLY_BANDS resolve to, one weekly-band index per project
+# band -- bands 0 ([0,0]) and 1 ([1,4]) share WEEKLY_BANDS[0] ([0,4]) because the source cannot
+# split them (see WEEKLY_BANDS's own comment above), everything else is a 1:1 relabelling.
+PROJECT_BAND_TO_WEEKLY_BAND: tuple[int, ...] = (0, 0, 1, 2, 3, 4, 5, 6, 7)
+
+
+def age_month_curves(
+    root: Path, cache_dir: Path, min_annual: float = 200.0, min_bands: int = 5
+) -> dict[str, list]:
+    """iso3 -> one harmonic-curve-or-None per project band, fit from demo_r_mwk2_05 pooled over
+    SEASONAL_YEARS.
+
+    Coverage is genuinely per-band, not all-or-nothing per country: band 1 ([5,14]) is the
+    lowest-mortality age band across the whole life course, so ~40-120 deaths/year is normal for
+    a mid-size European country and routinely falls under min_annual while every other band in
+    the same country clears it comfortably (measured: AUT 7/8 bands pass, only band 1 fails).
+    Requiring every band to pass would have thrown away seven perfectly good measured bands to
+    exclude one noisy one. A country is included once at least `min_bands` of its 9 project bands
+    resolve; the remainder stay None for 04-07's per-band transfer step (lib/spatial-
+    seasonality.ts's donor cascade, called once per band) to fill from donors, exactly like a
+    country with no measurement in that band at all.
+    """
+    from .. import curve as curve_module  # local import: avoids a cycle with pipeline.build
+
+    iso2_by_nuts2 = nuts2_country_iso2(root)
+    rows: dict[tuple[str, int], list[dict]] = defaultdict(list)
+    for year in SEASONAL_YEARS:
+        for part in range(len(_seasonal_urls(year))):
+            payload = json.loads(_seasonal_file(cache_dir, year, part).read_text())
+            for cell, value in _cells([payload]):
+                geo, sex_code = cell["geo"], cell["sex"]
+                if sex_code not in _SEX:
+                    continue
+                iso2 = iso2_by_nuts2.get(geo)
+                iso3 = NUTS2_ISO2_TO_ISO3.get(iso2) if iso2 else None
+                if not iso3:
+                    continue
+                band = _weekly_band(cell["age"])
+                if band is None:
+                    continue
+                week = int(cell["time"].split("-W")[1])
+                rows[(iso3, band)].append(
+                    {"year": year, "period_type": "week", "period": week, "deaths": float(value)}
+                )
+
+    by_country_band: dict[str, dict[int, dict]] = defaultdict(dict)
+    for (iso3, band), band_rows in rows.items():
+        result = curve_module.country_curve_records(band_rows, min_years=1, min_annual=min_annual)
+        if result:
+            by_country_band[iso3][band] = result["harmonic"]
+
+    countries: dict[str, list] = {}
+    for iso3, by_band in by_country_band.items():
+        curves = [by_band.get(wb) for wb in PROJECT_BAND_TO_WEEKLY_BAND]
+        if sum(1 for c in curves if c) >= min_bands:
+            countries[iso3] = curves
+    return countries
+
+
+# For each mapped ICD-10 grouping above, the chapter its leaf code falls in -- resolved
+# mechanically via icd_chapter() rather than hand-typed, so it cannot drift from the chapter
+# ranges above. A handful of keys are not literal ICD-10 codes (single-letter chapter markers
+# "O"/"P"/"Q", or the compound external-cause marker "V_Y85") and need a small override.
+_CHAPTER_LEAF_OVERRIDES: dict[str, str | None] = {
+    "V_Y85": "V01",  # external causes (V01-Y89), not a real code on its own
+    "TOXICO": None,  # not an ICD-10 code -- no chapter to resolve
+}
+
+
+def _chapter_leaf_code(compound: str) -> str | None:
+    if compound in _CHAPTER_LEAF_OVERRIDES:
+        return _CHAPTER_LEAF_OVERRIDES[compound]
+    token = compound.replace("_", "-").split("-")[0]
+    if len(token) == 1 and token.isalpha():
+        token = f"{token}00"
+    return token
+
+
+def chapter_of_cause_label() -> dict[str, str]:
+    """causes.json label -> ICD-10 chapter numeral, derived from ICD10_TO_CAUSE above.
+
+    Some labels are reachable from more than one chapter (e.g. Alzheimer's & dementia from both
+    F01_F03 and G30); the first occurrence in ICD10_TO_CAUSE's declaration order wins, since a
+    month-conditioned reweight needs exactly one chapter per label, not a blend. This is a
+    disclosed simplification, not a new vocabulary -- every label is already in data/causes.json.
+    """
+    result: dict[str, str] = {}
+    for code, label in ICD10_TO_CAUSE.items():
+        leaf = _chapter_leaf_code(code)
+        chapter = icd_chapter(leaf) if leaf else None
+        if chapter and label not in result:
+            result[label] = chapter
+    return result
 
 
 def fetch(cache_dir: Path) -> list[FetchedFile]:

@@ -1,6 +1,7 @@
 """CLI: python -m pipeline
 {status | fetch [source...] | build [source...] | age-sex [source...] |
- fetch-eurostat | eurostat | fetch-worldpop | worldpop | argentina-latitudes}
+ fetch-eurostat | eurostat | fetch-worldpop | worldpop |
+ fetch-seasonal-composition | seasonal-composition | argentina-latitudes}
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from .build import find_root, write_seasonality
 from .cache import cache_dir as resolve_cache_dir
 from .manifest import record
 from .registry import MODULES, REGISTRY
+from .seasonal_composition import build as build_seasonal_composition
 from .sources import argentina_partido_latitudes, eurostat, worldpop
 
 
@@ -85,6 +87,20 @@ def cmd_argentina_latitudes(root: Path) -> None:
     print(f"wrote {out_path}")
 
 
+def cmd_fetch_seasonal_composition(root: Path) -> None:
+    """Only Eurostat needs a fetch here -- Brazil and Mexico's cause x month reader (04-07)
+    reads the same manual-mode microdata load_age_sex() already reads, already cached."""
+    c_dir = resolve_cache_dir(root)
+    files = eurostat.fetch_seasonal(c_dir)
+    record("eurostat-seasonal", files)
+    print(f"fetched {len(files)} eurostat weekly chunks across {len(eurostat.SEASONAL_YEARS)} years")
+
+
+def cmd_seasonal_composition(root: Path) -> None:
+    out_path = build_seasonal_composition(root, resolve_cache_dir(root))
+    print(f"wrote {out_path}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="python -m pipeline")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -99,6 +115,8 @@ def main() -> None:
     sub.add_parser("eurostat")
     sub.add_parser("fetch-worldpop")
     sub.add_parser("worldpop")
+    sub.add_parser("fetch-seasonal-composition")
+    sub.add_parser("seasonal-composition")
     sub.add_parser("argentina-latitudes")
     args = parser.parse_args()
 
@@ -119,6 +137,10 @@ def main() -> None:
         cmd_fetch_worldpop(root)
     elif args.command == "worldpop":
         cmd_worldpop(root)
+    elif args.command == "fetch-seasonal-composition":
+        cmd_fetch_seasonal_composition(root)
+    elif args.command == "seasonal-composition":
+        cmd_seasonal_composition(root)
     elif args.command == "argentina-latitudes":
         cmd_argentina_latitudes(root)
 

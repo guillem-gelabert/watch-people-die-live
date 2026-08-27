@@ -14,7 +14,7 @@ import requests
 
 from ..cache import sha256_of, today
 from ..age_bands import BANDS as _PROJECT_BANDS
-from ..age_bands import band_of, icd_chapter
+from ..age_bands import band_of, icd_chapter, leaf_cause_group
 from ..contract import AgeSexRow, FetchedFile, Source
 
 BASE_URL = "https://repodatos.atdt.gob.mx/all_data/secretaria_salud/6fecbbb3-afd9-44a1-8665-679a80ce4a15"
@@ -186,3 +186,49 @@ def load_age_sex(cache_dir: Path) -> tuple[list[AgeSexRow], list[str]]:
 
 
 AGE_SEX_BANDS = _PROJECT_BANDS
+
+
+def load_cause_by_month(cache_dir: Path) -> tuple[dict[str, list[dict]], dict[str, list[dict]]]:
+    """Country-wide deaths by (year, month, ICD-10 chapter) and by (year, month, leaf group),
+    from the same MES_OCURR/ANIO_OCUR/CAUSA_DEF columns load_age_sex() reads -- see that
+    function's docstring for the occurrence-year window this applies. Country-wide, not per
+    entity, since 04-07's cause x month tensor needs one national total per month.
+    """
+    parts = []
+    for year in _YEARS:
+        parts.append(
+            pd.read_csv(
+                _file(cache_dir, year),
+                usecols=["ENT_RESID", "MES_OCURR", "ANIO_OCUR", "CAUSA_DEF"],
+                low_memory=False,
+            )
+        )
+    mx = pd.concat(parts, ignore_index=True)
+    mx["year"] = pd.to_numeric(mx["ANIO_OCUR"], errors="coerce")
+    mx["month"] = pd.to_numeric(mx["MES_OCURR"], errors="coerce")
+    mx["ent"] = pd.to_numeric(mx["ENT_RESID"], errors="coerce")
+    mx = mx[
+        mx["month"].between(1, 12)
+        & mx["ent"].isin(ENT2ISO)
+        & mx["year"].between(_YEARS[0], _YEARS[-1])
+    ]
+    mx["month"] = mx["month"].astype(int)
+    mx["year"] = mx["year"].astype(int)
+    mx["chapter"] = mx["CAUSA_DEF"].map(icd_chapter)
+    mx["leaf"] = mx["CAUSA_DEF"].map(leaf_cause_group)
+
+    chapter_rows: dict[str, list[dict]] = {}
+    for (year, month, chapter), sub in mx[mx.chapter.notna()].groupby(
+        ["year", "month", "chapter"], dropna=False
+    ):
+        chapter_rows.setdefault(str(chapter), []).append(
+            {"year": int(year), "period_type": "month", "period": int(month), "deaths": float(len(sub))}
+        )
+    leaf_rows: dict[str, list[dict]] = {}
+    for (year, month, leaf), sub in mx[mx.leaf.notna()].groupby(
+        ["year", "month", "leaf"], dropna=False
+    ):
+        leaf_rows.setdefault(str(leaf), []).append(
+            {"year": int(year), "period_type": "month", "period": int(month), "deaths": float(len(sub))}
+        )
+    return chapter_rows, leaf_rows

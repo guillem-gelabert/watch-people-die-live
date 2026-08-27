@@ -54,3 +54,33 @@ def icd_chapter(code: str | None) -> str | None:
         if lo <= c <= hi:
             return chapter
     return None
+
+
+# A pair of causes.json labels specific enough to give real seasonal signal beyond their ICD-10
+# chapter, which otherwise bundles them with unrelated external causes (falls, suicide, violence,
+# road injuries) that do not share the same summer shift. Ranges are the standard ICD-10
+# external-cause-of-injury sub-blocks (W65-W74 accidental drowning, X30-X39 exposure to forces of
+# nature, of which X30 is excessive natural heat) -- not project-specific, so hardcoding them
+# carries no more risk than the chapter ranges above. Used only by 04-07's cause x month tensor.
+_LEAF_GROUPS: tuple[tuple[str, str, str], ...] = (
+    ("W65", "W74", "drowning"),
+    ("X30", "X39", "exposure to forces of nature"),
+)
+
+
+def leaf_cause_group(code: str | None) -> str | None:
+    """causes.json leaf label for a code inside one of the ranges above, else None.
+
+    Not mutually exclusive with icd_chapter(): a drowning death is chapter XX *and*
+    leaf group "drowning" -- both are measured so a consumer can prefer the more specific
+    one where it exists and fall back to the chapter otherwise.
+    """
+    if not code:
+        return None
+    c = code.strip().upper()[:3]
+    if len(c) < 3:
+        return None
+    for lo, hi, label in _LEAF_GROUPS:
+        if lo <= c <= hi:
+            return label
+    return None

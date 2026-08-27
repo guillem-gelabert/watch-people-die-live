@@ -119,6 +119,128 @@
       "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2022-W40&time=2022-W41&time=2022-W42&time=2022-W43&time=2022-W44&time=2022-W45&time=2022-W46&time=2022-W47&time=2022-W48&time=2022-W49&time=2022-W50&time=2022-W51&time=2022-W52"
     }
   ],
+  "eurostat-seasonal": [
+    {
+      "file": "eurostat-demo_r_mwk2_05-2015-01.json",
+      "retrieved": "2026-08-27",
+      "sha256": "474be211de1cad1204f6e9849ad7f72979021b715c77fa96810ccdc5914f0d34",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2015-W01&time=2015-W02&time=2015-W03&time=2015-W04&time=2015-W05&time=2015-W06&time=2015-W07&time=2015-W08&time=2015-W09&time=2015-W10&time=2015-W11&time=2015-W12&time=2015-W13"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2015-02.json",
+      "retrieved": "2026-08-27",
+      "sha256": "a6534ed99db0a1f6023ffaa141b9cb4966f6c49b6f78d1eeeb843313f3828ec0",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2015-W14&time=2015-W15&time=2015-W16&time=2015-W17&time=2015-W18&time=2015-W19&time=2015-W20&time=2015-W21&time=2015-W22&time=2015-W23&time=2015-W24&time=2015-W25&time=2015-W26"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2015-03.json",
+      "retrieved": "2026-08-27",
+      "sha256": "6014ec14edf27f7106785082e73690c9d8088863bb64813f2500eabb5ad90419",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2015-W27&time=2015-W28&time=2015-W29&time=2015-W30&time=2015-W31&time=2015-W32&time=2015-W33&time=2015-W34&time=2015-W35&time=2015-W36&time=2015-W37&time=2015-W38&time=2015-W39"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2015-04.json",
+      "retrieved": "2026-08-27",
+      "sha256": "cfea2212dec16f557470f8203be843bc7908bc8798f8361f3e887833e88d66e1",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2015-W40&time=2015-W41&time=2015-W42&time=2015-W43&time=2015-W44&time=2015-W45&time=2015-W46&time=2015-W47&time=2015-W48&time=2015-W49&time=2015-W50&time=2015-W51&time=2015-W52"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2016-01.json",
+      "retrieved": "2026-08-27",
+      "sha256": "83397833012eb40b13bba2e29d0918b955f878007f644f6d1a0128388d07c2f9",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2016-W01&time=2016-W02&time=2016-W03&time=2016-W04&time=2016-W05&time=2016-W06&time=2016-W07&time=2016-W08&time=2016-W09&time=2016-W10&time=2016-W11&time=2016-W12&time=2016-W13"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2016-02.json",
+      "retrieved": "2026-08-27",
+      "sha256": "b9d12699ad04de18ad7c8c17fca80b37f83291fd8a01d827955762f89034e430",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2016-W14&time=2016-W15&time=2016-W16&time=2016-W17&time=2016-W18&time=2016-W19&time=2016-W20&time=2016-W21&time=2016-W22&time=2016-W23&time=2016-W24&time=2016-W25&time=2016-W26"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2016-03.json",
+      "retrieved": "2026-08-27",
+      "sha256": "72750e64a1c07076aeb3967805269bc548d7b2e58758b7b2ecc2770b3471e852",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2016-W27&time=2016-W28&time=2016-W29&time=2016-W30&time=2016-W31&time=2016-W32&time=2016-W33&time=2016-W34&time=2016-W35&time=2016-W36&time=2016-W37&time=2016-W38&time=2016-W39"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2016-04.json",
+      "retrieved": "2026-08-27",
+      "sha256": "8768318a208eed5a3c609acdde90ffd6870f567317089bcf7d641922edb823aa",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2016-W40&time=2016-W41&time=2016-W42&time=2016-W43&time=2016-W44&time=2016-W45&time=2016-W46&time=2016-W47&time=2016-W48&time=2016-W49&time=2016-W50&time=2016-W51&time=2016-W52"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2017-01.json",
+      "retrieved": "2026-08-27",
+      "sha256": "c6c1de827ad205ea94bdb17ea5d7a05a1c880d63e17cad44fb25367dbaf81087",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2017-W01&time=2017-W02&time=2017-W03&time=2017-W04&time=2017-W05&time=2017-W06&time=2017-W07&time=2017-W08&time=2017-W09&time=2017-W10&time=2017-W11&time=2017-W12&time=2017-W13"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2017-02.json",
+      "retrieved": "2026-08-27",
+      "sha256": "028a4732311ff579b4ee5cce38ef7d638a5a30f070f7f2399f556c8fd079c4d6",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2017-W14&time=2017-W15&time=2017-W16&time=2017-W17&time=2017-W18&time=2017-W19&time=2017-W20&time=2017-W21&time=2017-W22&time=2017-W23&time=2017-W24&time=2017-W25&time=2017-W26"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2017-03.json",
+      "retrieved": "2026-08-27",
+      "sha256": "93d63ad7a0b02c9f5c859072bf3b68f7eadde4c1a2a02b135dd8505d5334e4cb",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2017-W27&time=2017-W28&time=2017-W29&time=2017-W30&time=2017-W31&time=2017-W32&time=2017-W33&time=2017-W34&time=2017-W35&time=2017-W36&time=2017-W37&time=2017-W38&time=2017-W39"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2017-04.json",
+      "retrieved": "2026-08-27",
+      "sha256": "fdd2671c945adb35f8b6c67e0159c0b0df8f38a2cccf6495455155bbd17529d6",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2017-W40&time=2017-W41&time=2017-W42&time=2017-W43&time=2017-W44&time=2017-W45&time=2017-W46&time=2017-W47&time=2017-W48&time=2017-W49&time=2017-W50&time=2017-W51&time=2017-W52"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2018-01.json",
+      "retrieved": "2026-08-27",
+      "sha256": "f3dca28030f4d93d493088f00607e58fcde8374eac4e92f588d362f31551cdef",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2018-W01&time=2018-W02&time=2018-W03&time=2018-W04&time=2018-W05&time=2018-W06&time=2018-W07&time=2018-W08&time=2018-W09&time=2018-W10&time=2018-W11&time=2018-W12&time=2018-W13"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2018-02.json",
+      "retrieved": "2026-08-27",
+      "sha256": "557f88f9058881fab9c694491edb959bbaa40ab06dae5015800ccf58cc55e4ed",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2018-W14&time=2018-W15&time=2018-W16&time=2018-W17&time=2018-W18&time=2018-W19&time=2018-W20&time=2018-W21&time=2018-W22&time=2018-W23&time=2018-W24&time=2018-W25&time=2018-W26"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2018-03.json",
+      "retrieved": "2026-08-27",
+      "sha256": "3e972471551ee6dfb4e0ecda45aea41e18e43f0d3b0b245bc7345518b0bfeabc",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2018-W27&time=2018-W28&time=2018-W29&time=2018-W30&time=2018-W31&time=2018-W32&time=2018-W33&time=2018-W34&time=2018-W35&time=2018-W36&time=2018-W37&time=2018-W38&time=2018-W39"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2018-04.json",
+      "retrieved": "2026-08-27",
+      "sha256": "3196f0a364108e4bbcd6e7398ab2475f09748ed042e37613ff4753a0ebfd5edb",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2018-W40&time=2018-W41&time=2018-W42&time=2018-W43&time=2018-W44&time=2018-W45&time=2018-W46&time=2018-W47&time=2018-W48&time=2018-W49&time=2018-W50&time=2018-W51&time=2018-W52"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2019-01.json",
+      "retrieved": "2026-08-27",
+      "sha256": "b70f364539999d33cf9c94b96201a9c228840d6cebaa04992db27dc92cfdb0ee",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2019-W01&time=2019-W02&time=2019-W03&time=2019-W04&time=2019-W05&time=2019-W06&time=2019-W07&time=2019-W08&time=2019-W09&time=2019-W10&time=2019-W11&time=2019-W12&time=2019-W13"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2019-02.json",
+      "retrieved": "2026-08-27",
+      "sha256": "b46814fb597d155a2172b2c5791da7e540bf74800ae6d402256d54fc4737a241",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2019-W14&time=2019-W15&time=2019-W16&time=2019-W17&time=2019-W18&time=2019-W19&time=2019-W20&time=2019-W21&time=2019-W22&time=2019-W23&time=2019-W24&time=2019-W25&time=2019-W26"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2019-03.json",
+      "retrieved": "2026-08-27",
+      "sha256": "8dcb6ac9a0298df8fcdb698fdcfe341e99fbd695f91be37e3ae42eead280815f",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2019-W27&time=2019-W28&time=2019-W29&time=2019-W30&time=2019-W31&time=2019-W32&time=2019-W33&time=2019-W34&time=2019-W35&time=2019-W36&time=2019-W37&time=2019-W38&time=2019-W39"
+    },
+    {
+      "file": "eurostat-demo_r_mwk2_05-2019-04.json",
+      "retrieved": "2026-08-27",
+      "sha256": "0e9c4e465dedde4e47c376c3f23d5ab3d6131086d2074c395ad879afec2e3a7f",
+      "url": "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/demo_r_mwk2_05?format=JSON&sex=M&sex=F&time=2019-W40&time=2019-W41&time=2019-W42&time=2019-W43&time=2019-W44&time=2019-W45&time=2019-W46&time=2019-W47&time=2019-W48&time=2019-W49&time=2019-W50&time=2019-W51&time=2019-W52"
+    }
+  ],
   "mexico": [
     {
       "file": "mexico-defunciones-2015.csv",

@@ -12,7 +12,7 @@ import pandas as pd
 
 from ..cache import verify_manual
 from ..age_bands import BANDS as _PROJECT_BANDS
-from ..age_bands import band_of, icd_chapter
+from ..age_bands import band_of, icd_chapter, leaf_cause_group
 from ..contract import AgeSexRow, Source
 
 SOURCE = Source(
@@ -156,3 +156,33 @@ def load_age_sex(cache_dir: Path) -> tuple[list[AgeSexRow], list[str]]:
 
 
 AGE_SEX_BANDS = _PROJECT_BANDS
+
+
+def load_cause_by_month(cache_dir: Path) -> tuple[dict[str, list[dict]], dict[str, list[dict]]]:
+    """Country-wide deaths by (year, month, ICD-10 chapter) and by (year, month, leaf group),
+    from the same DTOBITO/CAUSABAS columns load_age_sex() reads -- for 04-07's cause x month
+    tensor, which needs a country total per month rather than a per-state breakdown, so this
+    sums across states directly instead of emitting one row per state like load_age_sex() does.
+    """
+    br = _read(cache_dir, extra=("CAUSABAS",))
+    br["dtobito"] = br.DTOBITO.str.strip()
+    br = br[br.dtobito.str.fullmatch(r"\d{8}", na=False)]
+    br["month"] = br.dtobito.str[2:4].astype(int)  # DTOBITO is ddmmyyyy
+    br["chapter"] = br.CAUSABAS.map(icd_chapter)
+    br["leaf"] = br.CAUSABAS.map(leaf_cause_group)
+
+    chapter_rows: dict[str, list[dict]] = {}
+    for (year, month, chapter), sub in br[br.chapter.notna()].groupby(
+        ["year", "month", "chapter"], dropna=False
+    ):
+        chapter_rows.setdefault(str(chapter), []).append(
+            {"year": int(year), "period_type": "month", "period": int(month), "deaths": float(len(sub))}
+        )
+    leaf_rows: dict[str, list[dict]] = {}
+    for (year, month, leaf), sub in br[br.leaf.notna()].groupby(
+        ["year", "month", "leaf"], dropna=False
+    ):
+        leaf_rows.setdefault(str(leaf), []).append(
+            {"year": int(year), "period_type": "month", "period": int(month), "deaths": float(len(sub))}
+        )
+    return chapter_rows, leaf_rows
