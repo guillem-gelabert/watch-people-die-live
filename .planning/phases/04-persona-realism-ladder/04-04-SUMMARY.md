@@ -49,6 +49,25 @@ completed: 2026-08-26
 
 **A three-tier age/sex pyramid resolver ships 20 archetype pyramids + a per-cell class id (14 KB gzip), replacing the single national pyramid every death in a country used to draw from — but the WorldPop population source named in the plan turned out to be un-fetchable, so the middle "derived" tier is a CDR-gap shift instead, and it is honestly weak (barely better than no regional signal at all).**
 
+## Correction (2026-08-27, plan 04-09)
+
+**The WorldPop-infeasibility verdict below was half right, not fully right.** Range requests
+genuinely do not work — reconfirmed during 04-09: `curl -r ...` still returns HTTP 200 with the
+full body, and GDAL's `/vsicurl/` still reports "Range downloading not supported by this
+server!". But "~118 GB across 36 bands, or nothing" was wrong: that figure is WorldPop's **100m
+global mosaic**, which this plan tested. WorldPop separately publishes a **1km per-country tree**
+(`data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/unconstrained/2020/{ISO3}/...`)
+that was never probed — one Nigerian band there is 5.1 MB, not 3.28 GB, confirmed live by HTTP
+`HEAD` on 2026-08-27. 04-09 fetched it for real (country-by-country, reduced onto this project's
+grid, rasters deleted immediately after — see `pipeline/sources/worldpop.py`) and rebuilt tier 2
+as population x national age-specific rate, scored against the exact same
+`data/observed-regional-age-sex.json` instrument this plan built for that purpose. See
+`.planning/phases/04-persona-realism-ladder/04-09-worldpop-derived-tier2-PLAN.md` and
+`04-09-SUMMARY.md` for the full account, the coverage actually achieved, and the resulting
+numbers — including which countries kept the CDR-gap proxy documented below, because 04-09's own
+measurement found it scores better for them. The proxy is not deleted; it is 04-09's fallback
+estimator, not a replaced mistake.
+
 ## Performance
 
 - **Duration:** ~35 min
