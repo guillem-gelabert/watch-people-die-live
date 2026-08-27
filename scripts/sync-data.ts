@@ -25,6 +25,7 @@ const FILES = [
   "rate-grid.json",
   "region-keys.json",
   "sample-personas.json",
+  "seasonal-composition.json",
   "seasonality-unified.json",
   "seasonality.json",
   "seasonality-applied-fallbacks.json",

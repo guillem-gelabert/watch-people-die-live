@@ -24,6 +24,8 @@
     "build:seasonality-validation": "node --import tsx scripts/build-seasonality-validation.ts",
     "build:closeup-outlines": "node --import tsx scripts/build-closeup-outlines.ts",
     "build:conflicts": "node --import tsx scripts/build-conflicts.ts",
+    "build:seasonal-composition": "uv run python -m pipeline seasonal-composition",
+    "validate:seasonal-composition": "node --import tsx scripts/validate-seasonal-composition.ts",
     "dump:cdr": "tsx scripts/dump-cdr.ts",
     "gen:synthetic-cells": "tsx scripts/gen-synthetic-cells.ts",
     "lint": "eslint .",

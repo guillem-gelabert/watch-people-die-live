@@ -72,12 +72,52 @@ function meanCurve(donors: CurveDonor[], useAvailableWeights = false): HarmonicC
   return meanHarmonicCurves(donors, useAvailableWeights);
 }
 
+// Builds a ClimateFallbackModel from an arbitrary measured-curve set, reusing `classByM49`
+// (already baked once by pipeline/climate_fallback.py and shipped as data/seasonality-climate-
+// fallback.json) rather than a second Köppen classification. pipeline/climate_fallback.py's
+// build_climate_model() does the equivalent population-weighted blend for the single overall
+// seasonality curve; this is the same blend (Köppen class, else family, of measured donors)
+// applied to any other per-dimension curve set -- an age band's or a cause's -- so 04-07's
+// composition tensor transfers through the identical climate-donor step the timing curve uses,
+// instead of a second transfer model. Unlike the Python original this is an unweighted mean
+// (no population figure is available client-side without an extra fetch); documented rather
+// than silently approximated, the same disclosure eurostat.py's own flat-mean rate rollup uses.
+export function buildClimateBlend(
+  classByM49: ClimateFallbackModel["classByM49"],
+  measured: ReadonlyMap<number, HarmonicCurve>,
+): ClimateFallbackModel {
+  const byClass = new Map<string, CurveDonor[]>();
+  const byFamily = new Map<string, CurveDonor[]>();
+  for (const [m49, curve] of measured) {
+    if (!isHarmonicCurve(curve)) continue;
+    const target = classByM49[String(m49)];
+    if (!target) continue;
+    (byClass.get(target.class) ?? byClass.set(target.class, []).get(target.class)!).push({
+      curve,
+    });
+    (byFamily.get(target.family) ?? byFamily.set(target.family, []).get(target.family)!).push({
+      curve,
+    });
+  }
+  const classCurves: Record<string, HarmonicCurve> = {};
+  for (const [code, donors] of byClass) {
+    const blend = meanCurve(donors);
+    if (blend) classCurves[code] = blend;
+  }
+  const familyCurves: Record<string, HarmonicCurve> = {};
+  for (const [code, donors] of byFamily) {
+    const blend = meanCurve(donors);
+    if (blend) familyCurves[code] = blend;
+  }
+  return { classCurves, familyCurves, classByM49 };
+}
+
 function featureName(feature: Feature<Geometry>): string {
   const properties = feature.properties as { name?: unknown } | null;
   return typeof properties?.name === "string" ? properties.name : String(feature.id ?? "Unknown");
 }
 
-function m49ForIso3(iso3: string): number | null {
+export function m49ForIso3(iso3: string): number | null {
   const numeric = isoCountries.alpha3ToNumeric(iso3);
   if (!numeric) return null;
   const m49 = Number(numeric);
