@@ -147,7 +147,7 @@ Plans:
 - [x] 04-04: Resolve age/sex per cell from regional estimates and gridded population _(wave 4)_
 - [x] 04-06: Add Eurostat regional age/sex and cause tables _(wave 4)_
 - [ ] 04-07: Make persona composition seasonal _(wave 5)_
-- [ ] 04-09: Rebuild tier 2 on WorldPop 1km population, replacing the CDR-gap proxy _(wave 6)_
+- [x] 04-09: Rebuild tier 2 on WorldPop 1km population, replacing the CDR-gap proxy _(wave 6)_
 
 Deliberately **not** a plan: opportunistic subnational sourcing beyond Eurostat moved to backlog
 999.1. Its own scoping said "not a planned sweep", and full subnational coverage is unreachable at
