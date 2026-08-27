@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persona Realism
 status: executing
-last_updated: "2026-08-27T11:02:39.096Z"
+last_updated: "2026-08-27T18:26:23.284Z"
 last_activity: 2026-08-27
 progress:
   total_phases: 6
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 18
-  completed_plans: 16
-  percent: 67
+  completed_plans: 17
+  percent: 83
 ---
 
 # Project State
@@ -25,7 +25,7 @@ See: .planning/PROJECT.md (updated 2026-06-28)
 ## Current Position
 
 Phase: 04 (persona-realism-ladder) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 global all-ages export is rejected in favour of the age-gated fallback table, and the quota-bound
 GBD export spec (`gbd-export-spec.md`) has been rewritten around the one query GBD is still needed
@@ -38,7 +38,7 @@ Phase 04 — no shared files, so the two phases can run concurrently. Phase 05's
 05-02 are autonomous.
 Last activity: 2026-08-27
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 94%
 
 v1.0 MVP: phases 1-3, 5/5 plans, complete 2026-06-29. Progress above is v2.0-scoped, matching how
 v1.0 was tracked. Backlog 999.1 is unsequenced and excluded from the count.
@@ -65,6 +65,7 @@ v1.0 was tracked. Backlog 999.1 is unsequenced and excluded from the count.
 _Updated after each plan completion_
 | Phase 04 P04 | 35min | 4 tasks | 9 files |
 | Phase 04 P09 | 65min | 4 tasks | 9 files |
+| Phase 04 P07 | 80min | 3 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,9 @@ Recent decisions affecting current work:
 - [Phase 04-04]: WorldPop 2020 age/sex population (the locked plan source) is infeasible: ~118 GB across 36 age-sex bands with no HTTP range support, and the coarser GPWv4 BDC alternative's host is unreachable from this environment. — Derived tier instead shifts each national pyramid by the region's own subnational-cdr.json CDR gap, calibrated against 04-03's real regional weights -- zero new external data, fully reproducible offline, and the resulting weak fit (R2=0.034) is reported rather than hidden.
 - [Phase 04-09]: WorldPop 2020 was half-wrong in 04-04 — a 1km per-country tree exists (5.1 MB per Nigerian band) distinct from the 118 GB global 100m mosaic 04-04 tested. Fetched 72 countries (51.75% of world expected deaths); tier 2 is now population x national-rate, resolved per cell, with the CDR-gap proxy kept as the fallback for uncovered countries.
 - [Phase 04-09]: The plan's R2-against-417-regions pass condition is structurally unreachable via the 'cells not answered by tier 1' fetch-priority order the plan itself specifies, since the 17 GBD tier-1 countries have ~0% weight in that ordering. Canada's MAE improved (10.67 to 9.86pp) but missed the plan's <=8.67pp bar; Australia's improved decisively (1.72 to 0.55pp, a 68% reduction). Reported as a measured partial result, not reframed.
+- [Phase ?]: 2026-08-27: [Phase 04-07] Age x month tensor re-pulls Eurostat's demo_r_mwk2_05 for 2015-2019 under a new SEASONAL_YEARS constant, separate from 04-06's YEAR=2022 annual/cause pull -- 2022 sits inside pipeline.curve.COVID_YEARS, which the month tensor's own acceptance criterion requires excluding.
+- [Phase ?]: 2026-08-27: [Phase 04-07] Cause x month is measured for exactly two countries (Brazil, Mexico) at ICD-10 chapter granularity plus two leaf groups (drowning, exposure to forces of nature) -- cause LOO validation is reported as structurally unevaluable (0 folds) because the two donors share neither a Koppen class/family nor a border.
+- [Phase ?]: 2026-08-27: [Phase 04-07] Age coverage went from all-or-nothing per country to per-band after measurement showed band [5,14] routinely falls under the volume floor while every other band in the same country clears it -- 24 countries reach full inclusion, more contribute individual bands.
 
 ### Pending Todos
 

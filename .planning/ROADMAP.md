@@ -29,7 +29,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Milestone v2.0 — Persona Realism** (current):
 
-- [ ] **Phase 4: Persona Realism Ladder** - Make persona age, sex and cause vary by region and season instead of one global table.
+- [x] **Phase 4: Persona Realism Ladder** - Make persona age, sex and cause vary by region and season instead of one global table. (completed 2026-08-27)
 - [x] **Phase 5: Story Reading Experience** - Fix the three story defects that are cheap and independent: a dead aside block, a gesture that fires itself, and proxy colours that drift with the sky.
 
 Backlog (unsequenced, see `## Backlog`): 999.1.
@@ -146,7 +146,7 @@ Plans:
 - [x] 04-03: Pull GBD subnational age/sex death weights _(wave 3)_
 - [x] 04-04: Resolve age/sex per cell from regional estimates and gridded population _(wave 4)_
 - [x] 04-06: Add Eurostat regional age/sex and cause tables _(wave 4)_
-- [ ] 04-07: Make persona composition seasonal _(wave 5)_
+- [x] 04-07: Make persona composition seasonal _(wave 5)_
 - [x] 04-09: Rebuild tier 2 on WorldPop 1km population, replacing the CDR-gap proxy _(wave 6)_
 
 Deliberately **not** a plan: opportunistic subnational sourcing beyond Eurostat moved to backlog
