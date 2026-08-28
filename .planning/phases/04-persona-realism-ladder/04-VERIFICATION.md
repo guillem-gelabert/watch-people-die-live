@@ -77,12 +77,13 @@ is, above.
   every band, so the seasonal signal is real; cause reweighting reaches a minority of cause mass.
   Recorded as tech debt, not fixed: mapping the remainder needs an ICD-chapter decision per label
   and `other causes` is a residual bucket that arguably has no single chapter at all.
-- **20-archetype quantisation flattens 21.4% of expected deaths to one pyramid per country** (audit
-  INT-04), including Germany (202 cells → 1) and, among tier-0 countries, Japan, Ethiopia and South
-  Africa — discarding *measured* regional variation. 06-01 confirmed the UK now escapes this (2
-  archetypes), which was the criterion that mattered for its own fix, and deliberately did not
-  change `ARCHETYPE_COUNT`: raising it is a payload-versus-fidelity decision that belongs to whoever
-  wants the fidelity.
+- **20-archetype quantisation flattens 19.4% of expected deaths to one pyramid per country** (audit
+  INT-04, re-measured 2026-08-28 after 06-01: 164 of 226 grid countries resolve exactly one
+  archetype across all their cells, down from 168 / 21.39%). Germany is still 202 cells → 1; among
+  the tier-0 countries Ethiopia, Japan and South Africa still collapse, discarding *measured*
+  regional variation. The UK now escapes it (2 archetypes), which was the criterion that mattered
+  for 06-01's own fix. `ARCHETYPE_COUNT` was deliberately left at 20: raising it is a
+  payload-versus-fidelity decision that belongs to whoever wants the fidelity.
 - **No runtime alignment guard** between `rate-grid.json` and `age-sex-cells.json` (audit INT-05).
   `persona.ts` indexes `CELLS.classId[cellIndex]` with no length check, and neither bake is in
   `predev`/`prebuild`, so rebuilding the grid alone would silently give every persona another

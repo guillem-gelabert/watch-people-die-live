@@ -18,7 +18,14 @@ interface Likeliest {
 }
 
 // The single most likely draw: the heaviest (sex, age band) cell, then the heaviest cause
-// inside it. Not a sample — the mode of the same distribution the globe samples from.
+// inside it. Not a sample — the mode of Spain's national age/sex and cause tables.
+//
+// It is NOT the distribution the globe samples from, and used to claim it was. Since 04-04 the
+// globe resolves a pyramid per grid cell (an archetype from data/age-sex-cells.json, tier 0/1/2)
+// and since 04-07 reweights both age and cause by the simulated month. This reads the flat
+// national tables, so it is the country-level mode, not the draw. Nothing false reaches the
+// reader — the prose around it does not claim per-cell or seasonal detail — but do not "fix" this
+// by asserting parity again.
 function likeliest(
   mortality: MortalityTable,
   causes: CauseTable,
