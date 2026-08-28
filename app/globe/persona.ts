@@ -363,6 +363,9 @@ function pickCause(
 // per-frame clock); when present it reweights age and cause toward the measured or transferred
 // month shape from data/seasonal-composition.json (04-07) — winter skewing older and more
 // respiratory/circulatory where measured, summer toward drowning/heat exposure where measured.
+// Age reweighting covers every band; cause reweighting reaches 56 of the 90 labels, and the 34 it
+// misses — "other causes" among them, which alone is a third of adult-band cause weight — stay
+// flat, deliberately. So a persona's age is seasonal everywhere and its cause is seasonal in part.
 // Both `cellIndex` and `eventDate` are optional and independent, so neither call site depends on
 // the other, and sex sampling is unaffected by either — only age and cause are month-conditioned.
 export function makePersona(

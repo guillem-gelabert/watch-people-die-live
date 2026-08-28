@@ -266,6 +266,12 @@ Both tables ship as JSON in the repository, so the feed needs no runtime API cal
 
 [sampling order]
 
+# Then the month tilts it
+
+The same three tables do not give the same answer in January as in July. Every age band and every cause group carries a twelve-point curve, normalised to average one across the year, so the annual totals stay exactly what the tables say while the mix inside a month moves: a northern winter draws older, and more respiratory. South of the equator those curves run half a year out of phase, which is measured rather than assumed.
+
+The curves come from monthly death records in Brazil and Mexico — the only two countries here whose microdata carries a date and a cause together — and reach everywhere else through the same climate-zone transfer the seasonality chapter uses. Age is covered completely. Cause is not: 56 of the 90 labels borrow the curve of their ICD-10 chapter, and the other 34 are left flat, multiplied by one. The largest of them is "other causes" itself — the residual that the strongest-eight truncation folds everything else into, typically a third of the weight in the adult bands and up to a half. Leaving it flat is a decision rather than an oversight: it is a bag of unrelated deaths with no chapter of its own, and handing it the average death's curve would assert a shape I have not measured.
+
 [deaths by age and cause]
 
 ### still-missing · What is still missing [Still missing] · #cf7a68 · chapter-small

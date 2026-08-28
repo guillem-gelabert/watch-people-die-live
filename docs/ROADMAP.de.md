@@ -267,6 +267,12 @@ Beide Tabellen liegen als JSON im Repository, der Feed braucht also keinen API-A
 
 [sampling order]
 
+# Dann kippt der Monat es
+
+Dieselben drei Tabellen geben im Januar nicht dieselbe Antwort wie im Juli. Jede Altersgruppe und jede Ursachengruppe trägt eine Kurve aus zwölf Punkten, auf einen Jahresmittelwert von eins normiert, sodass die Jahressummen genau das bleiben, was die Tabellen sagen, während sich die Mischung innerhalb eines Monats verschiebt: ein nördlicher Winter zieht älter, und mehr Atemwege. Südlich des Äquators laufen diese Kurven ein halbes Jahr versetzt, und das ist gemessen, nicht angenommen.
+
+Die Kurven stammen aus den monatlichen Sterberegistern Brasiliens und Mexikos — den einzigen beiden Ländern hier, deren Mikrodaten Datum und Ursache zusammen führen — und erreichen alle anderen über dieselbe Übertragung nach Klimazone, die das Kapitel zur Saisonalität benutzt. Das Alter ist vollständig abgedeckt. Die Ursache nicht: 56 der 90 Bezeichnungen leihen sich die Kurve ihres ICD-10-Kapitels, die anderen 34 bleiben flach, mit eins multipliziert. Die größte davon ist „andere Ursachen" selbst — der Rest, in den die Kürzung auf die stärksten acht alles Übrige zusammenfasst, in der Regel ein Drittel des Gewichts in den Erwachsenengruppen und bis zur Hälfte. Sie flach zu lassen ist eine Entscheidung und kein Versehen: sie ist ein Sack unverbundener Todesfälle ohne eigenes Kapitel, und ihr die Kurve des durchschnittlichen Todes zu geben hieße, eine Form zu behaupten, die ich nicht gemessen habe.
+
 [deaths by age and cause]
 
 ### still-missing · Was noch fehlt [Noch offen] · #cf7a68 · chapter-small

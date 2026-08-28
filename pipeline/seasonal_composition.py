@@ -32,6 +32,20 @@ min_annual floor (~30-35 of them); cause is measured for exactly two countries (
 04-07's task 2 (lib/spatial-seasonality.ts's climate/border donor cascade, reused unmodified from
 the browser) is what extends this to the rest of the world -- this module ships the measured
 inputs to that cascade, not a guessed global table.
+
+**The residual is aseasonal, on purpose.** Coverage is partial along a second axis too, and this
+one is a decision rather than a data limit. A cause label reaches a curve through its ICD-10
+chapter, so 34 of the 90 labels in data/causes.json reach none and are multiplied by 1.0 -- left
+flat. The largest of them is "other causes" itself: the residual bucket build-causes.ts folds
+everything outside a country's strongest eight into, which is 16.6-52.1% of adult-band cause
+weight (median 35.6%). It has no chapter because it is not one kind of death; it is a bag of
+unrelated ones. Handing it the country's all-cause curve was considered and declined on
+2026-08-28 -- that would assert a month shape for a mixture nothing here has measured, and an
+asserted shape on a third of the weight is worse than an honest flat one. The other 33 are flat
+for a different and fixable reason: chapter_of_cause_label() derives its map from Eurostat's
+European cause list, which structurally cannot name malaria, dengue, measles, tetanus, rabies,
+leishmaniasis or African trypanosomiasis. Those are a mapping gap, not a measurement gap -- the
+Brazilian and Mexican microdata does carry chapter I. See meta.causeLabelCoverage in the output.
 """
 
 from __future__ import annotations
@@ -88,6 +102,15 @@ def build(root: Path, cache_dir: Path) -> Path:
     chapter_of_label = eurostat.chapter_of_cause_label()
 
     vocabulary = set(json.loads((root / "data" / "causes.json").read_text())["causes"])
+    # Which of the project's cause labels can reach a curve at all, measured rather than asserted,
+    # so the shipped file carries its own coverage claim and a rebuild updates it. See the module
+    # docstring for why the biggest uncovered label is uncovered deliberately.
+    with_curve = sorted(
+        label
+        for label in vocabulary
+        if label in chapter_of_label or label in LEAF_GROUPS
+    )
+    flat = sorted(vocabulary - set(with_curve))
     stray_labels = sorted(set(chapter_of_label) - vocabulary)
     if stray_labels:
         raise ValueError(
@@ -123,6 +146,22 @@ def build(root: Path, cache_dir: Path) -> Path:
                 "exposure to forces of nature": "ICD-10 X30-X39 (X30 = excessive natural heat)",
             },
             "chapterOfCauseLabel": chapter_of_label,
+            "causeLabelCoverage": {
+                "note": (
+                    "A cause label reaches a month curve through its ICD-10 chapter (or, for two "
+                    "labels, its own leaf group). Labels in `flat` reach none and are multiplied "
+                    "by 1.0 at sample time. That is a deliberate choice for 'other causes' -- the "
+                    "residual build-causes.ts folds everything outside a country's strongest eight "
+                    "into, 16.6-52.1% of adult-band cause weight (median 35.6%). It has no "
+                    "chapter because it is not one kind of death, and giving it the all-cause "
+                    "curve would assert a shape nothing here has measured. The rest are flat "
+                    "because chapterOfCauseLabel is derived from Eurostat's European cause list, "
+                    "which cannot name tropical causes -- a mapping gap, not a measurement gap."
+                ),
+                "vocabulary": len(vocabulary),
+                "withCurve": len(with_curve),
+                "flat": flat,
+            },
             "ageCountriesMeasured": sorted(age_countries),
             "causeCountriesMeasured": sorted(cause_countries),
             "measurement": {

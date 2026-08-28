@@ -72,11 +72,23 @@ is, above.
 ## Gaps
 
 - **Criterion 4, cause coverage: 34 of 90 labels resolve no seasonal curve** and are reweighted by
-  1.0. The list includes `other causes` — which is 34–52% of adult band weight — plus malaria,
-  dengue, meningitis, covid-19, measles, a diarrhoeal disease and 28 others. Age reweighting covers
-  every band, so the seasonal signal is real; cause reweighting reaches a minority of cause mass.
-  Recorded as tech debt, not fixed: mapping the remainder needs an ICD-chapter decision per label
-  and `other causes` is a residual bucket that arguably has no single chapter at all.
+  1.0. The list includes `other causes` — 16.6–52.1% of adult band cause weight, median 35.6% —
+  plus malaria, dengue, meningitis, covid-19, measles, a diarrhoeal disease and 28 others. Age
+  reweighting covers every band, so the seasonal signal is real; cause reweighting reaches a
+  minority of cause mass.
+
+  **Split into two different things on 2026-08-28.** For `other causes`, aseasonal is now a
+  *decided* answer rather than a gap: the residual is a mixture of unrelated deaths with no single
+  ICD-10 chapter, and lending it the country's all-cause curve would assert a month shape nothing
+  has measured for that mixture. Documented at all four sites where the assumption is visible —
+  `pipeline/seasonal_composition.py`'s docstring, the shipped `meta.causeLabelCoverage`,
+  `lib/seasonal-composition.ts`'s `causeMultiplier` contract, `app/globe/persona.ts` — and disclosed
+  to the reader in the `who` chapter of all three story files. The other 33 remain real tech debt,
+  and the diagnosis is narrower than it looked: `chapter_of_cause_label()` derives its map from
+  Eurostat's *European* cause list, so it structurally cannot name tropical causes. Chapter I is
+  already measured from the Brazilian and Mexican microdata, so those 33 are a mapping gap, not a
+  measurement gap. `covid-19` is the exception — ICD-10 U07.1 sits outside the 21 chapters, and the
+  tensor excludes 2020–2022 anyway.
 - **20-archetype quantisation flattens 19.4% of expected deaths to one pyramid per country** (audit
   INT-04, re-measured 2026-08-28 after 06-01: 164 of 226 grid countries resolve exactly one
   archetype across all their cells, down from 168 / 21.39%). Germany is still 202 cells → 1; among

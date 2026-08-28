@@ -49,6 +49,15 @@ export interface SeasonalCompositionRuntime {
   // Multiplier for causes.json label `label` in country `m49` at `yearPhase`. Prefers a leaf-
   // group curve (drowning, exposure to forces of nature) when the label itself is one of those
   // two groups, else its ICD-10 chapter's curve, else 1 (label not covered by either).
+  //
+  // That last case is 34 of the 90 labels, listed in the tensor's own
+  // meta.causeLabelCoverage.flat, and the biggest of them is "other causes" — the residual
+  // everything outside a country's strongest eight is folded into, 16.6-52.1% of adult-band
+  // cause weight. It returns 1 by decision, not by omission: the residual is a mixture of
+  // unrelated deaths with no single chapter, so the alternative (lend it the country's all-cause
+  // curve) would assert a month shape nobody measured for that mixture. The other 33 are flat
+  // only because the label -> chapter map is derived from a European cause list that cannot name
+  // tropical causes; those are worth fixing. See pipeline/seasonal_composition.py's docstring.
   causeMultiplier(m49: number | undefined, label: string, yearPhase: number): number;
   // Coverage diagnostics keyed the same way the internal maps are, for the LOO validation script
   // and the plan's "estimated tensors are labelled as such" criterion -- not used at persona-

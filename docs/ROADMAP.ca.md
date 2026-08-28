@@ -266,6 +266,12 @@ Totes dues taules s'inclouen com a JSON al repositori, així que el flux no nece
 
 [sampling order]
 
+# Després el mes ho decanta
+
+Les mateixes tres taules no donen la mateixa resposta al gener que al juliol. Cada franja d'edat i cada grup de causes porta una corba de dotze punts, normalitzada a una mitjana d'u al llarg de l'any, així que els totals anuals continuen sent exactament els que diuen les taules mentre la barreja dins d'un mes es mou: un hivern del nord treu gent més gran, i més causes respiratòries. Al sud de l'equador aquestes corbes van mig any desfasades, i això està mesurat, no suposat.
+
+Les corbes surten dels registres mensuals de defuncions del Brasil i de Mèxic — els dos únics països d'aquí les microdades dels quals porten data i causa alhora — i arriben a la resta a través de la mateixa transferència per zona climàtica que fa servir el capítol de l'estacionalitat. L'edat queda coberta del tot. La causa no: 56 de les 90 etiquetes manlleven la corba del seu capítol de la CIM-10, i les altres 34 es queden planes, multiplicades per u. La més gran de totes és «altres causes» mateixa — el residu on la retallada a les vuit més fortes plega tota la resta, típicament un terç del pes a les franges adultes i fins a la meitat. Deixar-la plana és una decisió, no un descuit: és una bossa de morts sense relació entre si i sense cap capítol propi, i donar-li la corba de la mort mitjana seria afirmar una forma que no he mesurat.
+
 [deaths by age and cause]
 
 ### still-missing · Què falta encara [Falta encara] · #cf7a68 · chapter-small
