@@ -79,6 +79,18 @@ estimator, not a replaced mistake.
 
 - Every one of `rate-grid.json`'s 59,954 populated cells now resolves an age/sex death pyramid instead of the country's single national one, with the answering tier recorded per cell.
 - The 17 countries 04-03 covers (India, Nigeria, Indonesia, Pakistan, Ethiopia, Brazil, Mexico, Japan, the UK, the US...) use real GBD-modelled regional weights — validated as a large, unambiguous win: Brazil's mean error against 04-08's observed registrations drops from 11.24pp (flat national) to 3.88pp; Mexico from 8.05pp to 3.25pp.
+
+  > **Corrected 2026-08-28 by plan 06-01.** "the UK" was false as shipped, and this claim is why
+  > the v2.0 milestone audit recorded blocker INT-01 as verified-but-wrong. GBD publishes UK
+  > subnational units as NUTS-2, so `data/subnational-age-sex.json` emitted `nuts2:UKC1`…, while
+  > `build-region-keys.ts` keyed every UK cell `adm1:GBR-nnnn`: **0 of 41 UK keys joined**, and all
+  > 226 assigned UK cells silently used the derived (WorldPop) tier instead — 1.09% of world
+  > expected deaths, with no diagnostic anywhere. Every other country in the list did use real GBD
+  > weights, and the Brazil and Mexico numbers were and are correct. 06-01 fixed the key space:
+  > 217 of the 226 assigned UK cells now resolve tier 0 (99.96% of UK expected death weight), the
+  > tier-0 share of world deaths rose 43.51% → 44.60%, and the UK's cells now span two archetypes
+  > 11.08pp apart instead of one. The remaining nine cells sit on eight inner-London and
+  > metropolitan NUTS-2 regions smaller than a 0.5° grid cell.
 - A second "derived" tier covers 72 countries total (the ones in `subnational-cdr.json`) using only data already committed in this repo — no new fetch — but is honestly reported as a weak signal (see Deviations).
 - The payload stays small: 283 KB raw / 14 KB gzip, versus rate-grid.json's 1.7 MB / 469 KB — nowhere near the ~1.08M-number naive bake the plan warned against.
 - `sampleCell()` now returns its rate-grid cell index, threaded through `Earth.tsx` and `GlobeStage.tsx` into `makePersona()`, which resolves the cell's archetype pyramid when available and falls back to the national one otherwise — verified never to throw.

@@ -81,5 +81,15 @@ named were the wrong ones, and the cause layer is a coarser age split than the p
   against 1.7 MB, almost all of it one region key and one cause label repeated 60,000 times.
 - It is **not** in `scripts/sync-data.ts`'s allowlist, so it never ships to the browser. It is a
   build-time validation input, like `observed-regional-age-sex.json`.
+
+  > **Corrected 2026-08-28 by plan 06-01.** The sentence above was aspirational, not descriptive:
+  > when it was written nothing read `data/eurostat-regional.json` at all, which the v2.0 milestone
+  > audit found as blocker INT-02 (1.77 MB committed, zero readers — the only other occurrences in
+  > the tree were three prose comments). 04-07 imports Python helpers from
+  > `pipeline/sources/eurostat.py` but never the JSON. It is now true: 06-01 wired the `ageSex`
+  > layer into `scripts/build-age-sex-cells.ts`'s validation harness, where it scores 271 NUTS-2
+  > regions across 34 countries (3.79pp mean error vs 4.02pp for a flat national pyramid; ITA
+  > 1.89pp vs 3.05pp and POL 1.51pp vs 3.62pp on the tier-0 join). The `weekly` and `causes`
+  > layers still have no consumer.
 - `YEAR = 2022` is pinned. Eurostat publishes NUTS-2 causes on a longer lag than deaths, so
   moving it forward needs both tables checked, not just `demo_r_magec`.
