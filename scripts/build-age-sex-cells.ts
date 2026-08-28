@@ -230,6 +230,48 @@ function shiftPyramid(nat: Pyramid, targetOld: number): Pyramid {
 const tier1ByKey = new Map<string, Pyramid>();
 for (const r of subAgeSex.regions) tier1ByKey.set(`${r.geo}:${r.key}`, { m: r.m, f: r.f });
 
+// --- Tier-1 join diagnostic --------------------------------------------------------------------
+// The bug this exists to catch: GBD publishes UK subnational units as NUTS-2, so
+// subnational-age-sex.json emits nuts2:UKC1..., while build-region-keys.ts used to key every UK
+// cell adm1:GBR-nnnn. Nought of 41 keys joined, 226 UK cells silently took a derived pyramid
+// instead of the measured one, and no output anywhere said so. An individual key winning no cell is
+// normal at 0.5 degrees — inner-London NUTS-2 regions are smaller than a single grid cell — so that
+// only warns. An ENTIRE country joining nothing is never a data quirk; it is always a key-space
+// bug, so that throws.
+const tier1KeysWithCells = new Set<string>();
+for (const ridx of regionKeys.cells) {
+  if (ridx < 0) continue;
+  const k = regionKeys.keys[ridx] as { geo: string; key: string };
+  const id = `${k.geo}:${k.key}`;
+  if (tier1ByKey.has(id)) tier1KeysWithCells.add(id);
+}
+const tier1JoinByCountry: Record<string, { keys: number; joined: number; unmatched: string[] }> =
+  {};
+for (const r of subAgeSex.regions) {
+  const row = (tier1JoinByCountry[r.country] ??= { keys: 0, joined: 0, unmatched: [] });
+  row.keys++;
+  if (tier1KeysWithCells.has(`${r.geo}:${r.key}`)) row.joined++;
+  else row.unmatched.push(r.key);
+}
+const orphanedCountries = Object.entries(tier1JoinByCountry)
+  .filter(([, v]) => v.joined === 0)
+  .map(([country, v]) => `${country} (${v.keys} keys)`);
+if (orphanedCountries.length) {
+  throw new Error(
+    `Tier-1 key space is broken: not one region key joins any grid cell for ` +
+      `${orphanedCountries.join(", ")}. data/subnational-age-sex.json and data/region-keys.json ` +
+      `disagree on the geo layer for these countries — rebuild region-keys.json rather than ` +
+      `letting these regions fall through to a derived pyramid.`,
+  );
+}
+for (const [country, v] of Object.entries(tier1JoinByCountry)) {
+  if (v.joined === v.keys) continue;
+  console.log(
+    `  tier-1 join: ${country} ${v.joined}/${v.keys} keys win a cell ` +
+      `(no cell for ${v.unmatched.join(", ")})`,
+  );
+}
+
 // --- CDR-gap proxy calibration (04-04's original tier 2; kept as a fallback estimator) --------
 // k: elderlyShareDeviation ~= k * ln(regionalCDR / nationalCDR)
 // Fit only where BOTH a real tier-1 pyramid and a subnational-cdr.json entry exist for the same
@@ -866,6 +908,13 @@ const payload = {
     tiers: ["regional", "derived", "national"],
     cellCount: grid.cells.length,
     archetypeCount: archetypes.length,
+    tier1Join: {
+      note:
+        "Per-country: how many of data/subnational-age-sex.json's region keys win at least one " +
+        "grid cell. A key winning none is normal at 0.5 degrees (inner-London NUTS-2 regions are " +
+        "smaller than one cell); a country at 0/n is a key-space bug and throws the build.",
+      byCountry: tier1JoinByCountry,
+    },
     tierMixByExpectedDeaths: {
       regional: Number((tierShare[0]! * 100).toFixed(2)),
       derived: Number((tierShare[1]! * 100).toFixed(2)),

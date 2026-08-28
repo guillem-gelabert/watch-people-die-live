@@ -31,6 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 4: Persona Realism Ladder** - Make persona age, sex and cause vary by region and season instead of one global table. (completed 2026-08-27)
 - [x] **Phase 5: Story Reading Experience** - Fix the three story defects that are cheap and independent: a dead aside block, a gesture that fires itself, and proxy colours that drift with the sky.
+- [ ] **Phase 6: v2.0 Audit Closure** - Close the two blockers and the verification backfill the v2.0 milestone audit found. (INSERTED 2026-08-28)
 
 Backlog (unsequenced, see `## Backlog`): 999.1.
 
@@ -186,6 +187,39 @@ Phases execute in numeric order: 1 -> 2 -> 3 (v1.0, complete) -> 4 (v2.0, curren
 | 05-01 | s04  | Remove the concept tiles from the who section | yes — done |
 | 05-02 | s11  | Reject scroll inertia in the pull-to-globe gesture | yes — done |
 | 05-03 | s01  | Freeze the proxy identity colours             | no — done, colour choice made |
+
+### Phase 6: v2.0 Audit Closure (INSERTED)
+
+**Goal**: The v2.0 milestone closes on measurement rather than on assertion — the UK's GBD-measured
+pyramids actually reach the reader, every artifact the milestone produced has a consumer, and each
+requirement has a verification record that names a number.
+**Feature:** Shared (data pipeline + planning records)
+**Mode:** v2
+**Depends on**: Phases 4 and 5 (this closes their audit gaps)
+**Requirements**: [PERS-01, PERS-02, PERS-03, REAL-01, REAL-03, STORY-01, STORY-02, STORY-03]
+**UI hint**: no
+**Success Criteria** (what must be TRUE):
+
+1. All 41 UK tier-1 region keys join, all 226 assigned UK cells resolve tier 0, and the UK's cells
+   carry more than one archetype id in the shipped file — the fix survives quantisation.
+2. A whole country's tier-1 key set failing to join throws the build, and a committed-data test fails
+   if the key spaces diverge again.
+3. `data/eurostat-regional.json` has a real reader and changes a reported validation number for
+   European regions.
+4. No SUMMARY contains a claim the shipped tree contradicts.
+5. Both v2.0 phases have a VERIFICATION.md, all 12 SUMMARYs carry `requirements-completed`, and no
+   count in ROADMAP.md, STATE.md or REQUIREMENTS.md contradicts the phase directories.
+
+**Plans**: 1. Inserted 2026-08-28 from `.planning/v2.0-MILESTONE-AUDIT.md` (`status: gaps_found`),
+which recommended a single corrective plan over a new multi-plan phase because both blockers are
+small and well-localised.
+
+- [ ] 06-01: Close the v2.0 audit gaps — UK tier-1 join, the dead Eurostat artifact, and the
+      verification backfill _(wave 1, `autonomous: false` — one checkpoint on the archetype budget)_
+
+Deliberately **not** in scope: INT-03 through INT-07, all `warning` severity, which stay recorded as
+accepted debt. The one exception is INT-04 (archetype quantisation), which becomes a decision only if
+it swallows the UK fix.
 
 Within Phase 4, waves execute in order 1 -> 5; plans inside a wave run in parallel.
 

@@ -131,9 +131,37 @@ function main(): void {
   const cdrMeta = readJson<{ meta: { nutsCountriesIso3: string[] } }>(
     "data/subnational-cdr.json",
   ).meta;
-  // Mirror how subnational-cdr.json chooses a layer per country, so the two key spaces
-  // stay the same key space rather than merely the same shape.
-  const nutsCountries = new Set(cdrMeta.nutsCountriesIso3);
+  // The rule is not "mirror subnational-cdr.json" — that was the original intent and it shipped a
+  // bug. subnational-cdr.json is one consumer of these keys; data/subnational-age-sex.json is
+  // another, and it picks its own layer per country. The UK is the case that exposed it: GBD
+  // publishes UK subnational units as NUTS-2, so subnational-age-sex.json emits nuts2:UKC1..., but
+  // the UK stopped reporting to Eurostat so it is absent from cdrMeta.nutsCountriesIso3 — every UK
+  // cell got an adm1 key, none of the 41 tier-1 keys joined, and 226 cells silently fell back to a
+  // derived pyramid. The rule that actually has to hold is: this file must be able to express every
+  // key space any consumer joins against.
+  const ageSexRegions = readJson<{ regions: { geo: string; country: string }[] }>(
+    "data/subnational-age-sex.json",
+  ).regions;
+  const layersPerCountry = new Map<string, Set<string>>();
+  for (const r of ageSexRegions) {
+    const seen = layersPerCountry.get(r.country) ?? new Set<string>();
+    seen.add(r.geo);
+    layersPerCountry.set(r.country, seen);
+  }
+  // One key per cell can only serve one layer per country. Nothing today needs both (GBD uses nuts2
+  // for GBR/ITA/POL and adm1 for the other twelve), but if a future export ever mixed them within a
+  // country the silent outcome would be another half-joined key space, so fail loudly instead.
+  const mixed = [...layersPerCountry].filter(([, seen]) => seen.size > 1).map(([c]) => c);
+  if (mixed.length) {
+    throw new Error(
+      `data/subnational-age-sex.json mixes geo layers within ${mixed.join(", ")} — one region key ` +
+        `per cell cannot serve both layers; the key space needs redesigning, not widening.`,
+    );
+  }
+  const ageSexNutsCountries = [...layersPerCountry]
+    .filter(([, seen]) => seen.has("nuts2"))
+    .map(([country]) => country);
+  const nutsCountries = new Set([...cdrMeta.nutsCountriesIso3, ...ageSexNutsCountries]);
 
   const regions = loadRegions();
   console.log(
@@ -306,7 +334,18 @@ function main(): void {
   const out = {
     source:
       "Natural Earth 10m Admin-1 (adm1_code) and GISCO NUTS-2 (NUTS_ID), assigned by area " +
-      "majority on a 5x5 sub-cell lattice; key space matches data/subnational-cdr.json",
+      "majority on a 5x5 sub-cell lattice; key space covers both data/subnational-cdr.json and " +
+      "data/subnational-age-sex.json",
+    nutsPreferring: {
+      note:
+        "Countries keyed to NUTS-2 rather than admin-1. The union of both consumers, not just " +
+        "subnational-cdr.json — see the comment in scripts/build-region-keys.ts.",
+      fromSubnationalCdr: [...cdrMeta.nutsCountriesIso3].sort(),
+      fromSubnationalAgeSex: [...ageSexNutsCountries].sort(),
+      addedByAgeSex: ageSexNutsCountries
+        .filter((c) => !cdrMeta.nutsCountriesIso3.includes(c))
+        .sort(),
+    },
     cellsize: cs,
     count: assigned.length,
     keys,
