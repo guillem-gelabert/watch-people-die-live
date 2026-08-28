@@ -24,8 +24,6 @@ export const ca: Dictionary = {
     hero: "Cada llampec és una mort.",
     cue: "Com?",
     globe: "Globus",
-    language: "Idioma",
-    languageChoose: "Llegeix-ho en un altre idioma",
     pull: {
       idle: "Estira amunt cap al globus",
       keepPulling: "Continua estirant",

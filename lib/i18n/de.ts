@@ -24,8 +24,6 @@ export const de: Dictionary = {
     hero: "Jedes Aufblitzen ist ein Tod.",
     cue: "Wie bitte?",
     globe: "Globus",
-    language: "Sprache",
-    languageChoose: "In einer anderen Sprache lesen",
     pull: {
       idle: "Nach oben ziehen zum Globus",
       keepPulling: "Weiterziehen",

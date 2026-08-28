@@ -8,7 +8,6 @@ import MiniEarth from "./MiniEarth";
 import Section from "./Section";
 import { chartPaletteToCssVars, parseSky, rgbCss, skinFromSky, skinToCssVars } from "./palette";
 import { useI18n } from "./I18nContext";
-import LanguageSwitcher from "./LanguageSwitcher";
 import RoadmapMarkdown, { roadmapSections, type SectionHeadingKind } from "./roadmapMarkdown";
 import { ProxyGuessProvider } from "./proxy/ProxyGuessContext";
 import { prepareReveals, prepareTypers, runReveals, runTypers, type Typer } from "./storyMotion";
@@ -287,8 +286,6 @@ export default function StoryClient({ markdown }: StoryClientProps) {
         ...(chartPaletteToCssVars(active.sky) as CSSProperties),
       }}
     >
-      <LanguageSwitcher />
-
       <div id="story-stage" ref={stageRef}>
         <GlobeStage phaseRef={phaseRef} />
         {/* Hero line and cue in one box: transparent, over the globe's lower edge, and the only

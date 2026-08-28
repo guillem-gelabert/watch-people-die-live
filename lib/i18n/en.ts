@@ -28,8 +28,6 @@ export const en = {
     hero: "Every flash is a death.",
     cue: "What?",
     globe: "Globe",
-    language: "Language",
-    languageChoose: "Read this in another language",
     pull: {
       idle: "Pull up for the globe",
       keepPulling: "Keep pulling",

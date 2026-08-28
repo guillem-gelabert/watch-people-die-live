@@ -4,8 +4,8 @@
 // device emulation runs neither WebKit nor a status bar, so it cannot answer those questions.
 //
 // Run as `pnpm dev:ios`; the optional first argument is the path to open (default `/`, which
-// is the story — `pnpm dev:ios "/?lang=ca"` opens it in Catalan). SIM_DEVICE picks the
-// simulator to boot when none is running yet.
+// is the story — the locale is auto-detected from the simulator's language settings).
+// SIM_DEVICE picks the simulator to boot when none is running yet.
 //
 // The simulator shares the host's loopback, so http://localhost:<port> just works — no LAN
 // address and no `allowedDevOrigins` entry needed.

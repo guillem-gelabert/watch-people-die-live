@@ -29,8 +29,8 @@ const publicSans = Public_Sans({
 });
 
 // Nothing here depends on the reader's language, and everything that once did — title,
-// description, the social cards, the canonical and the hreflang set — now comes from the page's
-// own generateMetadata, which is the only place that can see `?lang=`.
+// description, the social cards, the canonical — now comes from the page's own generateMetadata,
+// which is the only place that reads the Accept-Language header.
 //
 // `metadataBase` is the exception, and it belongs here because it is the same for every language.
 // generateMetadata writes its canonical, its hreflang set and its card image as site-relative
@@ -60,8 +60,8 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  // A layout cannot see the search params the locale rides in, so this is the source language;
-  // I18nProvider corrects it on the client as soon as the story mounts.
+  // A layout cannot see the Accept-Language header the locale is detected from, so this is the
+  // source language; I18nProvider corrects it on the client as soon as the story mounts.
   return (
     <html
       lang="en"

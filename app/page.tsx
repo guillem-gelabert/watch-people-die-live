@@ -1,38 +1,23 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+import { headers } from "next/headers";
 import type { Metadata } from "next";
 import StoryClient from "./roadmap/StoryClient";
 import { I18nProvider } from "./roadmap/I18nContext";
-import {
-  DEFAULT_LOCALE,
-  LOCALES,
-  localeHref,
-  resolveLocale,
-  storyFilename,
-} from "@/lib/i18n/config";
+import { LOCALES, resolveLocaleFromHeader, storyFilename } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n";
 import { absoluteUrl } from "@/lib/site";
 
-interface PageProps {
-  searchParams: Promise<{ lang?: string | string[] }>;
-}
-
-export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-  const locale = resolveLocale((await searchParams).lang);
+export async function generateMetadata(): Promise<Metadata> {
+  const headersList = await headers();
+  const locale = resolveLocaleFromHeader(headersList.get("accept-language") || undefined);
   const { meta } = getDictionary(locale);
-  const url = localeHref(locale);
+  const url = "/";
   return {
     title: meta.title,
     description: meta.description,
     alternates: {
       canonical: url,
-      languages: {
-        ...Object.fromEntries(LOCALES.map((l) => [l, localeHref(l)])),
-        // What a crawler should serve a reader whose language is none of the three. Without it
-        // the hreflang set says what each of en/ca/de is for and nothing about everyone else,
-        // and search engines are left to guess.
-        "x-default": localeHref(DEFAULT_LOCALE),
-      },
     },
     openGraph: {
       type: "website",
@@ -52,8 +37,9 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
   };
 }
 
-export default async function Page({ searchParams }: PageProps) {
-  const locale = resolveLocale((await searchParams).lang);
+export default async function Page() {
+  const headersList = await headers();
+  const locale = resolveLocaleFromHeader(headersList.get("accept-language") || undefined);
   const { meta } = getDictionary(locale);
   // The whole story — running order, section skies and prose — is authored as one markdown file
   // per language and sliced client-side by roadmapSections(). The section keys inside it are
@@ -70,7 +56,7 @@ export default async function Page({ searchParams }: PageProps) {
     "@type": "WebSite",
     name: meta.title,
     description: meta.description,
-    url: absoluteUrl(localeHref(locale)),
+    url: absoluteUrl("/"),
     inLanguage: LOCALES,
   };
 

@@ -1960,54 +1960,6 @@ footer {
   height: 0;
 }
 
-/* ---------------------------------------------------------------------------
-   Language switch, in the opening screen's top corner opposite the way back to
-   the globe. Three links, not a select: each language is a real URL.
-   --------------------------------------------------------------------------- */
-
-/* Absolute, not fixed: the choice of language belongs to the opening screen, so it scrolls away
-   with it rather than riding over the whole story. The reader who wants it back has the way to it
-   already — #story-return puts them at the top, where this is. */
-#story-lang {
-  position: absolute;
-  z-index: 7;
-  top: max(12px, var(--sa-top));
-  left: max(14px, var(--sa-left));
-  display: flex;
-  gap: 2px;
-  padding: 3px;
-  border-radius: 999px;
-
-  /* Its own translucent chip rather than the section skin: it sits over the night sky, and has to
-     stay legible against whichever half of the globe is behind it without repainting on every sky
-     change. */
-  background: rgb(20 16 26 / 34%);
-  backdrop-filter: blur(7px);
-}
-
-.story-lang-link {
-  padding: 4px 8px;
-  border-radius: 999px;
-  color: rgb(255 255 255 / 62%);
-  font:
-    700 10px/1 var(--font-public-sans),
-    sans-serif;
-  letter-spacing: 0.08em;
-  text-decoration: none;
-  transition:
-    background 0.2s ease,
-    color 0.2s ease;
-}
-
-.story-lang-link:hover {
-  color: #fff;
-}
-
-.story-lang-link[aria-current="true"] {
-  background: rgb(255 255 255 / 92%);
-  color: #14101a;
-}
-
 /* Just outside the column where there is room for it, and back in the corner overlapping the copy
    — as the design has it — once the window is too narrow for anything else. */
 #story-return {
