@@ -8,6 +8,7 @@ tags:
   - retro-recorded
 key-files:
   - app/roadmap/PullToGlobe.tsx
+requirements-completed: [STORY-02]
 ---
 
 # Plan 05-02 Summary: Reject scroll inertia in the pull-to-globe gesture

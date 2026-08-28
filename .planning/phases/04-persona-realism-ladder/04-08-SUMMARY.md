@@ -15,6 +15,7 @@ key-files:
   - pipeline/sources/mexico.py
   - pipeline/sources/australia.py
   - data/observed-regional-age-sex.json
+requirements-completed: [PERS-02]
 ---
 
 # Plan 04-08 Summary: Unfilter age/sex in pipelines that already download it

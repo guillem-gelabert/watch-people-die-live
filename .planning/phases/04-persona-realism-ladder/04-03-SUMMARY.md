@@ -11,6 +11,7 @@ key-files:
   - scripts/build-subnational-age-sex.ts
   - data/subnational-age-sex.json
   - .planning/phases/04-persona-realism-ladder/gbd-export-spec.md
+requirements-completed: [PERS-02]
 ---
 
 # Plan 04-03 Summary: Pull GBD subnational age/sex death weights

@@ -9,6 +9,8 @@ tags:
 key-files:
   - scripts/build-region-keys.ts
   - data/region-keys.json
+requirements-completed: [PERS-02]
+requirements-partial: [REAL-01]
 ---
 
 # Plan 04-05 Summary: Bake an admin-1 / NUTS-2 region key per mortality-grid cell

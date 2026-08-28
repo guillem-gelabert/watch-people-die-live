@@ -14,6 +14,7 @@ key-files:
   - lib/i18n/ca.causes.ts
   - lib/i18n/de.causes.ts
   - lib/i18n/causes.test.ts
+requirements-completed: [PERS-01]
 ---
 
 # Plan 04-02 Summary: Source country age/sex causes from WHO Global Health Estimates

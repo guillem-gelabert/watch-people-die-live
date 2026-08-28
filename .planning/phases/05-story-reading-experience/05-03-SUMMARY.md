@@ -10,6 +10,7 @@ key-files:
   - app/roadmap/palette.ts
   - app/roadmap/palette.test.ts
   - app/roadmap/proxy/ProxyStrip.tsx
+requirements-completed: [STORY-03]
 ---
 
 # Plan 05-03 Summary: Freeze the proxy identity colours

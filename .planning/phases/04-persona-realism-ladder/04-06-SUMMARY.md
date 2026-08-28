@@ -13,6 +13,7 @@ key-files:
   - pipeline/__main__.py
   - pipeline/sources.lock.json
   - data/eurostat-regional.json
+requirements-completed: [PERS-02]
 ---
 
 # Plan 04-06 Summary: Add Eurostat regional age/sex and cause tables

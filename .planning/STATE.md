@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: Persona Realism
-status: executing
-last_updated: "2026-08-27T18:26:23.284Z"
-last_activity: 2026-08-27
+status: awaiting-milestone-completion
+last_updated: "2026-08-28T00:00:00.000Z"
+last_activity: 2026-08-28
 progress:
   total_phases: 6
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 18
-  completed_plans: 17
-  percent: 83
+  completed_plans: 18
+  percent: 100
 ---
 
 # Project State
@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2026-06-28)
 
 ## Current Position
 
-Phase: 04 (persona-realism-ladder) — EXECUTING
-Plan: 4 of 8
-Status: Ready to execute
+Phase: 06 (v2-audit-closure) — COMPLETE
+Plan: 06-01 of 1
+Status: v2.0 ready for /gsd:complete-milestone
 global all-ages export is rejected in favour of the age-gated fallback table, and the quota-bound
 GBD export spec (`gbd-export-spec.md`) has been rewritten around the one query GBD is still needed
 for. 04-02 and 04-03 were re-sourced on 2026-08-22: the national cause cube now comes from WHO's
@@ -36,18 +36,26 @@ export is infeasible at 100k rows per download. GBD is now one ~30,000-row subna
 reversed the 04-04/04-05 dependency. Phase 05 was added 2026-08-21 from the story batch and is deliberately disjoint from
 Phase 04 — no shared files, so the two phases can run concurrently. Phase 05's 05-03 is `autonomous: false` (it needs a colour decision); 05-01 and
 05-02 are autonomous.
-Last activity: 2026-08-27
+Last activity: 2026-08-28
 
-Progress: [█████████░] 94%
+Progress: [██████████] 100%
 
 v1.0 MVP: phases 1-3, 5/5 plans, complete 2026-06-29. Progress above is v2.0-scoped, matching how
 v1.0 was tracked. Backlog 999.1 is unsequenced and excluded from the count.
+
+**2026-08-28 (06-01).** The v2.0 milestone audit returned `gaps_found`: the UK's 41 GBD region
+keys joined nothing (0 of 41, 1.09% of world deaths silently on the derived tier),
+`data/eurostat-regional.json` had no reader, and neither v2.0 phase had a VERIFICATION.md. Phase 6
+was inserted to close all three in one plan. Both blockers are fixed and guarded; the two false
+SUMMARY claims are amended in place; both verifications are backfilled; the four stale traceability
+rows are corrected, and PERS-03 and STORY-03 are now recorded as partial on measurement rather than
+complete on assertion.
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: n/a
 - Total execution time: 0.0 hours
 

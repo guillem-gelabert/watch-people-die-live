@@ -11,6 +11,7 @@ key-files:
   - app/roadmap/roadmap.css
   - docs/ROADMAP.md
   - lib/i18n/en.ts
+requirements-completed: [STORY-01]
 ---
 
 # Plan 05-01 Summary: Remove the concept tiles from the who section

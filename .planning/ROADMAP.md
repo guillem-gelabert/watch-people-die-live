@@ -31,7 +31,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 4: Persona Realism Ladder** - Make persona age, sex and cause vary by region and season instead of one global table. (completed 2026-08-27)
 - [x] **Phase 5: Story Reading Experience** - Fix the three story defects that are cheap and independent: a dead aside block, a gesture that fires itself, and proxy colours that drift with the sky.
-- [ ] **Phase 6: v2.0 Audit Closure** - Close the two blockers and the verification backfill the v2.0 milestone audit found. (INSERTED 2026-08-28)
+- [x] **Phase 6: v2.0 Audit Closure** - Close the two blockers and the verification backfill the v2.0 milestone audit found. (INSERTED 2026-08-28)
 
 Backlog (unsequenced, see `## Backlog`): 999.1.
 
@@ -214,7 +214,7 @@ requirement has a verification record that names a number.
 which recommended a single corrective plan over a new multi-plan phase because both blockers are
 small and well-localised.
 
-- [ ] 06-01: Close the v2.0 audit gaps — UK tier-1 join, the dead Eurostat artifact, and the
+- [x] 06-01: Close the v2.0 audit gaps — UK tier-1 join, the dead Eurostat artifact, and the
       verification backfill _(wave 1, `autonomous: false` — one checkpoint on the archetype budget)_
 
 Deliberately **not** in scope: INT-03 through INT-07, all `warning` severity, which stay recorded as
@@ -228,10 +228,13 @@ Within Phase 4, waves execute in order 1 -> 5; plans inside a wave run in parall
 | v1.0      | 1. Cause Fidelity and Methodology | 2/2            | Complete    | 2026-06-29 |
 | v1.0      | 2. Shareable Public Surface       | 2/2            | Complete    | 2026-06-29 |
 | v1.0      | 3. Publish and Portfolio Handoff  | 1/1            | Complete    | 2026-06-29 |
-| **v2.0**  | 4. Persona Realism Ladder         | 4/8            | In progress | -          |
+| **v2.0**  | 4. Persona Realism Ladder         | 9/9            | Complete    | 2026-08-27 |
 | **v2.0**  | 5. Story Reading Experience       | 3/3            | Complete    | 2026-08-23 |
+| **v2.0**  | 6. v2.0 Audit Closure             | 1/1            | Complete    | 2026-08-28 |
 
-v1.0 (MVP): 5/5 plans, complete 2026-06-29. v2.0: 7/11 plans (Phase 4 persona realism 4/8, Phase 5 story 3/3 complete).
+v1.0 (MVP): 5/5 plans, complete 2026-06-29. v2.0: 13/13 plans (Phase 4 persona realism 9/9, Phase 5 story 3/3, Phase 6 audit closure 1/1 — all complete).
+
+Phase 4 grew from 8 plans to 9 when 04-09 rebuilt tier 2 on WorldPop, and Phase 6 was inserted 2026-08-28 from the milestone audit.
 
 ## Future Roadmaps
 

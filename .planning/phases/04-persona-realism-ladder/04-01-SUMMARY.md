@@ -10,6 +10,7 @@ key-files:
   - app/globe/persona.ts
   - app/globe/persona.test.ts
   - data/sample-personas.json
+requirements-completed: [PERS-01]
 ---
 
 # Plan 04-01 Summary: Honour the cause coverage flag in pickCause
