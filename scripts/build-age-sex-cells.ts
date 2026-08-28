@@ -543,9 +543,18 @@ function scoreAgainstObserved(
     const countryM49 = m49Of(source.country);
     const baselinePyramid = nationalPyramid(countryM49);
 
+    // A source names its regions in its own key space: the national-statistics sources use
+    // ISO 3166-2 codes that have to be crosswalked to Natural Earth adm1_code, while Eurostat
+    // already speaks NUTS_ID, which is what region-keys.json interns directly for NUTS-2
+    // countries. Hardcoding the adm1 path here is what kept data/eurostat-regional.json unread.
     for (const [isoRegion, regionRows] of byRegion) {
-      const adm1 = isoToAdm1.get(isoRegion);
-      const ridx = adm1 ? regionKeyIndex.get(`adm1:${adm1}`) : undefined;
+      let ridx: number | undefined;
+      if (source.geo === "nuts2") {
+        ridx = regionKeyIndex.get(`nuts2:${isoRegion}`);
+      } else {
+        const adm1 = isoToAdm1.get(isoRegion);
+        ridx = adm1 ? regionKeyIndex.get(`adm1:${adm1}`) : undefined;
+      }
       if (ridx === undefined) {
         missingKey++;
         continue;
@@ -624,7 +633,9 @@ function scoreAgainstObserved(
 const observedPath = path.join(ROOT, "data", "observed-regional-age-sex.json");
 let observed: ObservedData | undefined;
 const isoToAdm1 = new Map<string, string>();
-let regionKeyIndex = new Map<string, number>();
+const regionKeyIndex = new Map<string, number>(
+  regionKeys.keys.map((k, i) => [`${k.geo}:${k.key}`, i]),
+);
 if (fs.existsSync(observedPath)) {
   observed = readJson<ObservedData>("data/observed-regional-age-sex.json");
   const admin1 = readJson<Topology>("data/admin1-10m.json");
@@ -638,8 +649,66 @@ if (fs.existsSync(observedPath)) {
     const adm1 = props.adm1_code as string | undefined;
     if (iso && adm1 && !isoToAdm1.has(iso)) isoToAdm1.set(iso, adm1);
   }
-  regionKeyIndex = new Map<string, number>(regionKeys.keys.map((k, i) => [`${k.geo}:${k.key}`, i]));
 }
+
+// --- The European observed set: data/eurostat-regional.json's ageSex layer -------------------
+// 04-06 built this file and described it as a build-time validation input; nothing read it, so
+// until now the three-tier resolver was validated against four non-European countries only. Its
+// ageSex layer is observed NUTS-2 death counts over the same nine bands this script uses, which
+// makes it the second validation set 04-06 intended — and the only one that covers a tier-0
+// country whose units are NUTS-2 (ITA and POL; the UK left Eurostat, so GBR is absent here).
+// Only the ageSex layer is adapted: `weekly` and `causes` carry their own band sets and neither
+// answers the question this harness asks.
+interface EurostatRegional {
+  meta: { year: number; note: string };
+  keys: string[];
+  sexes: string[];
+  ageSex: { bands: [number, number][]; rows: [number, number, number, number][] };
+}
+function loadEurostatObserved(): ObservedData | undefined {
+  const file = path.join(ROOT, "data", "eurostat-regional.json");
+  if (!fs.existsSync(file)) return undefined;
+  const euro = readJson<EurostatRegional>("data/eurostat-regional.json");
+  if (JSON.stringify(euro.ageSex.bands) !== JSON.stringify(BANDS)) {
+    throw new Error(
+      "data/eurostat-regional.json's ageSex bands no longer match BANDS — refold before " +
+        "comparing, rather than silently scoring different age groups against each other.",
+    );
+  }
+  // GISCO writes EL for Greece and UK for the United Kingdom, which ISO does not.
+  const iso3Of2 = (a2: string): string => {
+    const fixed = a2 === "EL" ? "GR" : a2 === "UK" ? "GB" : a2;
+    return isoCountries.alpha2ToAlpha3(fixed) ?? "";
+  };
+  const rows: ObservedRow[] = [];
+  const deathsByCountry = new Map<string, number>();
+  for (const [keyIndex, band, sexIndex, deaths] of euro.ageSex.rows) {
+    const nuts = euro.keys[keyIndex];
+    if (!nuts) continue;
+    const country = iso3Of2(nuts.slice(0, 2));
+    if (!country) continue;
+    rows.push({
+      country,
+      geo: "nuts2",
+      iso_region: nuts,
+      band,
+      sex: (euro.sexes[sexIndex] ?? "m") as Sex,
+      deaths,
+    });
+    deathsByCountry.set(country, (deathsByCountry.get(country) ?? 0) + deaths);
+  }
+  const sources: ObservedSource[] = [...deathsByCountry]
+    .map(([country, deaths]) => ({
+      key: `eurostat:${country}`,
+      country,
+      geo: "nuts2",
+      bands: BANDS,
+      deaths,
+    }))
+    .sort((a, b) => a.country.localeCompare(b.country));
+  return { meta: { sources }, rows };
+}
+const eurostatObserved = loadEurostatObserved();
 
 const populationScore = observed
   ? scoreAgainstObserved(resolvedPopulationTier2, observed, isoToAdm1, regionKeyIndex)
@@ -892,6 +961,95 @@ if (observed) {
   }
 }
 
+// --- The same report against the European observed set ---------------------------------------
+// Deliberately NOT fed into the tier-2 estimator decision above: which estimator ships per country
+// was decided by 04-09 against the four national-statistics sources, and re-deciding it here would
+// change what ships as a side effect of adding a validation set. This is a report.
+
+const eurostatValidation = eurostatObserved
+  ? scoreAgainstObserved(resolvedByRegionIdx, eurostatObserved, isoToAdm1, regionKeyIndex)
+  : { note: "data/eurostat-regional.json not found" };
+
+let eurostatSummary:
+  | {
+      countries: number;
+      regionsCompared: number;
+      regionsMissingKey: number;
+      tierUsed: Record<string, number>;
+      meanAbsErrorPct: number;
+      nationalBaselineMeanAbsErrorPct: number;
+      beatsBaselineIn: number;
+      tier0Countries: Record<string, { regions: number; errorPct: number; baselinePct: number }>;
+    }
+  | { note: string } = { note: "data/eurostat-regional.json not found" };
+
+if (eurostatObserved) {
+  const rowsOut = Object.values(eurostatValidation as BySource);
+  const tierUsed: Record<string, number> = { regional: 0, derived: 0, national: 0 };
+  let compared = 0;
+  let missing = 0;
+  let errSum = 0;
+  let baseSum = 0;
+  let beats = 0;
+  const tier0Countries: Record<string, { regions: number; errorPct: number; baselinePct: number }> =
+    {};
+  for (const r of rowsOut) {
+    compared += r.regionsCompared;
+    missing += r.regionsMissingKey;
+    if (r.regionsCompared > 0 && Number.isFinite(r.meanAbsErrorPct)) {
+      errSum += r.meanAbsErrorPct * r.regionsCompared;
+      baseSum += r.nationalBaselineMeanAbsErrorPct * r.regionsCompared;
+      if (r.meanAbsErrorPct < r.nationalBaselineMeanAbsErrorPct) beats++;
+    }
+    for (const [name, n] of Object.entries(r.tierUsed)) tierUsed[name] = (tierUsed[name] ?? 0) + n;
+    if ((r.tierUsed.regional ?? 0) > 0) {
+      tier0Countries[r.country] = {
+        regions: r.tierUsed.regional ?? 0,
+        errorPct: r.meanAbsErrorPct,
+        baselinePct: r.nationalBaselineMeanAbsErrorPct,
+      };
+    }
+  }
+  eurostatSummary = {
+    countries: rowsOut.length,
+    regionsCompared: compared,
+    regionsMissingKey: missing,
+    tierUsed,
+    meanAbsErrorPct: compared ? Number((errSum / compared).toFixed(2)) : NaN,
+    nationalBaselineMeanAbsErrorPct: compared ? Number((baseSum / compared).toFixed(2)) : NaN,
+    beatsBaselineIn: beats,
+    tier0Countries,
+  };
+  console.log(
+    `Validation vs observed Eurostat: ${compared} NUTS-2 regions across ${rowsOut.length} ` +
+      `countries (${missing} with no region key), tiers ${JSON.stringify(tierUsed)}, mean error ` +
+      `${eurostatSummary.meanAbsErrorPct}pp vs ` +
+      `${eurostatSummary.nationalBaselineMeanAbsErrorPct}pp flat-national — beats the baseline in ` +
+      `${beats} of ${rowsOut.length} countries.`,
+  );
+  for (const [country, v] of Object.entries(tier0Countries)) {
+    console.log(
+      `  tier 0 (GBD regional) reaches ${country}: ${v.regions} regions, ` +
+        `${v.errorPct}pp vs ${v.baselinePct}pp flat-national.`,
+    );
+  }
+  const worst = rowsOut
+    .filter((r) => r.regionsCompared > 0 && r.meanAbsErrorPct > r.nationalBaselineMeanAbsErrorPct)
+    .sort(
+      (a, b) =>
+        b.meanAbsErrorPct -
+        b.nationalBaselineMeanAbsErrorPct -
+        (a.meanAbsErrorPct - a.nationalBaselineMeanAbsErrorPct),
+    )
+    .slice(0, 5);
+  for (const r of worst) {
+    console.log(
+      `  loses to flat-national in ${r.country}: ${r.meanAbsErrorPct}pp vs ` +
+        `${r.nationalBaselineMeanAbsErrorPct}pp over ${r.regionsCompared} regions.`,
+    );
+  }
+}
+
 // --- Write output -------------------------------------------------------------------------
 
 const payload = {
@@ -950,6 +1108,15 @@ const payload = {
       decision: decisionLog,
     },
     validationAgainstObserved: finalValidation,
+    validationAgainstEurostat: {
+      note:
+        "data/eurostat-regional.json's ageSex layer — observed NUTS-2 deaths, 2022, same nine " +
+        "bands. A report only: it does not feed the tier-2 estimator decision, which 04-09 made " +
+        "against the four national-statistics sources. GBR is absent from Eurostat, so this " +
+        "cannot validate the UK; ITA and POL are the tier-0 countries it does reach.",
+      summary: eurostatSummary,
+      byCountry: eurostatValidation,
+    },
   },
   archetypes,
   classId,
