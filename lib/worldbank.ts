@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import isoCountries from "i18n-iso-countries";
+import { politeFetch, politeFetchJson } from "./http";
 
 const CDR_INDICATOR = "SP.DYN.CDRT.IN";
 const POP_INDICATOR = "SP.POP.TOTL";
@@ -95,26 +96,15 @@ function loadCountryIds(): Promise<Set<number>> {
   return countryIdsPromise;
 }
 
-async function fetchJson<T>(
-  url: string,
-  { revalidate, attempt = 1 }: { revalidate?: number; attempt?: number } = {},
-): Promise<T> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, {
+async function fetchJson<T>(url: string, { revalidate }: { revalidate?: number } = {}): Promise<T> {
+  return politeFetchJson<T>(
+    url,
+    {
       headers: REQUEST_HEADERS,
-      signal: ctrl.signal,
       next: revalidate ? { revalidate } : undefined,
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-    return (await res.json()) as T;
-  } catch (err) {
-    if (attempt < 2) return fetchJson<T>(url, { revalidate, attempt: attempt + 1 });
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
+    } as RequestInit,
+    { timeoutMs: REQUEST_TIMEOUT_MS, label: "World Bank API" },
+  );
 }
 
 // Fetch the most recent non-empty value per economy for a World Bank indicator.
@@ -216,10 +206,17 @@ export async function probeWorldBank(): Promise<WorldBankProbe> {
   const url = `${WB_BASE}/country/all/indicator/${CDR_INDICATOR}?format=json&mrnev=1&per_page=2`;
   const started = Date.now();
   try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
-    const r = await fetch(url, { headers: REQUEST_HEADERS, signal: ctrl.signal });
-    clearTimeout(timer);
+    const r = await politeFetch(
+      url,
+      { headers: REQUEST_HEADERS },
+      {
+        timeoutMs: REQUEST_TIMEOUT_MS,
+        // A probe reports what came back; a 500 here is the finding, not an error to retry.
+        attempts: 1,
+        acceptAnyStatus: true,
+        label: "World Bank probe",
+      },
+    );
     const body = (await r.text()).slice(0, 600);
     return {
       url,

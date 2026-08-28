@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
+import { politeFetch } from "./http";
 import {
   ACLED_WINDOW_WEEKS,
   addUtcDays,
@@ -62,81 +63,71 @@ export const ACLED_REGION_SOURCES: AcledRegionSource[] = [
 
 interface OAuthTokenResponse {
   access_token?: string;
+  expires_in?: number;
 }
 
-const sleep = (milliseconds: number) =>
-  new Promise<void>((resolve) => setTimeout(resolve, milliseconds));
-
-async function retry<T>(operation: () => Promise<T>, attempts = 3): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error;
-      if (attempt < attempts) await sleep(attempt * 500);
-    }
-  }
-  throw lastError;
-}
-
-async function fetchWithTimeout(
-  url: string,
-  init: RequestInit,
-  timeoutMs: number,
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(url, { ...init, signal: controller.signal, cache: "no-store" });
-  } finally {
-    clearTimeout(timeout);
-  }
-}
+// One token per process. `upstreamCutoff()` and `buildConflictsSnapshot()` used to authenticate
+// independently, so a full rebuild bought two tokens it could have shared. The token outlives the
+// build (ACLED issues them for 24h), so the expiry check is a formality rather than a real cache.
+let cachedToken: { key: string; token: string; expiresAt: number } | null = null;
 
 async function tokenFor(username: string, password: string): Promise<string> {
-  const response = await retry(() =>
-    fetchWithTimeout(
-      OAUTH_URL,
-      {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          username,
-          password,
-          grant_type: "password",
-          client_id: CLIENT_ID,
-          scope: "authenticated",
-        }),
+  const key = `${username}:${password}`;
+  if (cachedToken && cachedToken.key === key && Date.now() < cachedToken.expiresAt) {
+    return cachedToken.token;
+  }
+  const response = await politeFetch(
+    OAUTH_URL,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
       },
-      LANDING_TIMEOUT_MS,
-    ),
+      body: new URLSearchParams({
+        username,
+        password,
+        grant_type: "password",
+        client_id: CLIENT_ID,
+        scope: "authenticated",
+      }),
+    },
+    { timeoutMs: LANDING_TIMEOUT_MS, label: "ACLED OAuth" },
   );
-  if (!response.ok) throw new Error(`ACLED OAuth returned HTTP ${response.status}`);
   const json = (await response.json()) as OAuthTokenResponse;
   if (!json.access_token) throw new Error("ACLED OAuth response contained no access token");
+  const ttlMs = (json.expires_in ?? 3600) * 1000;
+  // Expire early, so a token is never used in the last minute of its life mid-download.
+  cachedToken = { key, token: json.access_token, expiresAt: Date.now() + ttlMs - 60_000 };
   return json.access_token;
 }
 
-async function discoverRegionalWorkbooks(token: string) {
-  return Promise.all(
-    ACLED_REGION_SOURCES.map(async (source) => {
-      const response = await retry(() =>
-        fetchWithTimeout(
+// Memoised for the same reason as the token: the cutoff check and the snapshot build both need the
+// six landing pages, and they advertise a new workbook once a week. Fetching them twice in one
+// build is twelve requests where six will do.
+let discoveredPromise: Promise<AcledDiscoveredWorkbook[]> | null = null;
+
+type AcledDiscoveredWorkbook = ReturnType<typeof discoverWorkbook>;
+
+function discoverRegionalWorkbooks(token: string): Promise<AcledDiscoveredWorkbook[]> {
+  if (!discoveredPromise) {
+    // politeFetch serialises these six per host anyway; mapping them stays as-is so a failure
+    // still rejects the whole set.
+    discoveredPromise = Promise.all(
+      ACLED_REGION_SOURCES.map(async (source) => {
+        const response = await politeFetch(
           source.landingUrl,
           { headers: { Authorization: `Bearer ${token}`, Accept: "text/html" } },
-          LANDING_TIMEOUT_MS,
-        ),
-      );
-      if (!response.ok) {
-        throw new Error(`ACLED ${source.label} landing page returned HTTP ${response.status}`);
-      }
-      return discoverWorkbook(await response.text(), source);
-    }),
-  );
+          { timeoutMs: LANDING_TIMEOUT_MS, label: `ACLED ${source.label} landing page` },
+        );
+        return discoverWorkbook(await response.text(), source);
+      }),
+    ).catch((error: unknown) => {
+      discoveredPromise = null;
+      throw error;
+    });
+  }
+  return discoveredPromise;
 }
 
 let rateGridPromise: Promise<RateGridInput> | null = null;
@@ -158,36 +149,30 @@ function loadRateGrid(): Promise<RateGridInput> {
 
 async function fetchRegionalWorkbook(
   token: string,
-  workbook: Awaited<ReturnType<typeof discoverRegionalWorkbooks>>[number],
+  workbook: AcledDiscoveredWorkbook,
   start: string,
   end: string,
 ) {
-  return retry(async () => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), WORKBOOK_TIMEOUT_MS);
-    try {
-      const response = await fetch(workbook.workbookUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        },
-        signal: controller.signal,
-        cache: "no-store",
-      });
-      if (!response.ok || !response.body) {
-        throw new Error(`ACLED ${workbook.label} workbook returned HTTP ${response.status}`);
-      }
-      return await parseRegionalWorkbook(
-        Readable.fromWeb(response.body as never),
-        workbook.label,
-        workbook.latestThrough,
-        start,
-        end,
-      );
-    } finally {
-      clearTimeout(timeout);
-    }
-  });
+  const response = await politeFetch(
+    workbook.workbookUrl,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      },
+    },
+    { timeoutMs: WORKBOOK_TIMEOUT_MS, label: `ACLED ${workbook.label} workbook` },
+  );
+  if (!response.body) {
+    throw new Error(`ACLED ${workbook.label} workbook returned no body`);
+  }
+  return parseRegionalWorkbook(
+    Readable.fromWeb(response.body as never),
+    workbook.label,
+    workbook.latestThrough,
+    start,
+    end,
+  );
 }
 
 // The cutoff the six landing pages currently advertise, without downloading a single workbook.

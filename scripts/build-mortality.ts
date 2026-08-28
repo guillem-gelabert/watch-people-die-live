@@ -27,6 +27,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { politeFetchJson } from "../lib/http";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -188,35 +189,11 @@ function headers(): Record<string, string> {
   return { Authorization: `Bearer ${TOKEN}`, Accept: "application/json" };
 }
 
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
-
-// Fetch one page with retries. population.un.org occasionally returns a transient
-// 5xx (e.g. a 502 from its nginx) or drops a connection mid-build; without a retry a
-// single hiccup aborts the whole deploy build. Retry on network errors and 5xx/429
-// with linear backoff; only a non-retryable 4xx (e.g. 401 bad token) fails fast.
-async function getJson<T>(url: string, attempt = 1): Promise<T> {
-  const MAX = 5;
-  try {
-    const res = await fetch(url, { headers: headers() });
-    if (!res.ok) {
-      const body = (await res.text()).slice(0, 300);
-      const retryable = res.status >= 500 || res.status === 429;
-      if (retryable && attempt < MAX) {
-        await sleep(1500 * attempt);
-        return getJson<T>(url, attempt + 1);
-      }
-      throw new Error(`HTTP ${res.status} for ${url}\n${body}`);
-    }
-    return (await res.json()) as T;
-  } catch (err: unknown) {
-    // Network-level failure (reset/timeout) — retry, then give up.
-    const message = err instanceof Error ? err.message : "";
-    if (attempt < MAX && !/^HTTP \d/.test(message)) {
-      await sleep(1500 * attempt);
-      return getJson<T>(url, attempt + 1);
-    }
-    throw err;
-  }
+// One page from the UN Data Portal. The retry policy, the spacing between calls and the
+// fail-fast-on-4xx rule all live in lib/http.ts now — this build used to carry its own copy, as did
+// every other caller, which is how the ACLED path drifted into retrying a 403 three times.
+async function getJson<T>(url: string): Promise<T> {
+  return politeFetchJson<T>(url, { headers: headers() }, { label: "UN Data Portal" });
 }
 
 // Find an indicator id by matching its name, or null if none match. /indicators is

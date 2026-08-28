@@ -1,6 +1,8 @@
 // Best-effort IP geolocation, ported from the old Express server. Lets the client
 // center the globe on the viewer. Response shape unchanged: {lat,lon,name,source}.
 
+import { politeFetchJson, RateLimitedError } from "./http";
+
 const GEO_TTL_MS = 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 20000;
 
@@ -38,18 +40,6 @@ interface IpApiResponse {
   city?: string;
 }
 
-async function fetchJson<T>(url: string): Promise<T> {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    const res = await fetch(url, { signal: ctrl.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
-    return (await res.json()) as T;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 export async function geolocate(ip: string): Promise<GeoPayload> {
   const cached = geoCache.get(ip);
   if (cached && Date.now() - cached.ts < GEO_TTL_MS) return cached.payload;
@@ -58,8 +48,14 @@ export async function geolocate(ip: string): Promise<GeoPayload> {
     // Omit the IP for local/private callers (dev) so ip-api uses the requester IP it
     // sees. ip-api free is HTTP-only, which is fine for a server-side call.
     const path = isPrivateIp(ip) ? "" : encodeURIComponent(ip);
-    const data = await fetchJson<IpApiResponse>(
+    // This runs on the request path, so it must never queue behind another visitor's lookup:
+    // maxWaitMs turns a busy limiter into an immediate miss, and the caller degrades to a globe
+    // that is simply not recentred. ip-api's free tier bans rather than 429s, which is why the
+    // spacing in lib/http.ts matters more here than the retry does.
+    const data = await politeFetchJson<IpApiResponse>(
       `http://ip-api.com/json/${path}?fields=status,lat,lon,country,city`,
+      {},
+      { timeoutMs: REQUEST_TIMEOUT_MS, maxWaitMs: 300, label: "ip-api geolocation" },
     );
     if (data && data.status === "success" && Number.isFinite(data.lat)) {
       payload = {
@@ -70,7 +66,10 @@ export async function geolocate(ip: string): Promise<GeoPayload> {
       };
     }
   } catch (err) {
-    console.error("Geo lookup failed:", err instanceof Error ? err.message : err);
+    // A local rate-limit miss is the system working, not a fault worth a stack trace in the logs.
+    if (!(err instanceof RateLimitedError)) {
+      console.error("Geo lookup failed:", err instanceof Error ? err.message : err);
+    }
   }
   geoCache.set(ip, { payload, ts: Date.now() });
   return payload;

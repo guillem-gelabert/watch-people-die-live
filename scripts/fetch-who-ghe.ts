@@ -23,6 +23,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { politeFetch } from "../lib/http";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -62,19 +63,11 @@ const FIELDS = [
 
 async function get(params: Record<string, string>): Promise<string> {
   const url = `${API}?${new URLSearchParams(params).toString()}`;
-  for (let attempt = 1; ; attempt++) {
-    try {
-      const res = await fetch(url, { headers: { Accept: "*/*" } });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.text();
-    } catch (err) {
-      if (attempt >= 4) throw err;
-      await sleep(2000 * attempt);
-    }
-  }
+  // This used to retry four times on any failure, a 400 included. lib/http.ts retries only what a
+  // retry can fix, and spaces the pages apart without the hand-rolled sleep between them.
+  const response = await politeFetch(url, { headers: { Accept: "*/*" } }, { label: "WHO GHE" });
+  return response.text();
 }
-
-const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 async function countryCodes(): Promise<string[]> {
   const body = await get({ $apply: "groupby((DIM_COUNTRY_CODE))" });
@@ -115,7 +108,6 @@ async function main(): Promise<void> {
     if ((i + 1) % 25 === 0 || i === codes.length - 1) {
       console.log(`  ${i + 1}/${codes.length} countries, ${total.toLocaleString()} rows`);
     }
-    await sleep(150);
   }
   fs.renameSync(tmp, OUT);
   const mb = (fs.statSync(OUT).size / 1e6).toFixed(1);

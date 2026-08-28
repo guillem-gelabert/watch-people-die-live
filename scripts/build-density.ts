@@ -28,6 +28,7 @@ import * as d3 from "d3";
 import { feature } from "topojson-client";
 import type { Topology, GeometryCollection } from "topojson-specification";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
+import { politeFetch } from "../lib/http";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -96,8 +97,7 @@ async function loadCsv(): Promise<string> {
     gz = fs.readFileSync(SRC_GZ);
   } else {
     console.log(`Downloading population raster from ${SRC_URL} ...`);
-    const res = await fetch(SRC_URL);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const res = await politeFetch(SRC_URL, {}, { timeoutMs: 180_000, label: "population raster" });
     gz = Buffer.from(await res.arrayBuffer());
     fs.mkdirSync(path.dirname(SRC_GZ), { recursive: true });
     fs.writeFileSync(SRC_GZ, gz);
