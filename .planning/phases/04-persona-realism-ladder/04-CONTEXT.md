@@ -224,7 +224,7 @@ which appears nowhere in the repo yet.
 
 ## Source material
 
-- Narrative per plan: `.planning/todos/pending/2026-07-31-pNN-*.md` (each carries `promoted_to:`)
+- Narrative per plan: `.planning/todos/completed/2026-07-31-pNN-*.md` (each carries `promoted_to:`; moved from `pending/` at v2.0 close)
 - Deferred sibling: backlog **999.1**, subnational sourcing beyond Eurostat — unreachable at any
   effort level (China, India, Indonesia, Pakistan, Ethiopia, Nigeria, DRC per
   `seasonality-data-guide.md`), which is why 04-04's derived approach is the answer instead

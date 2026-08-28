@@ -1,0 +1,8 @@
+# The global ~/.gitignore excludes *plan.md and *requirements.md, and core.ignorecase
+# is true on APFS — so PLAN.md and REQUIREMENTS.md matched and were silently never
+# tracked. Found at the v2.0 milestone close on 2026-08-28, when 19 PLAN.md files and
+# REQUIREMENTS.md turned out to exist only in the working tree.
+#
+# These are planning artifacts and belong in history alongside their SUMMARY files.
+!*PLAN.md
+!*REQUIREMENTS.md
