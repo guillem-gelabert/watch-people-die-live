@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: null
 milestone_name: null
 status: milestone-complete
-last_updated: "2026-08-28T00:00:00.000Z"
-last_activity: 2026-08-28
+last_updated: "2026-08-29T00:00:00.000Z"
+last_activity: 2026-08-29
 shipped_milestones:
   - version: v1.0
     name: MVP
@@ -49,30 +49,33 @@ was archived and removed at close; the new milestone creates a fresh one.
 
 Items acknowledged and deferred at milestone close on 2026-08-28.
 
-### Open todos — `.planning/todos/pending/` (9)
+### Open todos — `.planning/todos/pending/` (5)
 
 | # | Item | Prio | Area | Note |
 |---|------|------|------|------|
 | s03 | Proxy modal opens on reload; scroll jump on close | high | story | needs discussion — same `useProxyFold` mechanic as s02 |
 | s02 | Unstick the proxy card when the fold completes | high | story | needs discussion — same mechanic as s03 |
-| s14 | Keep the built conflict layer current and honest about its age | high | data | **part done** — freshness removed; deploy cadence outstanding |
-| s05 | One-word scale toggle with animated curvature | mid | story | |
-| s06 | Amplitude map: recentre, per-cell, month slider | mid | story | enabled by 04-05 |
-| s07 | Schedule cause refresh; state vintage in the Who chapter | mid | data | one mechanism with s14 |
-| s09 | Weekly conflict stack: 5% + UN geoscheme rollup | low | data | easier now s13 is done |
+| s09 | Weekly conflict stack: 5% + UN geoscheme rollup | low | data | easier now s13 is done; its own Solution section is still TBD — rollup direction and per-week vs. global segment membership both need deciding first |
 | s08 | Reachable chart tooltips on touch | low | story | deepest design work |
 | p09 | Subnational cause and age hunting beyond Eurostat | — | data | parked as **backlog 999.1**, not a loose todo |
 
-14 todos were moved to `.planning/todos/completed/` at close: p01–p08 and s01/s04/s11 (all
-promoted to shipped plans), plus s10 (closed as a no-op), s12 and s13 (both resolved 2026-08-21).
+Four of this table's original nine closed after the milestone close and are in
+`.planning/todos/completed/`: s05, s07 and s14 during the week of 2026-08-21, and **s06 on
+2026-08-29** — the amplitude map is now a per-cell excess-deaths map with a month slider, shipped
+in nine commits and deployed. Its file records a spike finding worth not re-litigating: batching
+the cells into nine paths is **thirty times slower** than filling them one at a time.
 
-### Accepted audit warnings from v2.0 (5)
+14 todos were moved to `.planning/todos/completed/` at close itself: p01–p08 and s01/s04/s11 (all
+promoted to shipped plans), plus s10 (closed as a no-op), s12 and s13 (both resolved 2026-08-21).
+With the four above, `completed/` now holds 18.
+
+### Accepted audit warnings from v2.0 (4 open, 1 closed)
 
 Each is a deliberate deferral with a recorded reason — see `milestones/v2.0-MILESTONE-AUDIT.md`.
 
 | ID | Summary | Why left |
 |----|---------|----------|
-| INT-03 | `region-keys.json` synced to `public/` with no runtime fetcher — 392 KB dead browser payload | Cosmetic; the one-line removal deserves its own deliberate commit |
+| ~~INT-03~~ | ~~`region-keys.json` synced to `public/` with no runtime fetcher — 392 KB dead browser payload~~ | **Closed 2026-08-29, the other way round.** The proposed fix was to drop the sync; s06 added the fetcher instead, so the payload now does work — it is what lets a cell take its curve from a measured region rather than its country's average. |
 | INT-04 | 20-archetype quantisation flattens 19.43% of expected deaths; ETH, JPN, ZAF collapse to one archetype | Payload-versus-fidelity trade-off with no forcing function |
 | INT-05 | No runtime alignment guard between rate-grid and age-sex-cells (`persona.ts:261`) | Latent — needs a lone `rate-grid.json` rebuild, which only happens in a notebook. **The warning with a real failure mode.** |
 | INT-06 | Coverage guard not mirrored on the story side (`usePersonaTables.ts`) | Only bites on a future export regression |
@@ -80,7 +83,15 @@ Each is a deliberate deferral with a recorded reason — see `milestones/v2.0-MI
 
 ### Other open follow-ups
 
-- **PUB-01** (open since v1.0) — **partly closed 2026-08-29.** The checkout *is* linked (project `Watch People Die`, service `watch-people-die-live`), and production was deployed and its build logs read repeatedly that day, so "never linked" was stale. What remains is the original ask: a smoke check of the live URL itself, which nothing has done.
+- ~~**PUB-01**~~ (open since v1.0) — **closed 2026-08-29.** The checkout was already linked (project
+  `Watch People Die`, service `watch-people-die-live`), so the "never linked" half was stale. The
+  original ask — a smoke check of the live URL itself — was done that evening against
+  `watchpeopledie.live` after the s06 deploy: `/data/region-keys.json` and `/data/rate-grid.json`
+  both 200, the story prose serving in all three languages, the figure mounting with its 383
+  provenance outlines, 55.4% of its drawn pixels changing between January and July, and no console
+  errors. That last check is the one worth keeping as a habit — the new `region-keys.json` fetch
+  degrades *silently* to country-tier curves, so a 404 there would have looked like working
+  software.
 - ~~**`lib/acled-weekly.test.ts` flake**~~ — **resolved 2026-08-21, verified 2026-08-29.** Fixed by `e20575fd` about seven hours after this note was written, which is why later commits passed the hook. The diagnosis here was also wrong: not fixture ZIP entry order but the streaming reader spooling each sheet to a temp file, stalling the unzip stream until it fired `end` mid-archive, so every text cell surfaced as `{sharedString: n}`. `e20575fd` reads the ZIP's metadata parts up front instead. Measured 40/40 green on 2026-08-29; at the reported 1-in-3 rate that has probability ~1e-7.
 - **`pipeline/` has no lint script**; `ruff check pipeline/` reports pre-existing B905 at `geo.py:57`.
 - **`public/data/temperature-curves.json`** stale from 2026-07-17 — not in the sync-data allowlist, not fetched.
