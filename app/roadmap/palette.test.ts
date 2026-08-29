@@ -3,6 +3,7 @@ import {
   chartPaletteToCssVars,
   contrastFix,
   contrastRatio,
+  divergingHarmony,
   harmony,
   mapColor,
   marks,
@@ -187,6 +188,60 @@ describe("harmony", () => {
     expect(harmony(4, sky)).toEqual(schemes(sky).tetradic);
     expect(harmony(6, sky)).toHaveLength(6);
     expect(harmony(9, sky)).toEqual(schemes(sky).mono(9));
+  });
+});
+
+describe("divergingHarmony", () => {
+  // The one ramp in the story whose middle is a value and not just a midpoint. Everything here
+  // is about the two arms being equal and opposite: if one is darker or more saturated than the
+  // other, the map reads as "more deaths matter more than fewer", which is not the claim.
+  it("is odd-length, neutral in the middle, and mirrored either side of it", () => {
+    for (const hex of SKIES) {
+      const sky = parseSky(hex);
+      const ramp = divergingHarmony(9, sky);
+      expect(ramp).toHaveLength(9);
+
+      const middle = lumOf(ramp[4]!);
+      const light = relativeLuminance(sky) >= 0.28;
+      // A light sky's extremes darken outward and a dark sky's lighten outward, so the middle is
+      // the extreme of luminance in whichever direction the page is not.
+      for (const step of [0, 1, 2, 3, 5, 6, 7, 8]) {
+        if (light) expect(lumOf(ramp[step]!)).toBeLessThan(middle);
+        else expect(lumOf(ramp[step]!)).toBeGreaterThan(middle);
+      }
+      // Mirrored: step k out on one arm sits at the same luminance as step k on the other. This
+      // is the assertion the whole accessor exists to hold, and it is what a shared HSL lightness
+      // could not give — two complementary hues at one lightness came out 0.16 apart, which is a
+      // fifth of the ramp's whole range.
+      for (let step = 1; step <= 4; step += 1) {
+        const low = lumOf(ramp[4 - step]!);
+        const high = lumOf(ramp[4 + step]!);
+        expect(Math.abs(low - high)).toBeLessThan(0.01);
+      }
+      // Monotonic away from the middle on both arms.
+      for (let step = 1; step <= 4; step += 1) {
+        const inner = lumOf(ramp[4 - step + 1]!);
+        const outer = lumOf(ramp[4 - step]!);
+        if (light) expect(outer).toBeLessThan(inner);
+        else expect(outer).toBeGreaterThan(inner);
+      }
+    }
+  });
+
+  it("puts the section's own hue on the low arm and its complement on the high one", () => {
+    const sky = parseSky("#bcd8ee");
+    const ramp = divergingHarmony(9, sky);
+    const hueOf = (css: string) => rgbToHsl(parseColor(css)!.rgb)[0];
+    const base = schemes(sky).hue;
+    const complement = (base + 180) % 360;
+    expect(Math.abs(hueOf(ramp[0]!) - base)).toBeLessThan(6);
+    expect(Math.abs(hueOf(ramp[8]!) - complement)).toBeLessThan(6);
+  });
+
+  it("still gives three colours at its narrowest, and never repeats the neutral", () => {
+    const ramp = divergingHarmony(3, parseSky("#bcd8ee"));
+    expect(ramp).toHaveLength(3);
+    expect(new Set(ramp).size).toBe(3);
   });
 });
 

@@ -60,6 +60,8 @@ export function useStorySlots(): SlotsBySection {
     appliedFallbacks,
     grid,
     deathsPerYearById,
+    rateGrid,
+    regionKeys,
     admin1Features,
     nuts2Features,
     ratePer100kByKey,
@@ -230,6 +232,8 @@ export function useStorySlots(): SlotsBySection {
             regions={regions}
             admin1Features={admin1Features}
             appliedFallbacks={appliedFallbacks}
+            rateGrid={rateGrid}
+            regionKeys={regionKeys}
           />
         ),
       },
@@ -287,6 +291,8 @@ export function useStorySlots(): SlotsBySection {
       appliedFallbacks,
       grid,
       deathsPerYearById,
+      rateGrid,
+      regionKeys,
       admin1Features,
       nuts2Features,
       ratePer100kByKey,

@@ -275,11 +275,17 @@ export const chartsDe: ChartsDictionary = {
 
   amplitudeMap: {
     aria:
-      "Karte von Norwegen bis Südafrika und von Mauretanien bis Bangladesch, jedes Land " +
-      "eingefärbt nach beobachteter oder räumlich geschätzter saisonaler " +
-      "Sterblichkeitsamplitude, mit gemessenen Admin-1-Regionen in ihrer eigenen feineren " +
-      "Amplitude",
-    legendCaption: "Stärke der monatlichen Abweichung",
+      "Karte von Norwegen bis Südafrika und von Mauretanien bis Bangladesch. Jede " +
+      "Halbgrad-Rasterzelle ist eingefärbt nach den Todesfällen, die die Saison dieses Monats " +
+      "einem gewöhnlichen Monat dort hinzufügt oder nimmt, und Umrisse zeigen das Land oder die " +
+      "Region, aus der die Saisonkurve jeder Zelle stammt",
+    legendCaption:
+      "Die Farbe zeigt zusätzliche Todesfälle pro Monat je Halbgrad-Zelle: neutral unter " +
+      "{neutral} im Monat, volle Stärke bei {domain}.",
+    legendFewer: "weniger Todesfälle",
+    legendMore: "mehr Todesfälle",
+    provenanceMeasured: "Kurve hier gemessen",
+    provenanceEstimated: "Kurve geschätzt",
     sourceObserved: "beobachtet",
     sourceOwnRegions: "berechnet aus {n} gemessenen Regionen",
     sourceBorderingCountries: "berechnet aus angrenzenden Ländern: {donors}",

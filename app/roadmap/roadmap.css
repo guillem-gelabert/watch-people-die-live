@@ -1360,11 +1360,42 @@ body {
   flex: 1;
 }
 
+/* The seasonality map's frame: the canvas, with the provenance outlines laid over it. */
+.amplitude-map-frame {
+  position: relative;
+}
+
+/* One outline per unit whose curve a visible cell borrowed. Solid where somebody counted deaths
+   in that unit, dashed where the story reconstructed the curve from a neighbour, a climate class
+   or a latitude — which is the difference the surrounding prose is entirely about. Passes pointer
+   events through to the canvas, which owns the hover. */
+.amplitude-map-outlines {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  fill: none;
+}
+
+.amplitude-map-outlines .is-measured {
+  stroke: var(--ink);
+  stroke-width: 0.7;
+  stroke-opacity: 0.55;
+}
+
+.amplitude-map-outlines .is-estimated {
+  stroke: var(--ink);
+  stroke-width: 0.7;
+  stroke-dasharray: 2 3;
+  stroke-opacity: 0.4;
+}
+
 .amplitude-legend {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem 1.5rem;
+  flex-direction: column;
+  gap: 0.4rem;
   margin-top: 0.55rem;
   color: var(--muted);
   font-size: 0.72rem;
@@ -1372,20 +1403,51 @@ body {
 
 .amplitude-legend-scale {
   display: flex;
-  flex: 1;
-  min-width: 12rem;
   align-items: center;
   gap: 0.5rem;
 }
 
+.amplitude-legend-end {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* The nine bins as nine swatches rather than a gradient: the cells are quantised, and a smooth
+   bar would promise a precision the map does not have. */
 .amplitude-legend-bar {
+  display: flex;
   flex: 1;
   height: 8px;
+  overflow: hidden;
   border-radius: 999px;
 }
 
-.amplitude-legend-caption {
-  margin-left: auto;
+.amplitude-legend-bar span {
+  flex: 1;
+}
+
+.amplitude-legend-caption,
+.amplitude-legend-provenance {
+  margin: 0;
+}
+
+.amplitude-legend-provenance {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.9rem;
+}
+
+.amplitude-legend-rule {
+  width: 18px;
+  height: 0;
+  border-top: 1px solid var(--ink);
+  opacity: 0.55;
+}
+
+.amplitude-legend-rule.is-estimated {
+  border-top-style: dashed;
+  opacity: 0.4;
 }
 
 .chart-axis,

@@ -268,10 +268,17 @@ export const chartsCa: ChartsDictionary = {
 
   amplitudeMap: {
     aria:
-      "Mapa de Noruega a Sud-àfrica i de Mauritània a Bangladesh, amb cada país acolorit per " +
-      "amplitud de mortalitat estacional observada o estimada espacialment, i les regions " +
-      "Admin-1 mesurades acolorides per la seva pròpia amplitud més fina",
-    legendCaption: "força de la desviació mensual",
+      "Mapa de Noruega a Sud-àfrica i de Mauritània a Bangladesh. Cada cel·la de mig grau està " +
+      "acolorida per les morts que l'estació d'aquest mes afegeix, o treu, a un mes ordinari " +
+      "d'allà, i els contorns marquen el país o la regió d'on prové la corba estacional de cada " +
+      "cel·la",
+    legendCaption:
+      "El color són les morts d'excés al mes a cada cel·la de mig grau: neutre per sota de " +
+      "{neutral} al mes, intensitat plena a {domain}.",
+    legendFewer: "menys morts",
+    legendMore: "més morts",
+    provenanceMeasured: "corba mesurada aquí",
+    provenanceEstimated: "corba estimada",
     sourceObserved: "observat",
     sourceOwnRegions: "calculat a partir de {n} regions mesurades",
     sourceBorderingCountries: "calculat a partir dels països fronterers: {donors}",

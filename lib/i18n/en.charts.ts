@@ -251,10 +251,16 @@ export const chartsEn = {
 
   amplitudeMap: {
     aria:
-      "Map from Norway to South Africa and from Mauritania to Bangladesh, with every country " +
-      "colored by observed or spatially estimated seasonal mortality amplitude, and measured " +
-      "Admin-1 regions colored by their own finer amplitude",
-    legendCaption: "monthly deviation strength",
+      "Map from Norway to South Africa and from Mauritania to Bangladesh. Every half-degree grid " +
+      "cell is colored by the deaths this month's season adds to, or takes from, an ordinary " +
+      "month there, and outlines mark the country or region each cell's seasonal curve came from",
+    legendCaption:
+      "Colour is excess deaths a month in each half-degree cell: neutral below {neutral} a " +
+      "month, full strength at {domain}.",
+    legendFewer: "fewer deaths",
+    legendMore: "more deaths",
+    provenanceMeasured: "curve measured here",
+    provenanceEstimated: "curve estimated",
     sourceObserved: "observed",
     sourceOwnRegions: "calculated from {n} measured regions",
     sourceBorderingCountries: "calculated from bordering countries: {donors}",

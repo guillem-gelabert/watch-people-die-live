@@ -318,6 +318,57 @@ export function harmony(n: number, sky: Rgb, vivid = false, anchor?: string): st
   return s.mono(n);
 }
 
+// A diverging ramp of n colours (n odd), for the one figure whose quantity has a real zero with
+// a meaning on either side of it — the seasonality map's excess deaths per month. `harmony(7)`
+// cannot serve this: past six series it returns shades of one hue, which is exactly right for a
+// sequential choropleth and exactly wrong here, where the reader has to see which side of zero a
+// cell is on before they see how far.
+//
+// Index 0 is the section's own hue at its extreme, index n-1 the complement's, and the middle is
+// neither: the
+// section's own hue at almost no saturation, so "nothing much happens here" reads as the absence
+// of a colour rather than as a colour of its own. Both arms travel the same distance in lightness
+// and saturation, which is what keeps the two halves reading as equal and opposite instead of one
+// looking louder than the other.
+//
+// The direction is the caller's to choose. A hue is not warm or cold in the abstract — that
+// depends on the section's sky — so this returns the two arms in a fixed order and the figure
+// says which end means more.
+export function divergingHarmony(n: number, sky: Rgb): string[] {
+  const s = schemes(sky);
+  const half = Math.max(1, Math.floor((n - 1) / 2));
+  // The two arms are pinned to a shared luminance ladder rather than a shared HSL lightness,
+  // and that is the whole difficulty here. One HSL lightness is not one luminance — the same
+  // note PROXY_COLORS carries — and two complementary hues at L=0.5 can sit a factor of nine
+  // apart. Left on lightness, one arm of this ramp comes out visibly heavier than the other on
+  // half the section skies, which would say "more deaths reads louder than fewer" in a figure
+  // whose entire subject is that the two are the same event seen from opposite hemispheres.
+  const ends: [number, number] = s.dark ? [0.05, 0.52] : [0.7, 0.1];
+  const arm = (hue: number, t: number) =>
+    atLuminance(hue, 0.05 + (s.sat - 0.05) * t, ends[0] + (ends[1] - ends[0]) * t);
+  const out: string[] = [];
+  for (let i = 0; i < half; i += 1) out.push(arm(s.hue, (half - i) / half));
+  out.push(arm(s.hue, 0));
+  for (let i = 1; i <= half; i += 1) out.push(arm(s.hue + 180, i / half));
+  return out;
+}
+
+// The hue and saturation asked for, at the luminance asked for. Relative luminance rises
+// monotonically with HSL lightness at a fixed hue and saturation, so a bisection lands on it to
+// well under a perceptible step and stays pure — no channel scaling, so the hue is exactly the
+// one requested.
+function atLuminance(hue: number, sat: number, target: number): string {
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 24; i += 1) {
+    const mid = (lo + hi) / 2;
+    const rgb = parseColor(hslToCss(hue, sat, mid))?.rgb ?? [0, 0, 0];
+    if (relativeLuminance(rgb) < target) lo = mid;
+    else hi = mid;
+  }
+  return hslToCss(hue, sat, (lo + hi) / 2);
+}
+
 // The five seasonality proxies, keyed to identity (their data-proxy index) so reordering the
 // stack never repaints a card. Fixed values, not derived from the sky: these used to be
 // `schemes(sky, true).analogous`, which meant the five hues slid as the story's sky
