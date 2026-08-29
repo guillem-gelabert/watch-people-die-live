@@ -1,11 +1,12 @@
 import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
-  bucketsByMonth,
+  bandEdges,
+  binOf,
   buildMonthValues,
+  createFrameBinner,
   domainOf,
   NEUTRAL_EDGE,
-  quantise,
   resolveCellCurves,
   TIER_COUNTRY,
   TIER_NONE,
@@ -93,6 +94,8 @@ describe("resolveCellCurves", () => {
     });
     // Fifty cells, one country, one unit — and every cell reading the same twelve numbers.
     expect(resolved.units).toHaveLength(1);
+    // The curve itself comes back too, for readers that want a phase the twelve do not land on.
+    expect(resolved.curves).toEqual([WINTER]);
     const n = shared.length;
     for (let i = 1; i < n; i += 1) {
       expect(resolved.monthly[i]).toBe(resolved.monthly[0]);
@@ -169,20 +172,21 @@ describe("buildMonthValues", () => {
   });
 });
 
-describe("quantise", () => {
+describe("bandEdges and binOf", () => {
   const STEPS = 9;
+  const half = (STEPS - 1) / 2;
 
   it("is monotonic, symmetric about the neutral bin, and centred on zero", () => {
-    const values = Float32Array.from([-400, -40, -4, -0.5, 0, 0.5, 4, 40, 400]);
-    const { bins, edges, domain } = quantise(values, STEPS, 400);
-    expect(domain).toBe(400);
-    expect(edges[edges.length - 1]).toBe(400);
+    const edges = bandEdges(400, half);
     expect(edges[0]).toBe(NEUTRAL_EDGE);
+    expect(edges[edges.length - 1]).toBe(400);
+
+    const values = [-400, -40, -4, -0.5, 0, 0.5, 4, 40, 400];
+    const bins = values.map((v) => binOf(v, edges, STEPS));
     // The middle bin is the neutral one and holds everything under a death a month.
-    expect(bins[4]).toBe(4);
     expect(bins[3]).toBe(4);
+    expect(bins[4]).toBe(4);
     expect(bins[5]).toBe(4);
-    // Monotonic across the whole signed range.
     for (let i = 1; i < bins.length; i += 1) {
       expect(bins[i]!).toBeGreaterThanOrEqual(bins[i - 1]!);
     }
@@ -192,13 +196,10 @@ describe("quantise", () => {
     expect(bins[2]! + bins[6]!).toBe(STEPS - 1);
   });
 
-  it("publishes the edges the cells were binned on, so a legend cannot disagree", () => {
-    const values = Float32Array.from([0, 5, 50, 500]);
-    const { bins, edges } = quantise(values, STEPS, 500);
-    const half = (STEPS - 1) / 2;
-    for (let i = 0; i < values.length; i += 1) {
-      const band = bins[i]! - half;
-      const value = values[i]!;
+  it("puts a value in the band its own edges say, so a legend cannot disagree", () => {
+    const edges = bandEdges(500, half);
+    for (const value of [0, 5, 50, 500]) {
+      const band = binOf(value, edges, STEPS) - half;
       if (band === 0) expect(value).toBeLessThanOrEqual(edges[0]!);
       else {
         expect(value).toBeGreaterThan(edges[band - 1]!);
@@ -208,25 +209,31 @@ describe("quantise", () => {
   });
 
   it("clamps past the domain instead of adding a bin the legend has no colour for", () => {
-    const { bins } = quantise(Float32Array.from([1e9, -1e9]), STEPS, 100);
-    expect(bins[0]).toBe(STEPS - 1);
-    expect(bins[1]).toBe(0);
+    const edges = bandEdges(100, half);
+    expect(binOf(1e9, edges, STEPS)).toBe(STEPS - 1);
+    expect(binOf(-1e9, edges, STEPS)).toBe(0);
   });
 
+  it("keeps the bands ordered when the data is too small to have a domain", () => {
+    const edges = bandEdges(0, half);
+    for (let i = 1; i < edges.length; i += 1) expect(edges[i]!).toBeGreaterThan(edges[i - 1]!);
+    expect(binOf(0, edges, STEPS)).toBe(half);
+  });
+});
+
+describe("domainOf", () => {
   it("takes the domain off the distribution, not off its single loudest cell", () => {
     // 999 cells under ten, one at a million. A domain set by the maximum would put every other
     // cell in the neutral bin.
-    const values = new Float32Array(1000);
-    for (let i = 0; i < 999; i += 1) values[i] = 1 + (i % 9);
-    values[999] = 1e6;
-    const { domain, bins } = quantise(values, STEPS);
-    expect(domain).toBeLessThan(100);
-    expect(bins[999]).toBe(STEPS - 1);
-    expect([...bins.slice(0, 999)].some((b) => b !== 4)).toBe(true);
+    const values = new Float32Array(12 * 1000);
+    for (let month = 0; month < 12; month += 1) {
+      for (let i = 0; i < 999; i += 1) values[month * 1000 + i] = 1 + (i % 9);
+      values[month * 1000 + 999] = 1e6;
+    }
+    expect(domainOf(values)).toBeLessThan(100);
   });
 
   it("takes the domain from the cells the panel shows, not the ones it culled", () => {
-    // One month, four cells; the two the frame drops are the loud ones.
     const values = new Float32Array(12 * 4);
     for (let month = 0; month < 12; month += 1) {
       values[month * 4 + 0] = 4;
@@ -237,55 +244,104 @@ describe("quantise", () => {
     expect(domainOf(values)).toBeGreaterThan(1000);
     expect(domainOf(values, (cell) => cell < 2)).toBeLessThan(10);
   });
-
-  it("keeps the bands ordered when the data is too small to have a domain", () => {
-    const { edges, bins } = quantise(Float32Array.from([0, 0, 0]), STEPS);
-    for (let i = 1; i < edges.length; i += 1) expect(edges[i]!).toBeGreaterThan(edges[i - 1]!);
-    expect([...bins]).toEqual([4, 4, 4]);
-  });
 });
 
-describe("bucketsByMonth", () => {
+describe("createFrameBinner", () => {
   const STEPS = 9;
+  const edges = bandEdges(400, (STEPS - 1) / 2);
 
-  it("partitions every cell into exactly one bin, every month", () => {
-    const n = 200;
-    const bins = new Uint8Array(12 * n);
-    for (let i = 0; i < bins.length; i += 1) bins[i] = i % STEPS;
-    const buckets = bucketsByMonth(bins, STEPS);
-    expect(buckets).toHaveLength(12);
-    for (let month = 0; month < 12; month += 1) {
-      const seen = new Set<number>();
-      let total = 0;
-      for (const list of buckets[month]!) {
-        total += list.length;
-        for (const cell of list) {
-          expect(seen.has(cell)).toBe(false);
-          seen.add(cell);
-        }
-      }
-      expect(total).toBe(n);
-      expect(seen.size).toBe(n);
+  // Two cells in one country and two in another, so a frame has two curves and four cells.
+  const cells: RateCell[] = [
+    [0, 0, 710, 12000],
+    [0.5, 0, 710, 12000],
+    [1, 0, 578, 12000],
+    [1.5, 0, 578, 0],
+  ];
+  const resolved = resolveCellCurves({
+    cells,
+    regionKeys: null,
+    regions: null,
+    estimates: new Map([
+      [710, estimate(SUMMER)],
+      [578, estimate(WINTER)],
+    ]),
+  });
+  const binner = createFrameBinner({
+    cells,
+    visible: Int32Array.from([0, 1, 2, 3]),
+    unit: resolved.unit,
+    curves: resolved.curves,
+    edges,
+    steps: STEPS,
+  });
+
+  const binsOf = (phase: number) => {
+    const { order, offsets } = binner(phase);
+    const out = new Map<number, number>();
+    for (let bin = 0; bin < STEPS; bin += 1) {
+      for (let k = offsets[bin]!; k < offsets[bin + 1]!; k += 1) out.set(order[k]!, bin);
+    }
+    return out;
+  };
+
+  it("partitions every visible cell into exactly one bin", () => {
+    const { order, offsets } = binner(0);
+    expect(offsets[0]).toBe(0);
+    expect(offsets[STEPS]).toBe(4);
+    expect(new Set(order).size).toBe(4);
+  });
+
+  it("reads the curve at the phase asked for, not at a month boundary", () => {
+    // Mid-January: the winter country is above its ordinary month, the summer one below.
+    const january = binsOf(0.04);
+    expect(january.get(2)!).toBeGreaterThan(4);
+    expect(january.get(0)!).toBeLessThan(4);
+    // Mid-July, and both have swapped.
+    const july = binsOf(0.54);
+    expect(july.get(2)!).toBeLessThan(4);
+    expect(july.get(0)!).toBeGreaterThan(4);
+  });
+
+  it("moves a cell between two months rather than snapping to one of them", () => {
+    // The peak is at phase 0; a quarter year later the curve is at its mean and the cell is
+    // neutral, which no twelve-sample table read as an index could have shown between samples.
+    expect(binsOf(0).get(2)!).toBeGreaterThan(4);
+    expect(binsOf(0.25).get(2)!).toBe(4);
+  });
+
+  it("leaves a cell nobody dies in neutral at every phase", () => {
+    for (const phase of [0, 0.17, 0.33, 0.5, 0.83]) expect(binsOf(phase).get(3)).toBe(4);
+  });
+
+  it("gives a cell with no curve a flat year, so it never leaves the neutral bin", () => {
+    const lone: RateCell[] = [[0, 0, 999, 50000]];
+    const none = resolveCellCurves({
+      cells: lone,
+      regionKeys: null,
+      regions: null,
+      estimates: new Map(),
+    });
+    const flat = createFrameBinner({
+      cells: lone,
+      visible: Int32Array.from([0]),
+      unit: none.unit,
+      curves: none.curves,
+      edges,
+      steps: STEPS,
+    });
+    for (const phase of [0, 0.25, 0.5, 0.75]) {
+      const { order, offsets } = flat(phase);
+      expect(order[0]).toBe(0);
+      expect(offsets[4]).toBe(0);
+      expect(offsets[5]).toBe(1);
     }
   });
 
-  it("puts each cell in the bin its month says, not its neighbour's", () => {
-    const n = 3;
-    const bins = new Uint8Array(12 * n);
-    bins[0 * n + 0] = 8; // cell 0 in January
-    bins[6 * n + 0] = 0; // cell 0 in July
-    const buckets = bucketsByMonth(bins, STEPS);
-    expect([...buckets[0]![8]!]).toEqual([0]);
-    expect([...buckets[6]![0]!]).toEqual([0, 1, 2]);
-  });
-
-  it("drops what the caller culled, from every month at once", () => {
-    const n = 10;
-    const bins = new Uint8Array(12 * n);
-    const buckets = bucketsByMonth(bins, STEPS, (cell) => cell % 2 === 0);
-    for (const month of buckets) {
-      expect(month.reduce((sum, list) => sum + list.length, 0)).toBe(5);
-    }
+  it("reuses its buffers, which is why a drag allocates nothing", () => {
+    const first = binner(0.1);
+    const second = binner(0.6);
+    expect(second.order).toBe(first.order);
+    expect(second.offsets).toBe(first.offsets);
   });
 });
 

@@ -7,14 +7,16 @@ import {
   type AppliedSeasonalityFallbacks,
 } from "@/lib/spatial-seasonality";
 import {
-  bucketsByMonth,
+  bandEdges,
   buildMonthValues,
+  createFrameBinner,
   domainOf,
-  quantise,
   resolveCellCurves,
   TIER_REGION,
   type CellCurveUnit,
+  type Frame,
 } from "./amplitudeCells";
+import { evaluateHarmonicCurve, type HarmonicCurve } from "@/lib/seasonal-curve";
 import { showTooltip, hideTooltip } from "../tooltip";
 import { fill } from "@/lib/i18n/fill";
 import { useCanvasScale, useFigureWidth } from "./useFigureSize";
@@ -86,16 +88,25 @@ const RAMP = divergingHarmony(STEPS, SKY);
 // end without bleeding at the large one.
 const CELL_OVERLAP = 0.35;
 
-// The month range, as constants rather than literals in the markup, the way the EWMA widget's
-// two sliders hold theirs.
-const MONTH_RANGE = { min: 0, max: 11, step: 1 };
+// A day per step. The curve behind every cell is continuous — an order-4 Fourier fit, evaluated at
+// any phase — and the figure used to show twelve samples of it because it precomputed every frame
+// at load, which a twelve-position control makes possible. Binning a frame on demand turned out to
+// cost 0.29ms against the ~6ms it takes to paint, so the twelve were costing memory and buying
+// nothing. A day is the finest step whose label is a date a reader can read.
+//
+// What twelve samples were not was lossy: nine coefficients, fastest component four cycles a year,
+// so twelve samples sit above the Nyquist rate and over-determine the curve. Sliding between them
+// interpolates a curve that was already pinned — it reads as motion, not as new information, and
+// the note under the control says as much.
+const DAYS = 365;
+const DAY_RANGE = { min: 0, max: DAYS - 1, step: 1 };
 
 // One unattended sweep through the year when the figure first comes into view, so a reader who
 // never touches the control still sees the thing the control is for. It is not a loop and it is
 // not a play button: it runs once, it stops the instant the reader takes the slider, and it does
-// not run at all under prefers-reduced-motion. Slow enough to read each month, quick enough that
-// nobody waits for it.
-const SWEEP_MS_PER_MONTH = 620;
+// not run at all under prefers-reduced-motion. On a frame clock now rather than a timer, because
+// with a day per step the sweep can glide instead of stepping twelve times.
+const SWEEP_MS = 9000;
 
 // The inverted-lattice window that decides which cells can be on screen. Corner sampling
 // understates a pseudocylindrical projection's range — its parallels are curves, so the highest
@@ -110,17 +121,19 @@ interface Outline {
 
 interface RenderCache {
   rings: ([number, number][] | null)[];
-  buckets: Int32Array[][];
+  // Point in the year → that frame's cells grouped by colour. Reuses its own buffers, so the
+  // Frame it returns is only valid until the next call.
+  frameAt: (phase: number) => Frame;
   edges: number[];
   domain: number;
   outlines: Outline[];
   // Everything the hover needs, indexed rather than searched. `byCell` is "lon,lat" → cell, built
-  // in the same pass as the buckets: the density map's hover does a linear Array.find over sixty
+  // in the same pass as the rings: the density map's hover does a linear Array.find over sixty
   // thousand rows on every pointermove, which is a cost this figure does not have to inherit.
   byCell: Map<string, number>;
-  monthly: Float32Array;
   unit: Int32Array;
   units: CellCurveUnit[];
+  curves: HarmonicCurve[];
 }
 
 // The last figure of the seasonality chapter, and the one that stops pretending mortality is
@@ -143,18 +156,29 @@ export default function AmplitudeMap({
   const frameRef = useRef<HTMLDivElement | null>(null);
   const [sizeRef, measured] = useFigureWidth<HTMLDivElement>();
   const scale = useCanvasScale();
-  const [month, setMonth] = useState(0);
+  const [day, setDay] = useState(0);
   // Once the reader has moved the slider themselves, the figure never moves on its own again.
   const [taken, setTaken] = useState(false);
   const near = useNearViewport(frameRef);
   const reduceMotion = useReducedMotion();
+  const phase = (day + 0.5) / DAYS;
 
-  // Month names are not translated anywhere in this codebase — chartHelpers' MONTHS is twelve
-  // English literals and no dictionary has ever carried one — so they come from the platform in
-  // the reader's own locale rather than from thirty-six new strings nobody would review.
-  const monthNames = useMemo(() => {
-    const format = new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" });
-    return Array.from({ length: 12 }, (_, index) => format.format(Date.UTC(2001, index, 15)));
+  // Dates are not translated anywhere in this codebase — chartHelpers' MONTHS is twelve English
+  // literals and no dictionary has ever carried a month name — so they come from the platform in
+  // the reader's own locale rather than from strings nobody would review. 2001 because it is not a
+  // leap year: the label is a point in an ordinary year, not a date in a real one.
+  const dateNames = useMemo(() => {
+    // en-GB rather than bare "en", which Intl resolves to US ordering and would print "January 16"
+    // under prose that says colour, modelled and neighbour. Catalan and German are day-first
+    // already, so this is the only locale that needed saying out loud.
+    const format = new Intl.DateTimeFormat(locale === "en" ? "en-GB" : locale, {
+      day: "numeric",
+      month: "long",
+      timeZone: "UTC",
+    });
+    return Array.from({ length: DAYS }, (_, index) =>
+      format.format(Date.UTC(2001, 0, 1) + index * 86400000),
+    );
   }, [locale]);
   const side = Math.min(MAX_SIDE, measured);
   const width = Math.round(side * scale);
@@ -235,9 +259,23 @@ export default function AmplitudeMap({
       regionOverrides: appliedFallbacks?.regions ?? null,
       names,
     });
+    // The domain still comes off the twelve monthly samples even though the figure is read at any
+    // point in the year. Those twelve over-determine an order-4 curve, so the extremes they find
+    // are the year's extremes — and taking the domain from a denser sample would cost a sort of
+    // millions of magnitudes to move the 99.5th percentile by nothing.
     const values = buildMonthValues(cells, resolved.monthly);
-    const { bins, edges, domain } = quantise(values, STEPS, domainOf(values, visible));
-    const buckets = bucketsByMonth(bins, STEPS, visible);
+    const domain = domainOf(values, visible);
+    const edges = bandEdges(domain, (STEPS - 1) / 2);
+    const shown: number[] = [];
+    for (let i = 0; i < cells.length; i += 1) if (rings[i]) shown.push(i);
+    const frameAt = createFrameBinner({
+      cells,
+      visible: Int32Array.from(shown),
+      unit: resolved.unit,
+      curves: resolved.curves,
+      edges,
+      steps: STEPS,
+    });
 
     // The provenance layer, and the figure's actual argument: not two hundred outlines for
     // decoration but one outline per unit whose curve some visible cell borrowed, drawn over the
@@ -275,14 +313,14 @@ export default function AmplitudeMap({
 
     return {
       rings,
-      buckets,
+      frameAt,
       edges,
       domain,
       outlines,
       byCell,
-      monthly: resolved.monthly,
       unit: resolved.unit,
       units: resolved.units,
+      curves: resolved.curves,
     };
   }, [
     rateGrid,
@@ -308,8 +346,8 @@ export default function AmplitudeMap({
     const id = cache.unit[cell] ?? -1;
     const unit = id >= 0 ? cache.units[id] : undefined;
     const deaths = rateGrid.cells[cell]?.[3] ?? 0;
-    const n = rateGrid.cells.length;
-    const multiplier = cache.monthly[month * n + cell] ?? 1;
+    const curve = id >= 0 ? cache.curves[id] : undefined;
+    const multiplier = curve ? evaluateHarmonicCurve(curve, phase) : 1;
     const where =
       unit == null
         ? dict.charts.common.unknown
@@ -319,7 +357,7 @@ export default function AmplitudeMap({
     return fill(t.cellTooltip, {
       unit: where,
       excess: fmtExcess(t, (deaths * (multiplier - 1)) / 12),
-      month: monthNames[month] ?? "",
+      date: dateNames[day] ?? "",
       multiplier: fmtMultiplier(multiplier),
       basis: basisOf(t, unit),
     });
@@ -345,9 +383,9 @@ export default function AmplitudeMap({
     else hideTooltip();
   };
 
-  // Four hundred vector paths that do not depend on the month, held still across a month change.
-  // Without this React diffs every one of them on every tick of the slider, which costs more than
-  // the twenty-odd thousand cells the tick actually exists to repaint.
+  // Four hundred vector paths that do not depend on the date, held still as the slider moves.
+  // Without this React diffs every one of them on every tick, which costs more than the twenty-odd
+  // thousand cells the tick actually exists to repaint.
   const outlinePaths = useMemo(
     () =>
       cache?.outlines.map((outline, index) => (
@@ -361,8 +399,8 @@ export default function AmplitudeMap({
     [cache],
   );
 
-  // Half two, and the only side effect here: the month. Walks the cached rings a colour bucket at
-  // a time and refills — no projection, no binning, no geometry of any kind.
+  // Half two, and the only side effect here: the point in the year. Bins this one frame and walks
+  // it a colour at a time — no projection, no re-fit, no geometry of any kind.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !cache) return;
@@ -372,18 +410,18 @@ export default function AmplitudeMap({
     // Cleared rather than painted: the sea and the empty margin are the page itself, which is how
     // the reader can tell "nobody lives here" from "the map stops here".
     ctx.clearRect(0, 0, width, height);
-    const lists = cache.buckets[month];
-    if (!lists) return;
+    const { order, offsets } = cache.frameAt(phase);
     for (let bin = 0; bin < STEPS; bin += 1) {
-      const list = lists[bin];
-      if (!list?.length) continue;
+      const from = offsets[bin] ?? 0;
+      const to = offsets[bin + 1] ?? 0;
+      if (to === from) continue;
       // One fillStyle per bin, and one fill per cell. Not one path per bin: measured on this
       // figure, nine batched paths of ~3,000 quads each take 188ms to fill against 6ms for the
       // same quads filled one at a time, because a path that large falls off the rasteriser's
       // fast route. Group the colour, not the geometry.
       ctx.fillStyle = RAMP[bin] as string;
-      for (let k = 0; k < list.length; k += 1) {
-        const ring = cache.rings[list[k] as number];
+      for (let k = from; k < to; k += 1) {
+        const ring = cache.rings[order[k] as number];
         if (!ring) continue;
         ctx.beginPath();
         ctx.moveTo(ring[0]![0], ring[0]![1]);
@@ -394,20 +432,23 @@ export default function AmplitudeMap({
         ctx.fill();
       }
     }
-  }, [cache, month, width, height]);
+  }, [cache, phase, width, height]);
 
-  // The sweep. Deliberately not a rAF loop: the figure has twelve states, not a continuous one,
-  // and stepping between them on a timer is both what the reader would do by hand and a twelfth
-  // of the redraws.
+  // The sweep. A frame clock rather than a timer: with a day per step it can glide through the
+  // year instead of stepping twelve times, which is most of the reason the control stopped being
+  // twelve positions.
   useEffect(() => {
     if (!cache || !near || taken || reduceMotion) return;
-    let step = 0;
-    const timer = window.setInterval(() => {
-      step += 1;
-      setMonth(step % 12);
-      if (step >= 11) window.clearInterval(timer);
-    }, SWEEP_MS_PER_MONTH);
-    return () => window.clearInterval(timer);
+    let raf = 0;
+    let start = 0;
+    const tick = (now: number) => {
+      if (!start) start = now;
+      const through = (now - start) / SWEEP_MS;
+      setDay(Math.min(DAYS - 1, Math.floor(through * DAYS)));
+      if (through < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [cache, near, taken, reduceMotion]);
 
   return (
@@ -442,25 +483,25 @@ export default function AmplitudeMap({
           {outlinePaths}
         </svg>
       </div>
-      <label className="amplitude-month">
-        <span className="amplitude-month-head">
-          <span className="amplitude-month-name">{t.monthName}</span>
-          <span className="amplitude-month-value">{monthNames[month]}</span>
+      <label className="amplitude-phase">
+        <span className="amplitude-phase-head">
+          <span className="amplitude-phase-name">{t.phaseName}</span>
+          <span className="amplitude-phase-value">{dateNames[day]}</span>
         </span>
         <input
           type="range"
-          min={MONTH_RANGE.min}
-          max={MONTH_RANGE.max}
-          step={MONTH_RANGE.step}
-          value={month}
+          min={DAY_RANGE.min}
+          max={DAY_RANGE.max}
+          step={DAY_RANGE.step}
+          value={day}
           onChange={(event) => {
             setTaken(true);
-            setMonth(Number(event.target.value));
+            setDay(Number(event.target.value));
           }}
-          aria-label={t.monthName}
-          aria-valuetext={monthNames[month]}
+          aria-label={t.phaseName}
+          aria-valuetext={dateNames[day]}
         />
-        <span className="amplitude-month-note">{t.monthNote}</span>
+        <span className="amplitude-phase-note">{t.phaseNote}</span>
       </label>
       {cache && (
         <div className="amplitude-legend">

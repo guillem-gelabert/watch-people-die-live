@@ -1392,25 +1392,26 @@ body {
   stroke-opacity: 0.4;
 }
 
-/* The month control. Structurally the EWMA widget's slider — head, value, native range, note —
-   rather than a shared component: type="range" appears in exactly one other place in the story,
-   and two is not a pattern. Native because that is what gives arrow keys, Home and End, and a
-   touch target the platform already sized, for nothing. */
-.amplitude-month {
+/* The time-of-year control. Structurally the EWMA widget's slider — head, value, native range,
+   note — rather than a shared component: type="range" appears in exactly one other place in the
+   story, and two is not a pattern. Native because that is what gives arrow keys, Home and End, and
+   a touch target the platform already sized, for nothing. Its 365 positions are a day each, so
+   holding an arrow key sweeps the year rather than stepping twelve times. */
+.amplitude-phase {
   display: flex;
   flex-direction: column;
   gap: 5px;
   margin-top: 12px;
 }
 
-.amplitude-month-head {
+.amplitude-phase-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
 }
 
-.amplitude-month-name {
+.amplitude-phase-name {
   font:
     700 8.5px/1 var(--font-public-sans),
     sans-serif;
@@ -1419,7 +1420,7 @@ body {
   text-transform: uppercase;
 }
 
-.amplitude-month-value {
+.amplitude-phase-value {
   font:
     600 12px/1 var(--font-public-sans),
     sans-serif;
@@ -1427,7 +1428,7 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.amplitude-month input[type="range"] {
+.amplitude-phase input[type="range"] {
   width: 100%;
   height: 18px;
   padding: 0;
@@ -1436,7 +1437,7 @@ body {
   cursor: pointer;
 }
 
-.amplitude-month-note {
+.amplitude-phase-note {
   color: var(--muted);
   font-family: var(--font-libre-baskerville), Georgia, serif;
   font-size: 10.5px;

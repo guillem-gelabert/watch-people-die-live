@@ -5,7 +5,11 @@
 // are: it is pure, it has no React and no d3-selection in it, and it is where the figure's
 // arithmetic can be tested at all. The component's two effects are then only projection and paint.
 
-import { sampleHarmonicCurve, type HarmonicCurve } from "@/lib/seasonal-curve";
+import {
+  evaluateHarmonicCurve,
+  sampleHarmonicCurve,
+  type HarmonicCurve,
+} from "@/lib/seasonal-curve";
 import type { SpatialSeasonalityEstimate } from "@/lib/spatial-seasonality";
 import type { RateCell, RegionKeys, SubnationalSeasonalityRegion } from "../types";
 
@@ -43,11 +47,19 @@ export interface CellCurveUnit {
 export interface ResolvedCellCurves {
   // 12 × n, month-major: `monthly[month * n + cell]` is that cell's multiplier that month.
   // Mean one over the year by construction, so 1.0 is "an average month here".
+  //
+  // Twelve is not a sampling compromise. The fits are order-4 Fourier — nine coefficients, fastest
+  // component four cycles a year — so twelve samples sit above the Nyquist rate and there are more
+  // of them than there are unknowns. They pin the curve exactly, which is why the domain the
+  // colours are stretched over can be taken from them however finely the figure is later read.
   monthly: Float32Array;
   tier: Uint8Array;
   // Index into `units`, or -1 on TIER_NONE.
   unit: Int32Array;
   units: CellCurveUnit[];
+  // The curve behind each unit, aligned to `units`, for readers that want a phase the twelve
+  // samples do not land on.
+  curves: HarmonicCurve[];
 }
 
 export interface ResolveCellCurvesInput {
@@ -89,6 +101,7 @@ export function resolveCellCurves({
   const tier = new Uint8Array(n);
   const unit = new Int32Array(n);
   const units: CellCurveUnit[] = [];
+  const curves: HarmonicCurve[] = [];
   // Unit id → its twelve multipliers, so a curve is sampled once however many cells share it.
   const samples: number[][] = [];
   const unitByRegionKey = new Map<string, number>();
@@ -96,6 +109,7 @@ export function resolveCellCurves({
 
   const add = (u: CellCurveUnit, curve: HarmonicCurve): number => {
     units.push(u);
+    curves.push(curve);
     samples.push(sampleHarmonicCurve(curve));
     return units.length - 1;
   };
@@ -168,7 +182,7 @@ export function resolveCellCurves({
     }
   }
 
-  return { monthly, tier, unit, units };
+  return { monthly, tier, unit, units, curves };
 }
 
 // Excess deaths this month: what the season adds to, or takes from, this cell's ordinary month.
@@ -191,15 +205,6 @@ export function buildMonthValues(cells: RateCell[], monthly: Float32Array): Floa
   return values;
 }
 
-export interface Quantised {
-  bins: Uint8Array;
-  // The upper edge of each magnitude band, in deaths/month, smallest first. `edges[0]` is the
-  // neutral band's edge and `edges[edges.length - 1]` is the domain. The legend prints these, so
-  // it cannot disagree with the cells: they are the same numbers.
-  edges: number[];
-  domain: number;
-}
-
 // A cell where the season moves fewer than this many deaths a month is drawn neutral. One death
 // is a number a reader can hold, and it is the honest floor for a 0.5° cell: below it the colour
 // would be encoding rounding.
@@ -210,38 +215,15 @@ export const NEUTRAL_EDGE = 1;
 // set the domain would flatten the rest of the map into two bins.
 export const DOMAIN_QUANTILE = 0.995;
 
-// Signed values → a diverging bin index, on a ladder that is geometric in magnitude.
+// `half` upper edges: the neutral band, then a geometric climb to the domain, smallest first.
+// `edges[0]` is the neutral band's edge and the last is the domain itself. The legend prints
+// these, so the strip and the cells cannot disagree — they are the same numbers.
 //
-// Diverging because the quantity has a real zero with a meaning on either side (more deaths this
-// month than an average one, or fewer), and geometric because the magnitudes span five decades:
-// a linear ladder puts everything outside the Ganges plain in the neutral bin.
-//
-// One domain for all twelve months, computed once from all of them. Re-normalising per month
-// would make the colours move even where the deaths did not, which is exactly the thing this
-// figure claims to be showing.
-export function quantise(values: Float32Array, steps: number, domain?: number): Quantised {
-  const half = (steps - 1) / 2;
-  const span = domain ?? domainOf(values);
-  const edges = bandEdges(span, half);
-  const top = edges[half - 1] ?? NEUTRAL_EDGE;
-  const bins = new Uint8Array(values.length);
-  for (let i = 0; i < values.length; i += 1) {
-    const value = values[i] ?? 0;
-    const magnitude = Math.abs(value);
-    let band = 0;
-    if (magnitude > top) band = half;
-    else {
-      while (band < half && magnitude > (edges[band] ?? Infinity)) band += 1;
-    }
-    bins[i] = half + (value < 0 ? -band : band);
-  }
-  return { bins, edges, domain: span };
-}
-
-// `half` upper edges: the neutral band, then a geometric climb to the domain. Degenerate data —
-// a domain at or below the neutral edge — gets a linear ladder instead of a ratio of one, so the
-// bands stay distinct and ordered rather than collapsing onto each other.
-function bandEdges(domain: number, half: number): number[] {
+// Geometric because the magnitudes span five decades: a linear ladder puts everything outside the
+// Ganges plain in the neutral bin. Degenerate data — a domain at or below the neutral edge — gets
+// a linear ladder instead of a ratio of one, so the bands stay distinct and ordered rather than
+// collapsing onto each other.
+export function bandEdges(domain: number, half: number): number[] {
   if (half < 1) return [];
   if (!(domain > NEUTRAL_EDGE)) {
     const step = Math.max(domain, Number.EPSILON) / half;
@@ -251,6 +233,18 @@ function bandEdges(domain: number, half: number): number[] {
   return Array.from({ length: half }, (_, i) =>
     i === half - 1 ? domain : NEUTRAL_EDGE * Math.pow(ratio, i),
   );
+}
+
+// One signed value → its diverging bin. Diverging because the quantity has a real zero with a
+// meaning on either side of it: more deaths around this date than in an ordinary month, or fewer.
+// Past the domain the value clamps into the end bin rather than inventing a tenth colour.
+export function binOf(value: number, edges: number[], steps: number): number {
+  const half = (steps - 1) / 2;
+  const magnitude = Math.abs(value);
+  let band = 0;
+  if (magnitude > (edges[half - 1] ?? NEUTRAL_EDGE)) band = half;
+  else while (band < half && magnitude > (edges[band] ?? Infinity)) band += 1;
+  return half + (value < 0 ? -band : band);
 }
 
 // The domain the colours are stretched over, taken across all twelve months at once.
@@ -275,31 +269,79 @@ export function domainOf(values: Float32Array, keep?: (cell: number) => boolean)
   return Math.max(NEUTRAL_EDGE, sorted[at] ?? NEUTRAL_EDGE);
 }
 
-// Per month, the cell indices in each colour bin — the render loop's input.
+// One frame's cells, grouped by colour: bin `b` owns `order[offsets[b] … offsets[b + 1])`.
 //
-// The loop wants this shape rather than a bin per cell because canvas charges per fillStyle
-// change, and walking a bin at a time sets it nine times instead of twenty-odd thousand. It does
-// NOT want the cells collected into one path per bin: measured on this figure, nine batched
-// paths of ~3,000 quads each cost 188ms to fill against 6ms for the same quads filled one at a
-// time, because a path that large falls off the rasteriser's fast route. Group the colour, not
-// the geometry.
+// The paint loop wants this shape because canvas charges per fillStyle change, so walking a bin at
+// a time sets it nine times instead of twenty-odd thousand. It does NOT want the cells collected
+// into one path per bin: measured on this figure, nine batched paths of ~3,000 quads each cost
+// 188ms to fill against 6ms for the same quads filled one at a time, because a path that large
+// falls off the rasteriser's fast route. Group the colour, not the geometry.
+export interface Frame {
+  order: Int32Array;
+  offsets: Int32Array;
+}
+
+export interface FrameBinnerInput {
+  cells: RateCell[];
+  // Indices into `cells`, already culled to what the panel can show.
+  visible: Int32Array;
+  unit: Int32Array;
+  curves: HarmonicCurve[];
+  edges: number[];
+  steps: number;
+}
+
+// Builds the function that turns a point in the year into one frame's colour groups.
 //
-// `keep` is how the caller drops cells its projection put off-panel: culling before this point
-// keeps them out of every month's buckets at once.
-export function bucketsByMonth(
-  bins: Uint8Array,
-  steps: number,
-  keep?: (cell: number) => boolean,
-): Int32Array[][] {
-  const n = bins.length / 12;
-  const months: Int32Array[][] = [];
-  for (let month = 0; month < 12; month += 1) {
-    const lists: number[][] = Array.from({ length: steps }, () => []);
-    for (let i = 0; i < n; i += 1) {
-      if (keep && !keep(i)) continue;
-      lists[bins[month * n + i] ?? 0]?.push(i);
+// The figure used to precompute all twelve months at load, which is what a twelve-position control
+// allows. A control that can stop anywhere has no finite set of frames to precompute, so the work
+// moves per frame — and it turns out to be cheap enough that the old design was the more expensive
+// one: 0.29ms median over 200 frames on the shipped grid, against the ~6ms the same frame costs to
+// paint. It is also less memory, because one frame's groups replace twelve.
+//
+// Three things keep it there. The curve is evaluated once per *unit* — a couple of hundred — not
+// once per cell. The grouping is a counting sort rather than nine growing arrays. And every buffer
+// is allocated here, once, so a drag allocates nothing.
+//
+// The returned Frame is reused between calls: read it before asking for the next one.
+export function createFrameBinner({
+  cells,
+  visible,
+  unit,
+  curves,
+  edges,
+  steps,
+}: FrameBinnerInput): (phase: number) => Frame {
+  const multipliers = new Float64Array(curves.length);
+  const bins = new Uint8Array(visible.length);
+  const counts = new Int32Array(steps);
+  const offsets = new Int32Array(steps + 1);
+  const cursor = new Int32Array(steps);
+  const order = new Int32Array(visible.length);
+
+  return (phase: number): Frame => {
+    for (let u = 0; u < curves.length; u += 1) {
+      multipliers[u] = evaluateHarmonicCurve(curves[u]!, phase);
     }
-    months.push(lists.map((list) => Int32Array.from(list)));
-  }
-  return months;
+    counts.fill(0);
+    for (let k = 0; k < visible.length; k += 1) {
+      const cell = visible[k]!;
+      const id = unit[cell] ?? -1;
+      const multiplier = id >= 0 ? (multipliers[id] ?? 1) : 1;
+      const bin = binOf(((cells[cell]?.[3] ?? 0) * (multiplier - 1)) / 12, edges, steps);
+      bins[k] = bin;
+      counts[bin] = (counts[bin] ?? 0) + 1;
+    }
+    offsets[0] = 0;
+    for (let bin = 0; bin < steps; bin += 1) {
+      offsets[bin + 1] = (offsets[bin] ?? 0) + (counts[bin] ?? 0);
+      cursor[bin] = offsets[bin] ?? 0;
+    }
+    for (let k = 0; k < visible.length; k += 1) {
+      const bin = bins[k]!;
+      order[cursor[bin]!] = visible[k]!;
+      cursor[bin] = (cursor[bin] ?? 0) + 1;
+    }
+    return { order, offsets };
+  };
 }

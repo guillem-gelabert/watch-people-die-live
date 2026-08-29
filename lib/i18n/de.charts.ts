@@ -282,15 +282,18 @@ export const chartsDe: ChartsDictionary = {
     legendCaption:
       "Die Farbe zeigt zusätzliche Todesfälle pro Monat je Halbgrad-Zelle: neutral unter " +
       "{neutral} im Monat, volle Stärke bei {domain}.",
-    monthName: "Monat",
-    monthNote:
-      "Durch das Jahr ziehen. Die Farben sind in jedem Monat dieselbe Skala, eine Zelle, die " +
-      "sich ändert, hat sich also wirklich geändert.",
+    phaseName: "Zeitpunkt im Jahr",
+    phaseNote:
+      "Durch das Jahr ziehen. Die Farben sind das ganze Jahr dieselbe Skala, eine Zelle, die " +
+      "sich ändert, hat sich also wirklich geändert — die Kurve dahinter ist allerdings eine " +
+      "glatte Jahresanpassung, keine Tagesaufzeichnung.",
     legendFewer: "weniger Todesfälle",
     legendMore: "mehr Todesfälle",
     provenanceMeasured: "Kurve hier gemessen",
     provenanceEstimated: "Kurve geschätzt",
-    cellTooltip: "{unit}\n{excess} im {month} — {multiplier} eines gewöhnlichen Monats\n{basis}",
+    cellTooltip:
+      "{unit}\n{excess} im Monat um den {date} — {multiplier} eines gewöhnlichen " +
+      "Monats\n{basis}",
     cellDeaths: "{n} Todesfälle",
     cellDeathsOne: "{n} Todesfall",
     cellUnitRegion: "{region}, {country}",
