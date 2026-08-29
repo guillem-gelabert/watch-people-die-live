@@ -282,6 +282,10 @@ export const chartsDe: ChartsDictionary = {
     legendCaption:
       "Die Farbe zeigt zusätzliche Todesfälle pro Monat je Halbgrad-Zelle: neutral unter " +
       "{neutral} im Monat, volle Stärke bei {domain}.",
+    monthName: "Monat",
+    monthNote:
+      "Durch das Jahr ziehen. Die Farben sind in jedem Monat dieselbe Skala, eine Zelle, die " +
+      "sich ändert, hat sich also wirklich geändert.",
     legendFewer: "weniger Todesfälle",
     legendMore: "mehr Todesfälle",
     provenanceMeasured: "Kurve hier gemessen",

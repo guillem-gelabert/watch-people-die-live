@@ -275,6 +275,10 @@ export const chartsCa: ChartsDictionary = {
     legendCaption:
       "El color són les morts d'excés al mes a cada cel·la de mig grau: neutre per sota de " +
       "{neutral} al mes, intensitat plena a {domain}.",
+    monthName: "Mes",
+    monthNote:
+      "Arrossega per l'any. Els colors són la mateixa escala cada mes, així que una cel·la que " +
+      "canvia ha canviat de debò.",
     legendFewer: "menys morts",
     legendMore: "més morts",
     provenanceMeasured: "corba mesurada aquí",

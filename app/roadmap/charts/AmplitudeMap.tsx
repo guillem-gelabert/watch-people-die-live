@@ -18,7 +18,8 @@ import {
 import { useCanvasScale, useFigureWidth } from "./useFigureSize";
 import { fitProjection, inflateCell, projectCell, type Bbox } from "./basemap";
 import { divergingHarmony, parseSky } from "../palette";
-import { useDict } from "../I18nContext";
+import { useI18n } from "../I18nContext";
+import { useNearViewport, useReducedMotion } from "../useNearViewport";
 import type {
   Admin1Feature,
   CountryFeature,
@@ -82,6 +83,17 @@ const RAMP = divergingHarmony(STEPS, SKY);
 // end without bleeding at the large one.
 const CELL_OVERLAP = 0.35;
 
+// The month range, as constants rather than literals in the markup, the way the EWMA widget's
+// two sliders hold theirs.
+const MONTH_RANGE = { min: 0, max: 11, step: 1 };
+
+// One unattended sweep through the year when the figure first comes into view, so a reader who
+// never touches the control still sees the thing the control is for. It is not a loop and it is
+// not a play button: it runs once, it stops the instant the reader takes the slider, and it does
+// not run at all under prefers-reduced-motion. Slow enough to read each month, quick enough that
+// nobody waits for it.
+const SWEEP_MS_PER_MONTH = 620;
+
 // The inverted-lattice window that decides which cells can be on screen. Corner sampling
 // understates a pseudocylindrical projection's range — its parallels are curves, so the highest
 // latitude along the top edge is at its middle, above either corner.
@@ -115,12 +127,25 @@ export default function AmplitudeMap({
   rateGrid,
   regionKeys,
 }: AmplitudeMapProps) {
-  const dict = useDict();
+  const { locale, d: dict } = useI18n();
   const t = dict.charts.amplitudeMap;
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const frameRef = useRef<HTMLDivElement | null>(null);
   const [sizeRef, measured] = useFigureWidth<HTMLDivElement>();
   const scale = useCanvasScale();
-  const [month] = useState(0);
+  const [month, setMonth] = useState(0);
+  // Once the reader has moved the slider themselves, the figure never moves on its own again.
+  const [taken, setTaken] = useState(false);
+  const near = useNearViewport(frameRef);
+  const reduceMotion = useReducedMotion();
+
+  // Month names are not translated anywhere in this codebase — chartHelpers' MONTHS is twelve
+  // English literals and no dictionary has ever carried one — so they come from the platform in
+  // the reader's own locale rather than from thirty-six new strings nobody would review.
+  const monthNames = useMemo(() => {
+    const format = new Intl.DateTimeFormat(locale, { month: "long", timeZone: "UTC" });
+    return Array.from({ length: 12 }, (_, index) => format.format(Date.UTC(2001, index, 15)));
+  }, [locale]);
   const side = Math.min(MAX_SIDE, measured);
   const width = Math.round(side * scale);
   const height = width;
@@ -244,6 +269,22 @@ export default function AmplitudeMap({
     height,
   ]);
 
+  // Four hundred vector paths that do not depend on the month, held still across a month change.
+  // Without this React diffs every one of them on every tick of the slider, which costs more than
+  // the twenty-odd thousand cells the tick actually exists to repaint.
+  const outlinePaths = useMemo(
+    () =>
+      cache?.outlines.map((outline, index) => (
+        <path
+          key={index}
+          d={outline.d}
+          className={outline.measured ? "is-measured" : "is-estimated"}
+          vectorEffect="non-scaling-stroke"
+        />
+      )) ?? null,
+    [cache],
+  );
+
   // Half two, and the only side effect here: the month. Walks the cached rings a colour bucket at
   // a time and refills — no projection, no binning, no geometry of any kind.
   useEffect(() => {
@@ -279,9 +320,29 @@ export default function AmplitudeMap({
     }
   }, [cache, month, width, height]);
 
+  // The sweep. Deliberately not a rAF loop: the figure has twelve states, not a continuous one,
+  // and stepping between them on a timer is both what the reader would do by hand and a twelfth
+  // of the redraws.
+  useEffect(() => {
+    if (!cache || !near || taken || reduceMotion) return;
+    let step = 0;
+    const timer = window.setInterval(() => {
+      step += 1;
+      setMonth(step % 12);
+      if (step >= 11) window.clearInterval(timer);
+    }, SWEEP_MS_PER_MONTH);
+    return () => window.clearInterval(timer);
+  }, [cache, near, taken, reduceMotion]);
+
   return (
     <section className="chart-panel">
-      <div className="amplitude-map-frame" ref={sizeRef}>
+      <div
+        className="amplitude-map-frame"
+        ref={(node) => {
+          frameRef.current = node;
+          sizeRef(node);
+        }}
+      >
         <canvas
           ref={canvasRef}
           id="amplitude-map-chart"
@@ -300,16 +361,29 @@ export default function AmplitudeMap({
           aria-hidden="true"
           focusable="false"
         >
-          {cache?.outlines.map((outline, index) => (
-            <path
-              key={index}
-              d={outline.d}
-              className={outline.measured ? "is-measured" : "is-estimated"}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
+          {outlinePaths}
         </svg>
       </div>
+      <label className="amplitude-month">
+        <span className="amplitude-month-head">
+          <span className="amplitude-month-name">{t.monthName}</span>
+          <span className="amplitude-month-value">{monthNames[month]}</span>
+        </span>
+        <input
+          type="range"
+          min={MONTH_RANGE.min}
+          max={MONTH_RANGE.max}
+          step={MONTH_RANGE.step}
+          value={month}
+          onChange={(event) => {
+            setTaken(true);
+            setMonth(Number(event.target.value));
+          }}
+          aria-label={t.monthName}
+          aria-valuetext={monthNames[month]}
+        />
+        <span className="amplitude-month-note">{t.monthNote}</span>
+      </label>
       {cache && (
         <div className="amplitude-legend">
           <div className="amplitude-legend-scale">

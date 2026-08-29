@@ -1392,6 +1392,57 @@ body {
   stroke-opacity: 0.4;
 }
 
+/* The month control. Structurally the EWMA widget's slider — head, value, native range, note —
+   rather than a shared component: type="range" appears in exactly one other place in the story,
+   and two is not a pattern. Native because that is what gives arrow keys, Home and End, and a
+   touch target the platform already sized, for nothing. */
+.amplitude-month {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.amplitude-month-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.amplitude-month-name {
+  font:
+    700 8.5px/1 var(--font-public-sans),
+    sans-serif;
+  color: var(--mute);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.amplitude-month-value {
+  font:
+    600 12px/1 var(--font-public-sans),
+    sans-serif;
+  color: var(--data);
+  font-variant-numeric: tabular-nums;
+}
+
+.amplitude-month input[type="range"] {
+  width: 100%;
+  height: 18px;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--data);
+  cursor: pointer;
+}
+
+.amplitude-month-note {
+  color: var(--muted);
+  font-family: var(--font-libre-baskerville), Georgia, serif;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
 .amplitude-legend {
   display: flex;
   flex-direction: column;

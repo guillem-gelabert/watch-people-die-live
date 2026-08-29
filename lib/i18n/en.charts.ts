@@ -257,6 +257,10 @@ export const chartsEn = {
     legendCaption:
       "Colour is excess deaths a month in each half-degree cell: neutral below {neutral} a " +
       "month, full strength at {domain}.",
+    monthName: "Month",
+    monthNote:
+      "Drag through the year. The colours are the same scale in every month, so a cell that " +
+      "changes really did change.",
     legendFewer: "fewer deaths",
     legendMore: "more deaths",
     provenanceMeasured: "curve measured here",
