@@ -129,4 +129,3 @@ acled-api-access-request.txt
 CLAUDE.md
 
 # Local-only ACLED snapshot cache (see ACLED_CACHE_FILE in .env)
-.acled-cache.json

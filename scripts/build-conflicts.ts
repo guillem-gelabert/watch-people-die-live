@@ -16,10 +16,21 @@
 // sheet arrives. (Workbooks written *by* ExcelJS put the worksheet first, which is why the test
 // fixtures in lib/acled-weekly.test.ts are flaky and real workbooks are not.)
 //
-// Failure policy: a build that cannot reach ACLED does not ship. Silently falling back to the
-// committed snapshot would let a broken integration serve month-old fatalities as current for as
-// long as nobody looked. Set SKIP_CONFLICTS_BUILD=1 to override — deliberately, for a hotfix
-// during an upstream outage, not as a habit.
+// Failure policy: if this build *decides* to contact ACLED and cannot, it does not ship. Silently
+// falling back to the committed snapshot would let a broken integration serve month-old fatalities
+// as current for as long as nobody looked. Set SKIP_CONFLICTS_BUILD=1 to override — deliberately,
+// for a hotfix during an upstream outage, not as a habit.
+//
+// Note the scope: it is "if we decide to contact ACLED", not "on every build". The freshness gate
+// below narrows when that decision is taken, so a build during a short ACLED outage now succeeds
+// when the snapshot we already hold is recent enough. That is deliberate, and it is a change.
+//
+// Freshness policy: ACLED publishes weekly and its workbooks already lag ~2 weeks, so contacting it
+// on every push bought nothing and cost a great deal — on 2026-08-28 it got this builder's IP
+// blocked by ACLED's Imunify360 bot protection after seven builds in four hours. lib/conflict-
+// snapshot.ts decides whether to make contact at all; see its header for why the committed file
+// alone could never make the old guard work. Escape hatches: `--force` rebuilds regardless,
+// CONFLICTS_MAX_AGE_HOURS=0 checks upstream on this build, SKIP_CONFLICTS_BUILD=1 stays offline.
 //
 // Output: data/conflicts.json, committed. It is what the request path reads and what makes
 // `pnpm dev` work without ACLED credentials; it is not a fallback.
@@ -30,7 +41,18 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildConflictsSnapshot, upstreamCutoff } from "../lib/acled";
-import { isCompleteSnapshot, type ConflictsPayload } from "../lib/acled-weekly";
+import { isCompleteSnapshot } from "../lib/acled-weekly";
+import {
+  DEFAULT_MAX_AGE_HOURS,
+  decideRefresh,
+  pickFreshest,
+  readSnapshotFile,
+  resolveCachePath,
+  resolveMaxAgeHours,
+  shouldDownloadWorkbooks,
+  tryWriteSnapshotFile,
+  writeSnapshotFile,
+} from "../lib/conflict-snapshot";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
@@ -51,26 +73,6 @@ function loadDotEnv(): void {
   }
 }
 
-function readCommitted(): ConflictsPayload | null {
-  try {
-    const value: unknown = JSON.parse(fs.readFileSync(OUT, "utf8"));
-    return isCompleteSnapshot(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-function write(payload: ConflictsPayload): void {
-  fs.mkdirSync(path.dirname(OUT), { recursive: true });
-  // Written via a temp file in the same directory so an interrupted build cannot leave a
-  // half-written snapshot where the next one would read it as committed truth.
-  const temporary = `${OUT}.tmp-${process.pid}`;
-  fs.writeFileSync(temporary, `${JSON.stringify(payload)}\n`, "utf8");
-  fs.renameSync(temporary, OUT);
-  const kb = (fs.statSync(OUT).size / 1024).toFixed(0);
-  console.log(`conflicts: wrote data/conflicts.json (${kb} KB, through ${payload.commonThrough})`);
-}
-
 // A rejected credential is not going to get better by trying again, and it is the failure a
 // rotated password produces — so it earns a message that names the cause rather than the symptom.
 // Note the OAuth endpoint answers bad credentials with **400**, not 401: it is an OAuth2
@@ -88,19 +90,59 @@ function explain(error: unknown): string {
 
 async function main(): Promise<void> {
   loadDotEnv();
-  const committed = readCommitted();
 
-  if (process.env.SKIP_CONFLICTS_BUILD) {
-    if (!committed) {
+  const force = process.argv.includes("--force");
+  const maxAge = resolveMaxAgeHours(process.env.CONFLICTS_MAX_AGE_HOURS, DEFAULT_MAX_AGE_HOURS);
+  if (maxAge.warning) console.warn(`conflicts: ${maxAge.warning}`);
+  const cacheFile = resolveCachePath(ROOT, process.env.CONFLICTS_CACHE_DIR);
+
+  // Two places a usable snapshot can be: the file that came with the git checkout, and the build
+  // cache from a previous build on this machine. `committed` is passed first so an exact timestamp
+  // tie resolves to the tracked artifact.
+  const committed = readSnapshotFile(OUT);
+  const cached = cacheFile ? readSnapshotFile(cacheFile, { pruneOnCorrupt: true }) : null;
+  const best = pickFreshest([
+    { origin: "committed", payload: committed },
+    { origin: "cache", payload: cached },
+  ]);
+
+  // INVARIANT, and the sequencing rule everything else depends on: from here down, OUT is the
+  // snapshot we chose, on every path out of this function. scripts/sync-data.ts copies OUT to
+  // public/data/, which is the only thing the site reads — so returning early without materialising
+  // a cache win would ship the *older* committed payload having skipped the fetch, which is worse
+  // than not caching at all. Decide about the network second.
+  if (best?.origin === "cache") {
+    writeSnapshotFile(OUT, best.payload);
+    console.log(`conflicts: restored the build cache (through ${best.payload.commonThrough}).`);
+  }
+
+  const decision = decideRefresh({
+    snapshot: best?.payload ?? null,
+    now: Date.now(),
+    maxAgeHours: maxAge.hours,
+    force,
+    skipRequested: Boolean(process.env.SKIP_CONFLICTS_BUILD),
+  });
+
+  if (decision.action === "skip") {
+    if (!best) {
       console.error(
-        "conflicts: SKIP_CONFLICTS_BUILD is set but data/conflicts.json is missing or incomplete.\n" +
+        "conflicts: SKIP_CONFLICTS_BUILD is set but no usable snapshot was found.\n" +
           "  There is nothing to serve. Unset it and let the build fetch, or commit a snapshot.",
       );
       process.exit(1);
     }
-    console.warn(
-      `conflicts: SKIP_CONFLICTS_BUILD set — keeping the committed snapshot ` +
-        `(through ${committed.commonThrough}). The conflict layer will be as old as this file.`,
+    if (decision.reason === "skip-flag") {
+      if (force) console.warn("conflicts: --force ignored, SKIP_CONFLICTS_BUILD outranks it.");
+      console.warn(
+        `conflicts: SKIP_CONFLICTS_BUILD set — keeping the snapshot through ` +
+          `${best.payload.commonThrough}. The conflict layer will be as old as this file.`,
+      );
+      return;
+    }
+    console.log(
+      `conflicts: last checked ACLED ${decision.ageHours.toFixed(1)}h ago, under the ` +
+        `${decision.maxAgeHours}h gate — not contacting it (through ${best.payload.commonThrough}).`,
     );
     return;
   }
@@ -109,15 +151,23 @@ async function main(): Promise<void> {
   // Any failure here is a real failure: it means the landing pages or the credentials are broken,
   // and proceeding would only fail later and slower.
   const cutoff = await upstreamCutoff();
-  if (committed && committed.commonThrough === cutoff) {
+
+  if (best && !shouldDownloadWorkbooks({ snapshot: best.payload, upstreamCutoff: cutoff, force })) {
+    // Upstream is still on our week. That answer is worth keeping: stamping it renews the gate, so
+    // the next build inside the window skips the seven requests we just spent learning it.
+    const confirmed = { ...best.payload, verifiedAt: new Date().toISOString() };
+    writeSnapshotFile(OUT, confirmed);
+    if (cacheFile) tryWriteSnapshotFile(cacheFile, confirmed);
     console.log(
-      `conflicts: committed snapshot already covers ${cutoff} — skipping six workbook downloads.`,
+      `conflicts: upstream is still on ${cutoff} — confirmed, skipping six workbook downloads.`,
     );
     return;
   }
-  if (committed) {
+
+  if (best) {
     console.log(
-      `conflicts: committed ${committed.commonThrough}, upstream ${cutoff} — rebuilding.`,
+      `conflicts: have ${best.payload.commonThrough}, upstream ${cutoff}` +
+        `${force ? " (forced)" : ""} — rebuilding.`,
     );
   }
 
@@ -128,7 +178,12 @@ async function main(): Promise<void> {
   if (!isCompleteSnapshot(payload)) {
     throw new Error("ACLED build produced an incomplete snapshot; refusing to write it");
   }
-  write(payload);
+  // No verifiedAt here on purpose: generatedAt already is the moment of contact, and leaving the
+  // field unset keeps exactly one writer of it.
+  writeSnapshotFile(OUT, payload);
+  const kb = (fs.statSync(OUT).size / 1024).toFixed(0);
+  console.log(`conflicts: wrote data/conflicts.json (${kb} KB, through ${payload.commonThrough})`);
+  if (cacheFile) tryWriteSnapshotFile(cacheFile, payload);
 }
 
 main().catch((error: unknown) => {

@@ -58,6 +58,17 @@ export interface ConflictsPayload {
   window: { start: string; end: string; weeks: number };
   commonThrough: string;
   generatedAt: string;
+  // When we last *asked ACLED* whether this payload's numbers were still the current ones, as
+  // opposed to `generatedAt`, which is when those numbers were computed. Written only by the
+  // build's confirm path — the case where the upstream cutoff came back equal to `commonThrough`,
+  // so there was nothing to download but something worth remembering. Without it, that answer is
+  // discarded and the next build spends an OAuth POST and six landing-page GETs re-learning it.
+  //
+  // Build metadata, and it must stay that way: it says nothing about how current the *data* is, so
+  // it must never reach the UI. `commonThrough` is the honest number for a reader — see the note
+  // below on why the `freshness` block was removed. Optional on purpose, so an older snapshot
+  // without it falls back to `generatedAt`, which reads older and therefore errs toward checking.
+  verifiedAt?: string;
   totalFatalities: number;
   weeklyStack: ConflictWeeklyStack;
   regions: ConflictRegion[];

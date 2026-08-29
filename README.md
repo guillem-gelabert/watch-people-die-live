@@ -162,33 +162,63 @@ country/sex/age band are kept, the rest folded into "other causes".
 > `source: "sample"`. On a normal network (including Railway) it returns `source: "worldbank"`
 > with real data for ~170 countries.
 
-## Conflict data (ACLED, runtime)
+## Conflict data (ACLED, build time)
 
-Step 6 ("Ongoing Conflicts") and the globe's conflict layer are served by the `/api/conflicts`
-route. It authenticates to ACLED's six regional aggregate landing pages, discovers the current
-XLSX files, and streams them with ExcelJS. The oldest regional publication date becomes the
-globally complete cutoff; the route retains the 12 complete weeks ending there.
+Step 6 ("Ongoing Conflicts") and the globe's conflict layer read `public/data/conflicts.json`,
+baked at build time by `scripts/build-conflicts.ts`. There is no runtime route and no runtime
+refresh: the layer is exactly as current as the last build that fetched. It authenticates to
+ACLED's six regional aggregate landing pages, discovers the current XLSX files, and streams them
+with ExcelJS. The oldest regional publication date becomes the globally complete cutoff
+(`commonThrough`), and the snapshot retains the 12 complete weeks ending there.
 
 The chart and map use the reported weekly country/Admin-1 aggregates. The map draws the supplied
 Admin-1 centroids as an explicit spatial approximation. For the globe, a robust EWMA (four-week
-half-life, P10–P90 damping) estimates the current weekly total. That total is distributed by each
+half-life, P10-P90 damping) estimates the current weekly total. That total is distributed by each
 Admin-1 region's 12-week fatality share, annualised, and placed on the nearest populated
 rate-grid cell in the same country.
 
-Unlike the build-time keys above, these are **runtime** secrets. Set a myACLED account's
-credentials locally in `.env` and as Railway service variables:
+These are **build-time** secrets. Set a myACLED account's credentials locally in `.env` and as
+Railway service variables:
 
 ```bash
 ACLED_USERNAME=you@example.edu
 ACLED_PASSWORD=your-myacled-password
-# Railway: mount a persistent volume at /data and store the complete snapshot there.
-ACLED_WEEKLY_CACHE_FILE=/data/acled-weekly-v1.json
 ```
 
-ACLED uses OAuth2 (the old key+email scheme is gone); the route exchanges these for a bearer
-token per refresh. Complete snapshots are refreshed after 24 hours. A cold cache waits for all
-six downloads; later auth, download, or schema failures keep serving the last complete snapshot
-as stale. Snapshot replacement is atomic, and concurrent refreshes are deduplicated.
+ACLED uses OAuth2 (the old key+email scheme is gone); the build exchanges these for a bearer
+token, reused for every request in that build.
+
+### How often it refetches
+
+ACLED publishes weekly and its workbooks already lag around two weeks, so contacting it on every
+push bought nothing and cost a great deal — in August 2026 it got the Railway builder's IP blocked
+by ACLED's Imunify360 bot protection. `lib/conflict-snapshot.ts` decides whether to make contact:
+
+- The snapshot carries `generatedAt` (when its numbers were computed) and, on the confirm path,
+  `verifiedAt` (when we last asked ACLED whether they were still current). If that timestamp is
+  under **72 hours** old, the build does not contact ACLED at all.
+- A copy is kept in the build cache (`node_modules/.cache/conflicts/v<schema>/`), so a later build
+  on the same builder starts from it rather than from whatever `data/conflicts.json` was last
+  committed. Railway does not guarantee cache hits; a miss simply falls back to the committed file,
+  which is the behaviour without the cache at all. Railway volumes cannot serve this purpose —
+  they are mounted at container start, never during a build.
+- When the gate does open, the build first asks only for the six landing pages. If ACLED is still
+  publishing the week we already hold, it stamps `verifiedAt` and skips the six workbook downloads
+  (Africa's alone expands past 100 MB).
+
+`commonThrough` is the honest number for a reader and is what `ConflictMap` shows. `verifiedAt` is
+build metadata about our fetching and must not be rendered.
+
+| Knob                           | Effect                                                                                                                                                                     |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm build:conflicts --force` | Rebuild regardless of the gate or the cutoff. Use after a modelling change that alters the numbers without moving `commonThrough`.                                         |
+| `CONFLICTS_MAX_AGE_HOURS`      | Override the 72h gate. `0` checks upstream on this build. Set it as a Railway service variable — `railway.json` runs `npm run build`, so a CLI flag cannot be threaded in. |
+| `CONFLICTS_CACHE_DIR`          | Override the build-cache location; empty string disables the layer.                                                                                                        |
+| `SKIP_CONFLICTS_BUILD=1`       | Ship the snapshot as-is without touching the network. Outranks `--force`. For a hotfix during an ACLED outage, not as a habit.                                             |
+
+A build that decides to contact ACLED and cannot will fail rather than ship a stale layer as
+current. The gate narrows when that decision is taken, so a build during a short ACLED outage now
+succeeds if the snapshot on hand is under 72 hours old.
 
 ## Deploy on Railway
 
@@ -203,9 +233,9 @@ as stale. Snapshot replacement is atomic, and concurrent refreshes are deduplica
 4. Open the generated domain — Railway's egress reaches the World Bank API too, so the globe
    shows live death rates.
 
-At runtime only the conflict layer needs keys (`ACLED_USERNAME` / `ACLED_PASSWORD`) and its
-Railway volume path (`ACLED_WEEKLY_CACHE_FILE`; see _Conflict data_ above). Everything else is
-keyless — the World Bank API is public and `data/rate-grid.json` is baked offline ahead of time.
+The runtime is keyless — the World Bank API is public and `data/rate-grid.json` is baked offline
+ahead of time. `ACLED_USERNAME` / `ACLED_PASSWORD` are needed by the **build** only (see _Conflict
+data_ above); no volume is involved, and none can be.
 `un_api_key`/`UN_API_KEY` is used only by the **build** to fetch the
 UN age/sex data. Cause data (`data/causes.json`) is _not_ fetched on build — IHME GBD has no
 API — so until it's rebuilt and committed (see _Building the persona data_), causes come from
