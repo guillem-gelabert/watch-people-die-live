@@ -304,11 +304,6 @@ export const chartsDe: ChartsDictionary = {
     sourceBorderingCountries: "berechnet aus angrenzenden Ländern: {donors}",
     sourceClimate: "aus dem Klima geschätzt: {donor}",
     sourceLatitude: "aus dem Breitengrad-Rückfall berechnet: {donor}",
-    tooltip: "{name}: {amplitude} ({source})",
-    regionTooltip: "{name} ({country}): {amplitude} Amplitude{note}",
-    regionEstimate: " · Schätzung über {proxy}",
-    regionOverride: " (manuell überschrieben)",
-    regionImputed: " · geschätzt aus {donors}",
   },
 
   ageMix: {

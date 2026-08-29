@@ -279,11 +279,6 @@ export const chartsEn = {
     sourceBorderingCountries: "calculated from bordering countries: {donors}",
     sourceClimate: "estimated from climate: {donor}",
     sourceLatitude: "calculated from latitude fallback: {donor}",
-    tooltip: "{name}: {amplitude} ({source})",
-    regionTooltip: "{name} ({country}): {amplitude} amplitude{note}",
-    regionEstimate: " · {proxy} estimate",
-    regionOverride: " (manual override)",
-    regionImputed: " · imputed from {donors}",
   },
 
   ageMix: {

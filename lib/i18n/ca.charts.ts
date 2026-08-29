@@ -297,11 +297,6 @@ export const chartsCa: ChartsDictionary = {
     sourceBorderingCountries: "calculat a partir dels països fronterers: {donors}",
     sourceClimate: "estimat a partir del clima: {donor}",
     sourceLatitude: "calculat a partir del recurs de latitud: {donor}",
-    tooltip: "{name}: {amplitude} ({source})",
-    regionTooltip: "{name} ({country}): {amplitude} d'amplitud{note}",
-    regionEstimate: " · estimació per {proxy}",
-    regionOverride: " (sobreescrit manualment)",
-    regionImputed: " · imputat a partir de {donors}",
   },
 
   ageMix: {
