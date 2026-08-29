@@ -3,13 +3,29 @@ created: 2026-08-21T10:56:28.783Z
 title: Group the weekly conflict stack by UN geoscheme above a 5% threshold
 priority: 13
 area: data
+resolved: 2026-08-30 — shipped in 3a4b98ba. Floor is 5% and governs both halves: which countries are named, and how far a leftover coarsens before it can stand. Sub-floor countries group by M49 subregion, climb to the intermediary region where one exists (419 LAC, 202 Sub-Saharan Africa), then to the continent, stopping at the first level clearing 5% of that week. Elsewhere fell from 51.6% of the window to 6.4%, and every band drawn is at least 5% of its own bar. Membership is per week, not global — 2-6 countries clear 5% in any given week, so a global list would name a country in every bar on the strength of one bad week. That forced the payload shape (segments[] with a kind and its members, schema 2 -> 3) and colour keyed to place rather than slot. data/conflicts.json was migrated in place, not refetched: the v2 stack reconstructs its input map exactly.
+decisions:
+  - The rollup cannot bound the residual on its own. A group at the top of its chain that is still short has nowhere to go, and Elsewhere collects exactly those, so it was itself under 5% in eight of twelve weeks. It now absorbs the smallest surviving band until it clears — costing one band in eight of the twelve weeks. Without that step the "no band thinner than 5%" rule holds for most bands, not all.
+  - Colour is a graph colouring, not a cycle. 12 country keys over 6 hues and 11 region keys over 8 shades put two identical fills in the same bar in ten of twelve bars, which with no legend reads as one band. Greedy over the "ever drawn in the same bar" graph needs exactly the 6 and the 8 available.
+  - Rejected a 10% floor: it names the same five countries as today, so the change collapses to "make Others geographic", and Others stays at 15.6% of the window and 22% in its worst week — the complaint this todo opens with.
+  - Countries with no M49 (ACLED's "Pacific Ocean" and friends) never get their own band. One cleared 5% in a week and would have spent a band and a colour on a non-place.
+  - Region names are translated, unlike country and cause names: these are labels we mint, not wording arriving from the data files.
+test_finding: The M49 coverage test — every ISO code i18n-iso-countries knows must resolve to a chain ending at a continent — caught two holes on its first run. Burkina Faso was missing from Western Africa outright and was silently losing 432 deaths in one week to the residual, which looks like working software. Kosovo has no M49 code at all; its user-assigned 983 is mapped to Southern Europe with a comment. Any hand-authored code table wants this test.
 files:
-  - lib/acled-weekly.ts:10
-  - lib/acled-weekly.ts:352-391
+  - lib/m49-geoscheme.ts
+  - lib/m49-geoscheme.test.ts
+  - lib/acled-weekly.ts
   - lib/acled-weekly.test.ts
-  - app/roadmap/charts/ConflictEwmaWidget.tsx:44
-  - app/roadmap/charts/ConflictEwmaWidget.tsx:250-265
-  - lib/i18n/en.ts:223
+  - lib/acled.ts
+  - lib/conflict-snapshot.test.ts
+  - app/roadmap/charts/ConflictEwmaWidget.tsx
+  - app/roadmap/palette.ts
+  - app/roadmap/palette.test.ts
+  - app/roadmap/types.ts
+  - lib/i18n/en.ts
+  - lib/i18n/ca.ts
+  - lib/i18n/de.ts
+  - data/conflicts.json
 ---
 
 ## Problem

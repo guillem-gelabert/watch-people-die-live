@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: null
 milestone_name: null
 status: milestone-complete
-last_updated: "2026-08-29T00:00:00.000Z"
-last_activity: 2026-08-29
+last_updated: "2026-08-30T00:00:00.000Z"
+last_activity: 2026-08-30
 shipped_milestones:
   - version: v1.0
     name: MVP
@@ -49,25 +49,35 @@ was archived and removed at close; the new milestone creates a fresh one.
 
 Items acknowledged and deferred at milestone close on 2026-08-28.
 
-### Open todos — `.planning/todos/pending/` (5)
+### Open todos — `.planning/todos/pending/` (4)
 
 | # | Item | Prio | Area | Note |
 |---|------|------|------|------|
 | s03 | Proxy modal opens on reload; scroll jump on close | high | story | needs discussion — same `useProxyFold` mechanic as s02 |
 | s02 | Unstick the proxy card when the fold completes | high | story | needs discussion — same mechanic as s03 |
-| s09 | Weekly conflict stack: 5% + UN geoscheme rollup | low | data | easier now s13 is done; its own Solution section is still TBD — rollup direction and per-week vs. global segment membership both need deciding first |
 | s08 | Reachable chart tooltips on touch | low | story | deepest design work |
 | p09 | Subnational cause and age hunting beyond Eurostat | — | data | parked as **backlog 999.1**, not a loose todo |
 
-Four of this table's original nine closed after the milestone close and are in
-`.planning/todos/completed/`: s05, s07 and s14 during the week of 2026-08-21, and **s06 on
-2026-08-29** — the amplitude map is now a per-cell excess-deaths map with a month slider, shipped
-in nine commits and deployed. Its file records a spike finding worth not re-litigating: batching
-the cells into nine paths is **thirty times slower** than filling them one at a time.
+Five of this table's original nine closed after the milestone close and are in
+`.planning/todos/completed/`: s05, s07 and s14 during the week of 2026-08-21, **s06 on
+2026-08-29** and **s09 on 2026-08-30**.
+
+s06 made the amplitude map a per-cell excess-deaths map with a month slider, shipped in nine
+commits and deployed. Its file records a spike finding worth not re-litigating: batching the
+cells into nine paths is **thirty times slower** than filling them one at a time.
+
+s09 regrouped the weekly conflict stack (`3a4b98ba`): the 5% floor now governs both which
+countries are named and how far a leftover coarsens through the UN M49 geoscheme, and the
+residual fell from **51.6% of the window to 6.4%** with no band thinner than 5% of its own bar.
+Two findings in its file are the ones worth keeping. Coarsening alone cannot bound the residual —
+a group at the top of its chain with nowhere left to go lands there, so it was itself a sliver in
+eight of twelve weeks until it started absorbing the smallest surviving band. And a hand-authored
+code table wants a coverage test: the M49 one caught Burkina Faso missing outright, silently
+losing 432 deaths in a week to the residual, which looks exactly like working software.
 
 14 todos were moved to `.planning/todos/completed/` at close itself: p01–p08 and s01/s04/s11 (all
 promoted to shipped plans), plus s10 (closed as a no-op), s12 and s13 (both resolved 2026-08-21).
-With the four above, `completed/` now holds 18.
+With the five above, `completed/` now holds 19.
 
 ### Accepted audit warnings from v2.0 (4 open, 1 closed)
 
@@ -112,6 +122,7 @@ The decisions that most constrain future work:
 - **The server parses JSON or CSV only at runtime.** No outstanding violations as of v2.0.
 - **Phase waves come from pairwise `files_modified` overlap**, not priority order.
 - **Source selection is an investigation.** Two of Phase 4's named sources turned out to be unusable and were replaced mid-phase.
+- **A schema bump is the cache's invalidation mechanism.** `resolveCachePath` namespaces the build cache by `ACLED_SCHEMA_VERSION`, so changing a payload's shape must bump it — s09 took conflicts to v3. The committed snapshot can then be migrated in place rather than refetched when the old payload still carries everything the new one is built from, which is what keeps a shape change off ACLED's rate limit.
 
 ### Open blockers
 
