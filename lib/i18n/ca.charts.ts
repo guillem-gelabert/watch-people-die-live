@@ -268,9 +268,9 @@ export const chartsCa: ChartsDictionary = {
 
   amplitudeMap: {
     aria:
-      "Mapa d'Àfrica amb cada país acolorit per amplitud de mortalitat estacional observada o " +
-      "estimada espacialment, amb les regions Admin-1 mesurades acolorides per la seva pròpia " +
-      "amplitud més fina",
+      "Mapa de Noruega a Sud-àfrica i de Mauritània a Bangladesh, amb cada país acolorit per " +
+      "amplitud de mortalitat estacional observada o estimada espacialment, i les regions " +
+      "Admin-1 mesurades acolorides per la seva pròpia amplitud més fina",
     legendCaption: "força de la desviació mensual",
     sourceObserved: "observat",
     sourceOwnRegions: "calculat a partir de {n} regions mesurades",

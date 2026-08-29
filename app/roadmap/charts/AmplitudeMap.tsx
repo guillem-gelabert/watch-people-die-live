@@ -11,7 +11,7 @@ import {
 import { fmtPlainPct, strength } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
 import { useFigureWidth } from "./useFigureSize";
-import { appendMapPlate, fitRegionProjection, type Bbox } from "./basemap";
+import { appendMapPlate, fitProjection, type Bbox } from "./basemap";
 import { useDict } from "../I18nContext";
 import { fill } from "@/lib/i18n/fill";
 import type {
@@ -52,12 +52,22 @@ interface AmpLegend {
   gradient: string;
 }
 
-// Africa, cropped square around the same centre — the panel is square at every width now, so
-// there is only one crop to keep.
+// Norway to South Africa, Mauritania to Bangladesh: the four countries the surrounding prose
+// invites the reader to compare, and three of them were outside the old Africa crop. The argument
+// this map closes is hemispheric — winter in one half is summer in the other — so the frame has to
+// hold both halves at once, whatever that costs in cell size.
 const BBOX: Bbox = [
-  [-11, -25.5],
-  [43, 28.5],
+  [-18, -36],
+  [93, 72],
 ];
+
+// Equal Earth, turned to put the frame's own mid-meridian up the middle. Colour encodes a quantity
+// per unit of ground here, so an equal-area projection is not a preference: on anything else the
+// same value covers more pixels at high latitude than at the equator and Scandinavia reads as more
+// of the picture than it is. Equirectangular (what every other square map in the story uses) is not
+// equal-area and stretches Norway; Natural Earth 1 gives the most uniform cells but is not equal-area
+// either; a conic is wrong because this frame crosses the equator.
+const PROJECTION = () => d3.geoEqualEarth().rotate([-37.5, 0]);
 
 // Every country colored by seasonal amplitude — observed curve where available, then own
 // measured regions, bordering measured countries, or the latitude fallback — with
@@ -86,7 +96,7 @@ export default function AmplitudeMap({
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
 
-    const projection = fitRegionProjection(BBOX, width, height);
+    const projection = fitProjection(PROJECTION(), BBOX, width, height);
     const path = d3.geoPath(projection);
     const content = appendMapPlate(svg, width, height, "amplitude-map");
 

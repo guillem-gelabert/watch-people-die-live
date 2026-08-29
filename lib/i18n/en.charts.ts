@@ -251,8 +251,9 @@ export const chartsEn = {
 
   amplitudeMap: {
     aria:
-      "Map of Africa with every country colored by observed or spatially estimated seasonal " +
-      "mortality amplitude, with measured Admin-1 regions colored by their own finer amplitude",
+      "Map from Norway to South Africa and from Mauritania to Bangladesh, with every country " +
+      "colored by observed or spatially estimated seasonal mortality amplitude, and measured " +
+      "Admin-1 regions colored by their own finer amplitude",
     legendCaption: "monthly deviation strength",
     sourceObserved: "observed",
     sourceOwnRegions: "calculated from {n} measured regions",

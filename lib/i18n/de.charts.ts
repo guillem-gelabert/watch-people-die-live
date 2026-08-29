@@ -275,9 +275,10 @@ export const chartsDe: ChartsDictionary = {
 
   amplitudeMap: {
     aria:
-      "Karte Afrikas, jedes Land eingefärbt nach beobachteter oder räumlich geschätzter " +
-      "saisonaler Sterblichkeitsamplitude, mit gemessenen Admin-1-Regionen in ihrer eigenen " +
-      "feineren Amplitude",
+      "Karte von Norwegen bis Südafrika und von Mauretanien bis Bangladesch, jedes Land " +
+      "eingefärbt nach beobachteter oder räumlich geschätzter saisonaler " +
+      "Sterblichkeitsamplitude, mit gemessenen Admin-1-Regionen in ihrer eigenen feineren " +
+      "Amplitude",
     legendCaption: "Stärke der monatlichen Abweichung",
     sourceObserved: "beobachtet",
     sourceOwnRegions: "berechnet aus {n} gemessenen Regionen",
