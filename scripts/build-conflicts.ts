@@ -73,14 +73,46 @@ function loadDotEnv(): void {
   }
 }
 
-// A rejected credential is not going to get better by trying again, and it is the failure a
-// rotated password produces — so it earns a message that names the cause rather than the symptom.
-// Note the OAuth endpoint answers bad credentials with **400**, not 401: it is an OAuth2
-// `invalid_grant`, which is a malformed-grant response rather than an unauthenticated one.
+// Naming the actual cause, because the previous version of this function cost four hours. It
+// answered any 4xx with "ACLED rejected the credentials", so when acleddata.com started returning
+// 403 on 2026-08-28 the message sent everyone to check a username and password that were correct —
+// byte-identical to the working ones and authenticating fine from a laptop the whole time.
+//
+// The three failures are genuinely different and the status codes separate them:
+//
+//   400  A real credential rejection. OAuth2 answers a bad username or password with
+//        `invalid_grant`, which is a malformed-grant response, not an unauthenticated one — so a
+//        rotated password shows up here and never as 401.
+//   403  Not about credentials at all. ACLED sits behind Imunify360, whose bot protection blocks by
+//        IP reputation and a challenge no script can pass; its body says so, and politeFetch now
+//        includes that body in the message. Only the site's operator can lift it.
+//   401  A token problem rather than a credential one — expired or malformed bearer.
 function explain(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  if (/OAuth returned HTTP 4\d\d/.test(message) || /\b(401|403)\b/.test(message)) {
+
+  // Match the body first: it is the authoritative signal, and it survives a status code changing.
+  if (/Imunify360|bot-protection/i.test(message)) {
+    return (
+      `${message}\n` +
+      "  This is bot protection on ACLED's host, not a credential problem — the same username and\n" +
+      "  password will still work from an un-blocked network. The remedy is on their side: ask\n" +
+      "  access@acleddata.com to allowlist this build's egress IP, quoting the message above.\n" +
+      "  Meanwhile SKIP_CONFLICTS_BUILD=1 ships the snapshot on hand."
+    );
+  }
+  if (/OAuth returned HTTP 403/.test(message)) {
+    return (
+      `${message}\n` +
+      "  A 403 from the OAuth endpoint is bot protection or an IP block, not a rejected password —\n" +
+      "  ACLED answers bad credentials with 400. Check whether this network is blocked before\n" +
+      "  touching ACLED_USERNAME or ACLED_PASSWORD."
+    );
+  }
+  if (/OAuth returned HTTP 400/.test(message)) {
     return `${message}\n  ACLED rejected the credentials. Check ACLED_USERNAME and ACLED_PASSWORD.`;
+  }
+  if (/OAuth returned HTTP 401/.test(message)) {
+    return `${message}\n  ACLED rejected the bearer token. Usually transient; retry the build.`;
   }
   if (/credentials are not configured/.test(message)) {
     return `${message}\n  Set ACLED_USERNAME and ACLED_PASSWORD (Railway variables, or .env locally).`;

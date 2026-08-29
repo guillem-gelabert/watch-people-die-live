@@ -340,8 +340,13 @@ describe("seasonal age/cause reweighting", () => {
     const january = personasAtDate(400, NGA, undefined, JAN);
     const july = personasAtDate(400, NGA, undefined, JUL);
     const oldShare = (drawn: Persona[]) => drawn.filter((p) => p.age >= 85).length / drawn.length;
-    // Unweighted 50/50 split; January boosts band 8 to ~1.5x, July suppresses it to ~0.5x.
-    expect(oldShare(january)).toBeGreaterThan(0.55);
+    // Unweighted 50/50 split; January boosts band 8 to ~1.5x, July suppresses it to ~0.5x. So the
+    // expectations are 1.5/2.5 = 0.600 and 0.5/1.5 = 0.333 -- not symmetric about 0.5, which is what
+    // the thresholds below have to respect. 0.55 looked like the mirror of 0.45 and was not: at
+    // n=400 it sat 2.04 SD from 0.600 and failed ~2% of runs (measured: 1 in 40), while 0.45 sat
+    // 4.95 SD from 0.333 and never did. 0.50 restores the margin to 4.08 SD without weakening the
+    // claim -- 0.600 and 0.333 straddle it, and the direction assertion below is the real point.
+    expect(oldShare(january)).toBeGreaterThan(0.5);
     expect(oldShare(july)).toBeLessThan(0.45);
     expect(oldShare(january)).toBeGreaterThan(oldShare(july));
   });
