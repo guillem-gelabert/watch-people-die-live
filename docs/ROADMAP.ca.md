@@ -185,11 +185,13 @@ Les regions adjacents dins d'un mateix país es corresponen encara més estretam
 
 :::
 
-## Amplitud per país i per regió
+## On cauen les morts de més, mes a mes
 
 [amplitude map]
 
-Cada país i regió representats estan acolorits per amplitud estacional. Les observacions fan servir les seves corbes mesurades; els objectius sense observacions fan servir l'indicador de clima, veí o latitud que se'ls hagi assignat.
+Cada quadrat és mig grau de la mateixa graella que mostreja el globus, acolorit per les morts que l'estació d'aquest mes afegeix, o treu, a un mes ordinari d'allà. Arrossega per l'any i els hemisferis es bescanvien: el superàvit de gener a Europa és el dèficit de gener al sud d'Àfrica, i al juliol s'han intercanviat.
+
+La textura dins d'un país és població, no estacionalitat. Deu països tenen corbes regionals mesurades, i dins d'aquest marc això es redueix a Sud-àfrica, la Rússia occidental i l'Índia i la Xina modelades pel clima; Europa no en té cap. A tota la resta, totes les cel·les d'un país comparteixen una sola corba, i els contorns diuen a quina unitat pertany aquesta corba: continus quan algú hi ha comptat morts, discontinus quan s'ha reconstruït a partir d'un veí, d'una classe climàtica o d'una latitud. El que canvia d'una cel·la a una altra dins d'una d'aquestes fronteres és quanta gent hi viu, no quan mor.
 
 ### conflicts · Una guerra no és un procés de Poisson [Conflictes] · #eeb87d
 

@@ -186,11 +186,13 @@ Benachbarte Regionen innerhalb desselben Landes laufen noch enger miteinander al
 
 :::
 
-## Amplitude nach Land und Region
+## Wo die zusätzlichen Todesfälle liegen, Monat für Monat
 
 [amplitude map]
 
-Jedes dargestellte Land und jede Region ist nach saisonaler Amplitude eingefärbt. Beobachtungen nutzen ihre gemessenen Kurven; Ziele ohne Beobachtungen nutzen den zugewiesenen Klima-, Nachbar- oder Breitengradindikator.
+Jedes Quadrat ist ein halbes Grad desselben Rasters, das der Globus abtastet, eingefärbt nach den Todesfällen, die die Saison dieses Monats einem gewöhnlichen Monat dort hinzufügt oder nimmt. Zieh durch das Jahr, und die Hemisphären tauschen die Plätze: Europas Januarüberschuss ist das Januardefizit im südlichen Afrika, und im Juli ist es umgekehrt.
+
+Die Textur innerhalb eines Landes ist Bevölkerung, nicht Saisonalität. Zehn Länder haben gemessene Regionalkurven, und in diesem Ausschnitt bleiben davon Südafrika, das westliche Russland sowie das klimamodellierte Indien und China; Europa hat keine einzige. Überall sonst teilen sich alle Zellen eines Landes eine Kurve, und die Umrisse sagen, zu welcher Einheit diese Kurve gehört — durchgezogen, wo jemand dort Todesfälle gezählt hat, gestrichelt, wo sie aus einem Nachbarn, einer Klimaklasse oder einem Breitengrad rekonstruiert wurde. Was sich innerhalb einer solchen Grenze von Zelle zu Zelle ändert, ist, wie viele Menschen dort leben, nicht wann sie sterben.
 
 ### conflicts · Ein Krieg ist kein Poisson-Prozess [Konflikte] · #eeb87d
 

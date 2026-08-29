@@ -185,11 +185,13 @@ Adjacent regions inside the same country track each other even more tightly than
 
 :::
 
-## Amplitude by country and region
+## Where the extra deaths fall, month by month
 
 [amplitude map]
 
-Every rendered country and region is coloured by seasonal amplitude. Observations use their measured curves; targets without observations use the assigned climate, neighbour or latitude proxy.
+Each square is half a degree of the same grid the globe samples, coloured by the deaths this month's season adds to, or takes from, an ordinary month there. Drag through the year and the hemispheres trade places: Europe's January surplus is southern Africa's January deficit, and by July they have swapped.
+
+The texture inside a country is population, not seasonality. Ten countries have measured regional curves, and inside this frame that comes down to South Africa, western Russia, and climate-modelled India and China; Europe has none at all. Everywhere else every cell of a country shares one curve, and the outlines say which unit that curve belongs to — solid where somebody counted deaths in it, dashed where it was reconstructed from a neighbour, a climate class or a latitude. What changes from cell to cell inside one of those borders is how many people live there, not when they die.
 
 ### conflicts · A war is not a Poisson process [Conflicts] · #eeb87d
 
