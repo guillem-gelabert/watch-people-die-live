@@ -15,10 +15,13 @@ import {
   TIER_REGION,
   type CellCurveUnit,
 } from "./amplitudeCells";
+import { showTooltip, hideTooltip } from "../tooltip";
+import { fill } from "@/lib/i18n/fill";
 import { useCanvasScale, useFigureWidth } from "./useFigureSize";
 import { fitProjection, inflateCell, projectCell, type Bbox } from "./basemap";
 import { divergingHarmony, parseSky } from "../palette";
 import { useI18n } from "../I18nContext";
+import type { Dictionary } from "@/lib/i18n/en";
 import { useNearViewport, useReducedMotion } from "../useNearViewport";
 import type {
   Admin1Feature,
@@ -111,6 +114,13 @@ interface RenderCache {
   edges: number[];
   domain: number;
   outlines: Outline[];
+  // Everything the hover needs, indexed rather than searched. `byCell` is "lon,lat" → cell, built
+  // in the same pass as the buckets: the density map's hover does a linear Array.find over sixty
+  // thousand rows on every pointermove, which is a cost this figure does not have to inherit.
+  byCell: Map<string, number>;
+  monthly: Float32Array;
+  unit: Int32Array;
+  units: CellCurveUnit[];
 }
 
 // The last figure of the seasonality chapter, and the one that stops pretending mortality is
@@ -255,7 +265,25 @@ export default function AmplitudeMap({
       if (d) outlines.push({ d, measured: isMeasured(unit) });
     }
 
-    return { rings, buckets, edges, domain, outlines };
+    // "lon,lat" → cell, built here so the hover below is a lookup rather than a scan.
+    const byCell = new Map<string, number>();
+    for (let i = 0; i < cells.length; i += 1) {
+      const cell = cells[i];
+      if (!cell || !rings[i]) continue;
+      byCell.set(`${cell[0]},${cell[1]}`, i);
+    }
+
+    return {
+      rings,
+      buckets,
+      edges,
+      domain,
+      outlines,
+      byCell,
+      monthly: resolved.monthly,
+      unit: resolved.unit,
+      units: resolved.units,
+    };
   }, [
     rateGrid,
     regionKeys,
@@ -268,6 +296,54 @@ export default function AmplitudeMap({
     width,
     height,
   ]);
+
+  // The hover. A grid cell has no name of its own, so what a tooltip can honestly say is: whose
+  // curve this is, what that curve is worth here this month, and how that curve was arrived at.
+  //
+  // No country-polygon fallback for a pointer that lands on no cell, unlike the density map: there
+  // the subject is how much land is empty, so an empty cell is worth naming. Here a cell with no
+  // row is not drawn at all, and there is nothing to say about it.
+  const describe = (cell: number): string | null => {
+    if (!cache || !rateGrid) return null;
+    const id = cache.unit[cell] ?? -1;
+    const unit = id >= 0 ? cache.units[id] : undefined;
+    const deaths = rateGrid.cells[cell]?.[3] ?? 0;
+    const n = rateGrid.cells.length;
+    const multiplier = cache.monthly[month * n + cell] ?? 1;
+    const where =
+      unit == null
+        ? dict.charts.common.unknown
+        : unit.tier === TIER_REGION && unit.country
+          ? fill(t.cellUnitRegion, { region: unit.name, country: unit.country })
+          : unit.name;
+    return fill(t.cellTooltip, {
+      unit: where,
+      excess: fmtExcess(t, (deaths * (multiplier - 1)) / 12),
+      month: monthNames[month] ?? "",
+      multiplier: fmtMultiplier(multiplier),
+      basis: basisOf(t, unit),
+    });
+  };
+
+  const onPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas || !cache || !rateGrid) return;
+    const rect = canvas.getBoundingClientRect();
+    const point = projection.invert?.([
+      ((event.clientX - rect.left) * canvas.width) / rect.width,
+      ((event.clientY - rect.top) * canvas.height) / rect.height,
+    ]);
+    if (!point) {
+      hideTooltip();
+      return;
+    }
+    const size = rateGrid.cellsize;
+    const key = `${Math.floor(point[0] / size) * size},${Math.floor(point[1] / size) * size}`;
+    const cell = cache.byCell.get(key);
+    const text = cell == null ? null : describe(cell);
+    if (text) showTooltip(text, event.clientX, event.clientY);
+    else hideTooltip();
+  };
 
   // Four hundred vector paths that do not depend on the month, held still across a month change.
   // Without this React diffs every one of them on every tick of the slider, which costs more than
@@ -351,6 +427,8 @@ export default function AmplitudeMap({
           height={height}
           role="img"
           aria-label={t.aria}
+          onPointerMove={onPointerMove}
+          onPointerLeave={hideTooltip}
         />
         {/* The provenance outlines, over the cells and in vector: about two hundred paths against
             twenty-odd thousand cells, they never change with the month, and as SVG they stay crisp
@@ -417,6 +495,46 @@ export default function AmplitudeMap({
 function isMeasured(unit: CellCurveUnit): boolean {
   if (unit.tier === TIER_REGION) return unit.measurement !== "climate-modeled";
   return unit.source === "observed" || unit.source === "own-regions";
+}
+
+// Whole deaths, signed, always. A cell where the season barely moves reads "+0 deaths", which is
+// the truth about that cell rather than a gap in the tooltip. The noun is part of the string
+// because one death is not "1 deaths" in any of the three languages.
+function fmtExcess(t: Dictionary["charts"]["amplitudeMap"], value: number): string {
+  const whole = Math.round(value) === 0 ? 0 : value;
+  const n = d3.format("+,.0f")(whole);
+  return fill(Math.abs(Math.round(whole)) === 1 ? t.cellDeathsOne : t.cellDeaths, { n });
+}
+
+function fmtMultiplier(value: number): string {
+  return `${d3.format(".2f")(value)}\u00d7`;
+}
+
+// How the curve behind this cell was arrived at. The five country strings are the ones the old
+// choropleth already used — they describe the same five tiers of buildSpatialSeasonality — now
+// wrapped in the sentence that matters at cell resolution: this is one curve for a whole unit,
+// and the unit is bigger than what you are pointing at.
+function basisOf(t: Dictionary["charts"]["amplitudeMap"], unit: CellCurveUnit | undefined): string {
+  if (!unit) return t.sourceNone;
+  if (unit.tier === TIER_REGION) {
+    if (unit.measurement === "climate-modeled") return t.sourceRegionClimate;
+    if (unit.imputedFrom?.length) {
+      return fill(t.sourceRegionImputed, { donors: unit.imputedFrom.join(", ") });
+    }
+    return t.sourceRegionMeasured;
+  }
+  const donors = unit.donorNames ?? [];
+  const basis =
+    unit.source === "observed"
+      ? t.sourceObserved
+      : unit.source === "own-regions"
+        ? fill(t.sourceOwnRegions, { n: donors.length })
+        : unit.source === "bordering-countries"
+          ? fill(t.sourceBorderingCountries, { donors: donors.join(", ") })
+          : unit.source === "climate"
+            ? fill(t.sourceClimate, { donor: donors[0] ?? "" })
+            : fill(t.sourceLatitude, { donor: donors[0] ?? "" });
+  return fill(t.sourceWholeCountry, { basis });
 }
 
 // The legend's numbers are the quantiser's own edges, not a second rounding of the same data:

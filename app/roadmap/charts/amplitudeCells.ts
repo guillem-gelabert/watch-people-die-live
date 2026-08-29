@@ -24,9 +24,11 @@ export interface CellCurveUnit {
   // Set on the region tier: the admin-1 / NUTS-2 key, which is also the key both
   // seasonality-subnational.json and region-keys.json use.
   regionKey?: string;
-  // Set on the country tier: the M49 id, which is what the 110m country features are keyed by.
+  // The M49 id of the country the unit is in — its own on the country tier, its parent's on the
+  // region tier, where the tooltip needs both names.
   m49?: number;
   name: string;
+  country?: string;
   // Only meaningful on the country tier, where buildSpatialSeasonality already worked out
   // whether the curve was observed or reconstructed and from whom.
   source?: SpatialSeasonalityEstimate["source"];
@@ -34,6 +36,8 @@ export interface CellCurveUnit {
   // How the region itself was measured — "climate-modeled" for the Indian and Chinese regions,
   // which are a Köppen blend rather than an observation.
   measurement?: SubnationalSeasonalityRegion["measurement"];
+  // The regions the region's own curve was borrowed from, where its raw series was unusable.
+  imputedFrom?: string[];
 }
 
 export interface ResolvedCellCurves {
@@ -117,7 +121,9 @@ export function resolveCellCurves({
               regionKey: row.key,
               m49,
               name: region.name,
+              country: names?.[String(m49)],
               measurement: region.measurement,
+              ...(region.imputedFrom ? { imputedFrom: region.imputedFrom } : {}),
             },
             curve,
           );
