@@ -16,6 +16,15 @@
 //
 // Response and token caching stays with the callers, which know what is cacheable and for how long.
 
+// Node's fetch sends `User-Agent: node` and `Accept-Language: *`, which is an unmistakable
+// automation signature and tells an operator nothing about who is calling. This names the project
+// and points at the repository instead — deliberately honest rather than browser-shaped, since the
+// intent is to be identifiable to whoever reads the access logs, not to look like a person. It is
+// not an attempt to pass a bot challenge: Imunify360 blocks by IP reputation and a JS challenge, so
+// the remedy for a flagged IP is an allowlist entry, not a header.
+const USER_AGENT =
+  "watch-people-die-live/1.0 (+https://github.com/guillem-gelabert/watch-people-die-live)";
+
 const DEFAULT_TIMEOUT_MS = 30_000;
 // Long enough that a slow host does not trip the breaker, short enough that a genuine block is not
 // retried for a full minute before the build hears about it.
@@ -139,6 +148,14 @@ function backoffMs(attempt: number): number {
   return exponential + Math.random() * 250;
 }
 
+// Defaults only: a caller that sets either header keeps its own value.
+function withDefaultHeaders(init: RequestInit): RequestInit {
+  const headers = new Headers(init.headers);
+  if (!headers.has("user-agent")) headers.set("User-Agent", USER_AGENT);
+  if (!headers.has("accept-language")) headers.set("Accept-Language", "en");
+  return { ...init, headers };
+}
+
 function isRetryableStatus(status: number): boolean {
   return status === 429 || status >= 500;
 }
@@ -179,9 +196,11 @@ export async function politeFetch(
       response = await schedule(host, minIntervalMs, () => {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), timeoutMs);
-        return fetch(url, { ...init, signal: controller.signal, cache: "no-store" }).finally(() =>
-          clearTimeout(timeout),
-        );
+        return fetch(url, {
+          ...withDefaultHeaders(init),
+          signal: controller.signal,
+          cache: "no-store",
+        }).finally(() => clearTimeout(timeout));
       });
     } catch (error) {
       // A thrown fetch is a network fault or our own timeout, both of which retrying can fix.

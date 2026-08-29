@@ -14,11 +14,8 @@ const WB_BASE = "https://api.worldbank.org/v2";
 const CACHE_TTL_SECONDS = 24 * 60 * 60; // refresh ~daily
 const REQUEST_TIMEOUT_MS = 20000;
 
-const REQUEST_HEADERS = {
-  Accept: "application/json",
-  "User-Agent":
-    "watch-people-die-live/1.0 (+https://github.com/guillem-gelabert/watch-people-die-live)",
-};
+// The User-Agent now comes from lib/http.ts, which sets it for every host.
+const REQUEST_HEADERS = { Accept: "application/json" };
 
 const ROOT = process.cwd();
 

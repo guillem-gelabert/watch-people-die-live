@@ -109,6 +109,37 @@ describe("politeFetch", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("identifies itself rather than sending Node's default User-Agent", async () => {
+    let sent: Headers | undefined;
+    globalThis.fetch = vi.fn((_url: unknown, init?: RequestInit) => {
+      sent = new Headers(init?.headers);
+      return Promise.resolve(respond(200, "ok"));
+    }) as unknown as typeof fetch;
+
+    await politeFetch("https://identified.test/x", {}, { minIntervalMs: 0 });
+
+    expect(sent?.get("user-agent")).toContain("watch-people-die-live/1.0");
+    expect(sent?.get("user-agent")).not.toBe("node");
+    expect(sent?.get("accept-language")).toBe("en");
+  });
+
+  it("lets a caller override the default headers", async () => {
+    let sent: Headers | undefined;
+    globalThis.fetch = vi.fn((_url: unknown, init?: RequestInit) => {
+      sent = new Headers(init?.headers);
+      return Promise.resolve(respond(200, "ok"));
+    }) as unknown as typeof fetch;
+
+    await politeFetch(
+      "https://identified.test/y",
+      { headers: { "User-Agent": "something-else/2.0", Accept: "text/html" } },
+      { minIntervalMs: 0 },
+    );
+
+    expect(sent?.get("user-agent")).toBe("something-else/2.0");
+    expect(sent?.get("accept")).toBe("text/html");
+  });
+
   it("returns a non-2xx untouched when the caller is a probe", async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(respond(503, "down")) as unknown as typeof fetch;
 
