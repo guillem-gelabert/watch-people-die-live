@@ -46,11 +46,10 @@ function completeSnapshot(overrides: Partial<ConflictsPayload> = {}): ConflictsP
     generatedAt: "2026-08-21T19:16:15.761Z",
     totalFatalities: 0,
     weeklyStack: {
-      countries: [],
+      keys: [],
       weeks: Array.from({ length: 12 }, (_, i) => ({
         week: `2026-05-${String(16 + i).padStart(2, "0")}`,
-        values: [],
-        othersBreakdown: [],
+        segments: [],
       })),
     },
     regions: [],

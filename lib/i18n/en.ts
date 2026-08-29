@@ -216,9 +216,10 @@ export const en = {
       "No conflict fatalities are available for the last {n} complete weeks, so there is no " +
       "weekly series for the prediction to run on.",
     ariaLabel:
-      "Weekly conflict fatalities over the last {n} complete weeks, stacked by country (each " +
-      "week's sub-10% countries grouped as Others), with a {weighting} weighted estimate of " +
-      "{prediction} deaths for the current week{clamp}",
+      "Weekly conflict fatalities over the last {n} complete weeks. Each week is stacked by " +
+      "country for those at or above 5% of that week, with the rest grouped into the smallest " +
+      "UN region that reaches 5% and the remainder as Elsewhere. A {weighting} weighted estimate " +
+      "gives {prediction} deaths for the current week{clamp}",
     weightingFlat: "flat",
     weightingHalfLife: "{halfLife}-week half-life",
     clampOn: ", outliers clamped to P{lo}–P{hi}",
@@ -246,9 +247,47 @@ export const en = {
     readoutAsideClamped: ", totals clamped to P{lo}–P{hi}",
     readoutAsideUnclamped: ", nothing clamped",
     readoutAsideFlat: ", every week weighted the same",
-    others: "Others",
+    elsewhere: "Elsewhere",
     tooltipDeaths: "{country}: {n} deaths",
     tooltipMore: "+{n} more: {total}",
+  },
+
+  // UN M49 region names, keyed by the numeric code the weekly conflict stack puts in a band's
+  // key. Unlike country and cause names — which arrive already-worded from the data files and are
+  // never translated — these are labels we mint, so they are translated like any other chrome.
+  // The full scheme is authored, not only the ~11 regions today's data happens to produce: which
+  // regions appear changes every time ACLED publishes.
+  geoscheme: {
+    2: "Africa",
+    5: "South America",
+    9: "Oceania",
+    10: "Antarctica",
+    11: "Western Africa",
+    13: "Central America",
+    14: "Eastern Africa",
+    15: "Northern Africa",
+    17: "Middle Africa",
+    18: "Southern Africa",
+    19: "Americas",
+    21: "Northern America",
+    29: "Caribbean",
+    30: "Eastern Asia",
+    34: "Southern Asia",
+    35: "South-eastern Asia",
+    39: "Southern Europe",
+    53: "Australia and New Zealand",
+    54: "Melanesia",
+    57: "Micronesia",
+    61: "Polynesia",
+    142: "Asia",
+    143: "Central Asia",
+    145: "Western Asia",
+    150: "Europe",
+    151: "Eastern Europe",
+    154: "Northern Europe",
+    155: "Western Europe",
+    202: "Sub-Saharan Africa",
+    419: "Latin America and the Caribbean",
   },
 
   // English is the identity map: the labels in data/causes.json are already English. Typed as an

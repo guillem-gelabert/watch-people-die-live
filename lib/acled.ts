@@ -20,6 +20,8 @@ export type {
   ConflictCountry,
   ConflictRegion,
   ConflictsPayload,
+  ConflictSegmentKind,
+  ConflictStackSegment,
   ConflictWeeklyStack,
 } from "./acled-weekly";
 

@@ -5,12 +5,16 @@ import ExcelJS from "exceljs";
 import isoCountries from "i18n-iso-countries";
 import unzipper from "unzipper";
 import { robustEwma } from "./conflict-model";
+import { geoschemeChain } from "./m49-geoscheme";
 
-export const ACLED_SCHEMA_VERSION = 2 as const;
+export const ACLED_SCHEMA_VERSION = 3 as const;
 export const ACLED_WINDOW_WEEKS = 12;
 export const DEFAULT_HALF_LIFE_WEEKS = 4;
 export const DEFAULT_CLAMP_PERCENTILE = 10;
-export const STACK_WEEKLY_SHARE = 0.1;
+// A band has to be at least this much of its own week to be drawn on its own. It governs both
+// halves of the stack: which countries are named, and how far a rolled-up region has to coarsen
+// before it is big enough to stand. Nothing thinner than this survives in a bar.
+export const STACK_WEEKLY_SHARE = 0.05;
 
 export type ConflictCell = [lon: number, lat: number, annualizedFatalities: number];
 
@@ -32,13 +36,27 @@ export interface ConflictRegion {
   cell: [lon: number, lat: number] | null;
 }
 
+// What a band in the weekly stack stands for. A `region` band's key is a UN M49 code as a string;
+// the reader-facing name is looked up per locale, so it never travels in the payload.
+export type ConflictSegmentKind = "country" | "region" | "elsewhere";
+
+export const ELSEWHERE_KEY = "elsewhere";
+
+export interface ConflictStackSegment {
+  key: string;
+  kind: ConflictSegmentKind;
+  fatalities: number;
+  // The countries this band is made of, largest first. A country band holds just itself, which
+  // is what lets the absorb step below move any band into `elsewhere` without a special case.
+  members: ConflictCountry[];
+}
+
 export interface ConflictWeeklyStack {
-  countries: string[];
-  weeks: Array<{
-    week: string;
-    values: number[];
-    othersBreakdown: ConflictCountry[];
-  }>;
+  // Every key that appears in any week, ranked by window total. A key's position here is its
+  // colour: membership is decided per week, so a country that is named in week 3 and not in
+  // week 4 must still be the same colour in week 5. Keyed by place, not by slot.
+  keys: Array<{ key: string; kind: ConflictSegmentKind; total: number }>;
+  weeks: Array<{ week: string; segments: ConflictStackSegment[] }>;
 }
 
 export interface AcledRegionalCoverage {
@@ -410,44 +428,129 @@ export async function parseRegionalWorkbook(
   return { region, latestThrough, rowsRead, rowsRetained, invalidRows, rows };
 }
 
+// One week's bands, built so that every band drawn is at least STACK_WEEKLY_SHARE of that week.
+//
+// Membership is decided per week, not once for the window. Across the 12 weeks only 2-6 countries
+// clear the bar in any given week, so a global list would name a country in every bar on the
+// strength of one bad week. The cost — a band appearing and vanishing — is paid by keying colour
+// to the place rather than to the slot, which is what `keys` below is for.
+function buildWeekSegments(
+  counts: Map<string, number>,
+  byName: Map<string, ConflictCountry>,
+): ConflictStackSegment[] {
+  const total = [...counts.values()].reduce((sum, value) => sum + value, 0);
+  if (total <= 0) return [];
+  const floor = total * STACK_WEEKLY_SHARE;
+
+  const member = (country: string, fatalities: number): ConflictCountry => ({
+    country,
+    m49: byName.get(country)?.m49 ?? countryM49(country),
+    fatalities,
+  });
+
+  const segments: ConflictStackSegment[] = [];
+  // Countries too small to stand alone, each with the chain of ever-coarser regions it can roll
+  // up through, and how far along that chain it currently sits.
+  const rolling: Array<{ member: ConflictCountry; chain: readonly number[]; depth: number }> = [];
+  const orphans: ConflictCountry[] = [];
+
+  for (const [country, fatalities] of counts) {
+    const entry = member(country, fatalities);
+    // ACLED reports events at sea under "Pacific Ocean" and the like. They have no M49 and so no
+    // region to roll up into; naming one would spend a band and a colour on a non-place.
+    const chain = entry.m49 == null ? null : geoschemeChain(entry.m49);
+    if (!chain) {
+      orphans.push(entry);
+    } else if (fatalities >= floor) {
+      segments.push({ key: entry.country, kind: "country", fatalities, members: [entry] });
+    } else {
+      rolling.push({ member: entry, chain, depth: 0 });
+    }
+  }
+
+  // Coarsen until each group clears the floor: subregion, then the intermediary region where M49
+  // defines one (Latin America and the Caribbean, Sub-Saharan Africa), then the continent. A
+  // group at the end of its chain has nowhere left to go and is swept up below.
+  const groupsAt = () => {
+    const groups = new Map<number, typeof rolling>();
+    for (const entry of rolling) {
+      const key = entry.chain[entry.depth]!;
+      const group = groups.get(key) ?? [];
+      group.push(entry);
+      groups.set(key, group);
+    }
+    return groups;
+  };
+  const longest = rolling.reduce((most, entry) => Math.max(most, entry.chain.length), 0);
+  for (let pass = 1; pass < longest; pass += 1) {
+    for (const group of groupsAt().values()) {
+      const sum = group.reduce((running, entry) => running + entry.member.fatalities, 0);
+      if (sum >= floor) continue;
+      for (const entry of group) {
+        if (entry.depth + 1 < entry.chain.length) entry.depth += 1;
+      }
+    }
+  }
+
+  const elsewhere: ConflictCountry[] = [...orphans];
+  for (const [key, group] of groupsAt()) {
+    const members = group.map((entry) => entry.member).sort((a, b) => b.fatalities - a.fatalities);
+    const fatalities = members.reduce((sum, entry) => sum + entry.fatalities, 0);
+    // Still short at the top of its chain: there is no coarser region to try, so it joins the
+    // residual rather than being drawn as a sliver.
+    if (fatalities < floor) elsewhere.push(...members);
+    else segments.push({ key: String(key), kind: "region", fatalities, members });
+  }
+
+  segments.sort((a, b) => b.fatalities - a.fatalities);
+
+  // The residual is the one band the rules above cannot guarantee: it collects exactly what could
+  // not reach the floor, so it may not reach it either. Feed it the smallest surviving band until
+  // it does. This is what makes "no band is thinner than the floor" true of every band, not just
+  // of the ones the cascade produced.
+  let residual = elsewhere.reduce((sum, entry) => sum + entry.fatalities, 0);
+  while (residual > 0 && residual < floor && segments.length > 0) {
+    const smallest = segments.pop()!;
+    elsewhere.push(...smallest.members);
+    residual += smallest.fatalities;
+  }
+  if (residual > 0) {
+    segments.push({
+      key: ELSEWHERE_KEY,
+      kind: "elsewhere",
+      fatalities: residual,
+      members: elsewhere.sort((a, b) => b.fatalities - a.fatalities),
+    });
+  }
+
+  return segments.sort((a, b) => b.fatalities - a.fatalities);
+}
+
 export function buildWeeklyStack(
   weeks: string[],
   weeklyCountry: Map<string, Map<string, number>>,
   countries: ConflictCountry[],
 ): ConflictWeeklyStack {
-  const named = new Set<string>();
-  for (const week of weeks) {
-    const counts = weeklyCountry.get(week) ?? new Map();
-    const total = [...counts.values()].reduce((sum, value) => sum + value, 0);
-    if (total <= 0) continue;
-    for (const [country, fatalities] of counts) {
-      if (fatalities >= total * STACK_WEEKLY_SHARE) named.add(country);
+  const byName = new Map(countries.map((country) => [country.country, country]));
+  const built = weeks.map((week) => ({
+    week,
+    segments: buildWeekSegments(weeklyCountry.get(week) ?? new Map(), byName),
+  }));
+
+  const totals = new Map<string, { kind: ConflictSegmentKind; total: number }>();
+  for (const { segments } of built) {
+    for (const segment of segments) {
+      const running = totals.get(segment.key);
+      if (running) running.total += segment.fatalities;
+      else totals.set(segment.key, { kind: segment.kind, total: segment.fatalities });
     }
   }
-  const ordered = countries
-    .filter(({ country }) => named.has(country))
-    .map(({ country }) => country);
-  const byName = new Map(countries.map((country) => [country.country, country]));
+
   return {
-    countries: [...ordered, "Others"],
-    weeks: weeks.map((week) => {
-      const counts = weeklyCountry.get(week) ?? new Map();
-      const values = ordered.map((country) => counts.get(country) ?? 0);
-      const shown = new Set(ordered.filter((_, index) => values[index]! > 0));
-      const othersBreakdown = [...counts.entries()]
-        .filter(([country]) => !shown.has(country))
-        .map(([country, fatalities]) => ({
-          country,
-          m49: byName.get(country)?.m49 ?? countryM49(country),
-          fatalities,
-        }))
-        .sort((a, b) => b.fatalities - a.fatalities);
-      return {
-        week,
-        values: [...values, othersBreakdown.reduce((sum, item) => sum + item.fatalities, 0)],
-        othersBreakdown,
-      };
-    }),
+    keys: [...totals.entries()]
+      .map(([key, { kind, total }]) => ({ key, kind, total }))
+      .sort((a, b) => b.total - a.total),
+    weeks: built,
   };
 }
 
@@ -641,8 +744,10 @@ export function isCompleteSnapshot(value: unknown): value is ConflictsPayload {
     payload.granularity === "week" &&
     payload.spatialPrecision === "admin1-centroid" &&
     payload.window?.weeks === ACLED_WINDOW_WEEKS &&
-    Array.isArray(payload.weeklyStack?.weeks) &&
+    Array.isArray(payload.weeklyStack?.keys) &&
+    Array.isArray(payload.weeklyStack.weeks) &&
     payload.weeklyStack.weeks.length === ACLED_WINDOW_WEEKS &&
+    payload.weeklyStack.weeks.every((week) => Array.isArray(week.segments)) &&
     Array.isArray(payload.coverage?.regionalSources) &&
     payload.coverage.regionalSources.length === 6 &&
     !payload.coverage.unmappedCountries.some((country) => countryM49(country.country) != null) &&

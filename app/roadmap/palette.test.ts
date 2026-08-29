@@ -416,8 +416,11 @@ describe("chartPaletteToCssVars", () => {
       marks(harmony(4, sky), sky).forEach((color, index) => {
         expect(vars[`--cause-color-${index}`]).toBe(color);
       });
-      marks(harmony(8, sky, true), sky).forEach((color, index) => {
+      marks(harmony(6, sky, true), sky).forEach((color, index) => {
         expect(vars[`--conflict-color-${index}`]).toBe(color);
+      });
+      marks(harmony(8, sky), sky).forEach((color, index) => {
+        expect(vars[`--conflict-region-color-${index}`]).toBe(color);
       });
     }
   });

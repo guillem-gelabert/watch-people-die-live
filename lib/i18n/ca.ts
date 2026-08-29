@@ -213,9 +213,10 @@ export const ca: Dictionary = {
       "No hi ha morts per conflicte disponibles per a les últimes {n} setmanes completes, així " +
       "que no hi ha cap sèrie setmanal sobre la qual fer l'estimació.",
     ariaLabel:
-      "Morts setmanals per conflicte de les últimes {n} setmanes completes, apilades per país " +
-      "(els països per sota del 10% de cada setmana s'agrupen com a Altres), amb una estimació " +
-      "ponderada {weighting} de {prediction} morts per a la setmana actual{clamp}",
+      "Morts setmanals per conflicte de les últimes {n} setmanes completes. Cada setmana " +
+      "s'apila per país per als que arriben al 5% d'aquella setmana; la resta s'agrupa en la " +
+      "regió de l'ONU més petita que arribi al 5%, i el sobrant com a Altres llocs. Una " +
+      "estimació ponderada {weighting} dóna {prediction} morts per a la setmana actual{clamp}",
     weightingFlat: "plana",
     weightingHalfLife: "amb semivida de {halfLife} setmanes",
     clampOn: ", valors extrems retallats a P{lo}–P{hi}",
@@ -243,9 +244,42 @@ export const ca: Dictionary = {
     readoutAsideClamped: ", totals retallats a P{lo}–P{hi}",
     readoutAsideUnclamped: ", res retallat",
     readoutAsideFlat: ", totes les setmanes ponderades igual",
-    others: "Altres",
+    elsewhere: "Altres llocs",
     tooltipDeaths: "{country}: {n} morts",
     tooltipMore: "+{n} més: {total}",
+  },
+
+  geoscheme: {
+    2: "Àfrica",
+    5: "Amèrica del Sud",
+    9: "Oceania",
+    10: "Antàrtida",
+    11: "Àfrica occidental",
+    13: "Amèrica Central",
+    14: "Àfrica oriental",
+    15: "Àfrica septentrional",
+    17: "Àfrica central",
+    18: "Àfrica meridional",
+    19: "Amèrica",
+    21: "Amèrica del Nord",
+    29: "Carib",
+    30: "Àsia oriental",
+    34: "Àsia meridional",
+    35: "Sud-est asiàtic",
+    39: "Europa meridional",
+    53: "Austràlia i Nova Zelanda",
+    54: "Melanèsia",
+    57: "Micronèsia",
+    61: "Polinèsia",
+    142: "Àsia",
+    143: "Àsia central",
+    145: "Àsia occidental",
+    150: "Europa",
+    151: "Europa oriental",
+    154: "Europa septentrional",
+    155: "Europa occidental",
+    202: "Àfrica subsahariana",
+    419: "Amèrica Llatina i el Carib",
   },
 
   causes: causesCa,

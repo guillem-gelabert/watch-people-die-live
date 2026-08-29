@@ -579,8 +579,18 @@ export function chartPaletteToCssVars(sky: Rgb): Record<string, string> {
   marks(harmony(4, sky), sky).forEach((color, index) => {
     out[`--cause-color-${index}`] = color;
   });
-  marks(harmony(8, sky, true), sky).forEach((color, index) => {
+  // The conflict stack draws two kinds of band, and the reader has to tell which kind they are
+  // looking at before they read either: a named country, or a region several countries were
+  // rolled up into. Countries get six distinct vivid hues — harmony() returns a mono ramp past
+  // six, which is why this asks for six rather than more — and regions get the quiet mono ramp,
+  // shades of the section's own hue. Cycling within a kind is fine: a week draws at most a
+  // handful of each, and colour is keyed to the place, so a repeat is stable rather than
+  // migrating between bars.
+  marks(harmony(6, sky, true), sky).forEach((color, index) => {
     out[`--conflict-color-${index}`] = color;
+  });
+  marks(harmony(8, sky), sky).forEach((color, index) => {
+    out[`--conflict-region-color-${index}`] = color;
   });
 
   return out;

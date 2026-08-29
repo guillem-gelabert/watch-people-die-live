@@ -216,9 +216,10 @@ export const de: Dictionary = {
       "Für die letzten {n} vollständigen Wochen sind keine Konflikttoten verfügbar; daher gibt " +
       "es keine Wochenreihe für die Schätzung.",
     ariaLabel:
-      "Wöchentliche Konflikttote der letzten {n} vollständigen Wochen, nach Land gestapelt " +
-      "(Länder unter 10 % einer Woche als Andere), mit einer {weighting} gewichteten Schätzung " +
-      "von {prediction} Toten für die aktuelle Woche{clamp}",
+      "Wöchentliche Konflikttote der letzten {n} vollständigen Wochen. Jede Woche ist nach " +
+      "Land gestapelt für Länder ab 5 % dieser Woche; der Rest wird in der kleinsten " +
+      "UN-Region zusammengefasst, die 5 % erreicht, der Überrest als Anderswo. Eine " +
+      "{weighting} gewichtete Schätzung ergibt {prediction} Tote für die aktuelle Woche{clamp}",
     weightingFlat: "flach",
     weightingHalfLife: "mit {halfLife} Wochen Halbwertszeit",
     clampOn: ", Ausreißer auf P{lo}–P{hi} begrenzt",
@@ -246,9 +247,42 @@ export const de: Dictionary = {
     readoutAsideClamped: ", Wochensummen auf P{lo}–P{hi} begrenzt",
     readoutAsideUnclamped: ", nichts begrenzt",
     readoutAsideFlat: ", jede Woche gleich gewichtet",
-    others: "Andere",
+    elsewhere: "Anderswo",
     tooltipDeaths: "{country}: {n} Tote",
     tooltipMore: "+{n} weitere: {total}",
+  },
+
+  geoscheme: {
+    2: "Afrika",
+    5: "Südamerika",
+    9: "Ozeanien",
+    10: "Antarktis",
+    11: "Westafrika",
+    13: "Zentralamerika",
+    14: "Ostafrika",
+    15: "Nordafrika",
+    17: "Mittelafrika",
+    18: "Südliches Afrika",
+    19: "Amerika",
+    21: "Nordamerika",
+    29: "Karibik",
+    30: "Ostasien",
+    34: "Südasien",
+    35: "Südostasien",
+    39: "Südeuropa",
+    53: "Australien und Neuseeland",
+    54: "Melanesien",
+    57: "Mikronesien",
+    61: "Polynesien",
+    142: "Asien",
+    143: "Zentralasien",
+    145: "Westasien",
+    150: "Europa",
+    151: "Osteuropa",
+    154: "Nordeuropa",
+    155: "Westeuropa",
+    202: "Subsahara-Afrika",
+    419: "Lateinamerika und die Karibik",
   },
 
   causes: causesDe,

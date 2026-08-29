@@ -287,6 +287,8 @@ export type {
   ConflictCell,
   ConflictCountry,
   ConflictRegion,
+  ConflictSegmentKind,
+  ConflictStackSegment,
   ConflictWeeklyStack,
 } from "@/lib/acled";
 

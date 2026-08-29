@@ -148,24 +148,138 @@ describe("ACLED source selection and country mapping", () => {
 });
 
 describe("weekly aggregation and spatial placement", () => {
-  it("groups sub-10% country-weeks into Others without losing their breakdown", () => {
-    const countryTotals: ConflictCountry[] = [
-      { country: "Large", m49: 1, fatalities: 95 },
-      { country: "Small", m49: 2, fatalities: 5 },
-    ];
-    const weekly = new Map([
+  // Codes used below: 466 Mali and 854 Burkina Faso are Western Africa (011), which rolls up
+  // through Sub-Saharan Africa (202) to Africa (002); 320 Guatemala and 340 Honduras are Central
+  // America (013) under Latin America and the Caribbean (419) and then the Americas (019).
+  const country = (name: string, m49: number | null, fatalities: number): ConflictCountry => ({
+    country: name,
+    m49,
+    fatalities,
+  });
+  const stackOf = (week: Array<[string, number]>, totals: ConflictCountry[]) =>
+    buildWeeklyStack(["2026-08-01"], new Map([["2026-08-01", new Map(week)]]), totals).weeks[0]!
+      .segments;
+
+  it("names a country on exactly the threshold and nothing below it", () => {
+    const segments = stackOf(
       [
-        "2026-08-01",
-        new Map([
-          ["Large", 95],
-          ["Small", 5],
-        ]),
+        ["Ukraine", 90],
+        ["Mali", 5],
+        ["Burkina Faso", 5],
       ],
+      [country("Ukraine", 804, 90), country("Mali", 466, 5), country("Burkina Faso", 854, 5)],
+    );
+    // Mali and Burkina Faso are each exactly 5% of the 100 deaths, so both stand alone; nothing
+    // is left over to group.
+    expect(segments.map((segment) => segment.key)).toEqual(["Ukraine", "Mali", "Burkina Faso"]);
+    expect(segments.every((segment) => segment.kind === "country")).toBe(true);
+  });
+
+  it("groups sub-threshold countries that share a subregion", () => {
+    const segments = stackOf(
+      [
+        ["Ukraine", 92],
+        ["Mali", 4],
+        ["Burkina Faso", 4],
+      ],
+      [country("Ukraine", 804, 92), country("Mali", 466, 4), country("Burkina Faso", 854, 4)],
+    );
+    // Neither reaches 5% of the 100 deaths alone; together their subregion does, so Western
+    // Africa is drawn rather than two slivers or an anonymous residual.
+    expect(segments.map((segment) => segment.key)).toEqual(["Ukraine", "11"]);
+    expect(segments[1]!.kind).toBe("region");
+    expect(segments[1]!.members.map(({ country: name }) => name).sort()).toEqual([
+      "Burkina Faso",
+      "Mali",
     ]);
-    const stack = buildWeeklyStack(["2026-08-01"], weekly, countryTotals);
-    expect(stack.countries).toEqual(["Large", "Others"]);
-    expect(stack.weeks[0]!.values).toEqual([95, 5]);
-    expect(stack.weeks[0]!.othersBreakdown).toEqual([{ country: "Small", m49: 2, fatalities: 5 }]);
+  });
+
+  it("sends a lone sub-threshold country to the residual, however far it coarsens", () => {
+    const segments = stackOf(
+      [
+        ["Ukraine", 90],
+        ["Mali", 4],
+        ["Burkina Faso", 6],
+      ],
+      [country("Ukraine", 804, 90), country("Mali", 466, 4), country("Burkina Faso", 854, 6)],
+    );
+    // Burkina Faso clears 5% on its own, so Mali is alone below the line: no amount of coarsening
+    // gets 4 to 5, and Western Africa, Sub-Saharan Africa and Africa each hold only Mali. It ends
+    // in the residual — which is then itself under the floor and absorbs the smallest band.
+    expect(segments.map((segment) => segment.key)).toEqual(["Ukraine", "elsewhere"]);
+    expect(segments[1]!.members.map(({ country: name }) => name)).toEqual(["Burkina Faso", "Mali"]);
+  });
+
+  it("coarsens through the intermediary region only as far as it must", () => {
+    const segments = stackOf(
+      [
+        ["Ukraine", 184],
+        ["Guatemala", 8],
+        ["Haiti", 8],
+      ],
+      [country("Ukraine", 804, 184), country("Guatemala", 320, 8), country("Haiti", 332, 8)],
+    );
+    // Of 200 deaths the floor is 10. Central America (013) and the Caribbean (029) each hold 8
+    // and fail alone; both climb one step to Latin America and the Caribbean (419), where they
+    // meet and clear together. The continent (019) is never reached.
+    expect(segments.map((segment) => segment.key)).toEqual(["Ukraine", "419"]);
+    expect(segments[1]!.members.map(({ country: name }) => name).sort()).toEqual([
+      "Guatemala",
+      "Haiti",
+    ]);
+  });
+
+  it("sends a country with no M49 to the residual instead of naming it", () => {
+    const segments = stackOf(
+      [
+        ["Ukraine", 80],
+        ["Pacific Ocean", 20],
+      ],
+      [country("Ukraine", 804, 80), country("Pacific Ocean", null, 20)],
+    );
+    // ACLED files events at sea under an ocean. It is 20% of the week and would otherwise take a
+    // band and a colour, but it has no region to roll up into.
+    expect(segments.map((segment) => segment.key)).toEqual(["Ukraine", "elsewhere"]);
+    expect(segments[1]!.members.map(({ country: name }) => name)).toEqual(["Pacific Ocean"]);
+  });
+
+  it("keeps the residual itself above the threshold by absorbing the smallest band", () => {
+    const segments = stackOf(
+      [
+        ["Ukraine", 940],
+        ["Mali", 50],
+        ["Pacific Ocean", 10],
+      ],
+      [country("Ukraine", 804, 940), country("Mali", 466, 50), country("Pacific Ocean", null, 10)],
+    );
+    // The floor is 50. The ocean's 10 cannot reach it and has nowhere to roll up, so the residual
+    // would be a 1% sliver; it takes the smallest surviving band — Mali's — and clears.
+    const residual = segments.find((segment) => segment.kind === "elsewhere")!;
+    expect(residual.fatalities).toBe(60);
+    expect(residual.members.map(({ country: name }) => name)).toEqual(["Mali", "Pacific Ocean"]);
+    expect(segments.every((segment) => segment.fatalities >= 1000 * 0.05)).toBe(true);
+  });
+
+  it("ranks keys once for the window so a band keeps its colour across weeks it misses", () => {
+    const weeks = ["2026-08-01", "2026-08-08"];
+    const stack = buildWeeklyStack(
+      weeks,
+      new Map([
+        [
+          "2026-08-01",
+          new Map([
+            ["Ukraine", 50],
+            ["Mali", 50],
+          ]),
+        ],
+        // Mali is absent entirely in the second week.
+        ["2026-08-08", new Map([["Ukraine", 100]])],
+      ]),
+      [country("Ukraine", 804, 150), country("Mali", 466, 50)],
+    );
+    expect(stack.keys.map(({ key }) => key)).toEqual(["Ukraine", "Mali"]);
+    expect(stack.keys.map(({ total }) => total)).toEqual([150, 50]);
+    expect(stack.weeks[1]!.segments.map(({ key }) => key)).toEqual(["Ukraine"]);
   });
 
   it("keeps 12 complete weeks, places centroids in-country, and conserves model weight", () => {
@@ -219,8 +333,12 @@ describe("weekly aggregation and spatial placement", () => {
     });
 
     expect(snapshot.weeklyStack.weeks).toHaveLength(12);
+    // The rollup must not lose anybody: every death in a week is in exactly one band, whether
+    // that band is a country, a region it was grouped into, or the residual.
     expect(
-      snapshot.weeklyStack.weeks.every((week) => week.values.reduce((a, b) => a + b, 0) === 35),
+      snapshot.weeklyStack.weeks.every(
+        (week) => week.segments.reduce((sum, segment) => sum + segment.fatalities, 0) === 35,
+      ),
     ).toBe(true);
     expect(snapshot.regions.find((region) => region.admin1 === "Near Kabul")?.cell).toEqual([0, 0]);
     expect(snapshot.regions.find((region) => region.admin1 === "Texas")?.cell).toEqual([
