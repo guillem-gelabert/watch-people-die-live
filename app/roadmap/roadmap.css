@@ -595,22 +595,11 @@ body {
   border: 0;
   border-radius: 9px;
   overflow: hidden;
-  background: none;
+
+  /* One constant surface. The state is the word and the way it is drawn, so the tile itself has
+     nothing to say — it only has to stay opaque enough to read against the map underneath. */
+  background: color-mix(in srgb, var(--hi) 14%, var(--paper));
   cursor: pointer;
-}
-
-.scale-diagonal-half {
-  position: absolute;
-  inset: 0;
-  transition: background 0.18s ease;
-}
-
-.scale-diagonal-half.is-log {
-  clip-path: polygon(0 0, 100% 0, 0 100%);
-}
-
-.scale-diagonal-half.is-linear {
-  clip-path: polygon(100% 0, 100% 100%, 0 100%);
 }
 
 .scale-diagonal svg {
@@ -626,11 +615,7 @@ body {
     600 15px/1 var(--font-public-sans),
     sans-serif;
   letter-spacing: 0.01em;
-  transition: fill 0.18s ease;
-}
-
-.scale-diagonal-label.is-linear {
-  font-size: 17px;
+  fill: var(--hi);
 }
 
 /* Every figure in the story is transparent and sits directly on the section's sky. */
