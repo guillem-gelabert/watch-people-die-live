@@ -18,6 +18,7 @@ import type {
   NeighborsByM49,
   Nuts2Feature,
   RateGrid,
+  RegionKeys,
   RatePer100kByCountry,
   RatePer100kByKey,
   RegionNeighborsByCode,
@@ -45,6 +46,8 @@ interface RoadmapState {
   grid: DensityGrid | null;
   gridStatus: GridStatus;
   deathsPerYearById: DeathsPerYearById | null; // Map<m49, number>, for the step-2 centroid chart
+  rateGrid: RateGrid | null; // the baked grid itself, for the per-cell seasonality map
+  regionKeys: RegionKeys | null; // per-cell admin-1 / NUTS-2 identity, index-aligned to rateGrid
   admin1Features: Admin1Feature[] | null; // Natural Earth Admin-1 regions (rest of world)
   nuts2Features: Nuts2Feature[] | null; // Eurostat NUTS-2 regions (Europe, finer layer)
   subnational: SubnationalCdr | null; // subnational rate table + meta (step-5 copy/callouts)
@@ -93,6 +96,8 @@ export function useRoadmapData(): RoadmapState {
     grid: null,
     gridStatus: "loading", // "loading" | "ready" | "error"
     deathsPerYearById: null, // Map<m49, number>, for the step-2 centroid chart
+    rateGrid: null,
+    regionKeys: null,
     closeupOutlines: null,
     admin1Features: null,
     nuts2Features: null,
@@ -174,6 +179,9 @@ export function useRoadmapData(): RoadmapState {
     // (data/rate-grid.json), so the step-2 chart's counts and country coverage match the
     // globe exactly — no live /api/mortality, no drift against the baked snapshot.
     // Independent of the seasonality/topo chain below (can fail/arrive separately).
+    // The grid itself is kept as well as the per-country sums: the seasonality map draws one
+    // cell per row, so throwing the rows away after summing them (which this chain used to do)
+    // would mean fetching the same 1.7 MB twice.
     d3.json<RateGrid>("/data/rate-grid.json")
       .then((grid) => {
         if (cancelled || !grid?.cells) return;
@@ -182,9 +190,20 @@ export function useRoadmapData(): RoadmapState {
           if (!(w > 0)) continue;
           deathsPerYearById.set(m49, (deathsPerYearById.get(m49) ?? 0) + w);
         }
-        setState((s) => ({ ...s, deathsPerYearById }));
+        setState((s) => ({ ...s, deathsPerYearById, rateGrid: grid }));
       })
       .catch((err) => console.error("Could not load rate grid", err));
+
+    // Which admin-1 / NUTS-2 unit owns each grid cell, so a cell can take its seasonal curve
+    // from a measured region rather than from its country's average. Its own chain and
+    // optional: without it the seasonality map falls back to one curve per country, which is
+    // the file's convention for a layer that refines rather than enables a figure.
+    d3.json<RegionKeys>("/data/region-keys.json")
+      .then((regionKeys) => {
+        if (cancelled || !regionKeys?.cells) return;
+        setState((s) => ({ ...s, regionKeys }));
+      })
+      .catch((err) => console.error("Could not load region keys", err));
 
     // 10m coastlines and borders for the three regional close-ups, baked offline and clipped to
     // their crops (scripts/build-closeup-outlines.ts). Its own chain, and optional: if it never

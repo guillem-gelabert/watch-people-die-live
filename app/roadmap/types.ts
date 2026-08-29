@@ -126,6 +126,26 @@ export interface RateGrid {
 
 export type DeathsPerYearById = Map<number, number>;
 
+// --- data/region-keys.json (baked by scripts/build-region-keys.ts) ------------------
+// The admin-1 / NUTS-2 identity of every rate-grid cell, as a separate file rather than a
+// fifth column on rate-grid.json (the globe's conflict layer joins on that file's row shape,
+// and pipeline/climate_fallback.py unpacks each row as exactly four values). `cells` is
+// index-aligned to rate-grid.json's `cells` and holds an index into `keys`, or -1 where no
+// region won the cell's area-majority vote.
+export interface RegionKeyRow {
+  geo: "adm1" | "nuts2";
+  key: string;
+  country: string; // ISO3
+}
+
+export interface RegionKeys {
+  source: string;
+  cellsize: number;
+  count: number;
+  keys: RegionKeyRow[];
+  cells: number[];
+}
+
 // --- data/admin1-10m.json (Natural Earth 10m Admin-1, topojson) ---------------------
 // One feature per first-level region; joined to subnational rates by `adm1_code`.
 export interface Admin1Properties {
