@@ -1,0 +1,44 @@
+# Redeploys the Railway service every Wednesday morning, after ACLED's weekly publication:
+# Africa and Latin America update their aggregated workbooks on Mondays, the other four regions
+# on Tuesdays, and the build's commonCutoff only advances once all six have. The build itself
+# decides whether anything is fetched — scripts/build-conflicts.ts gates on a 72h verifiedAt and
+# skips the six workbook downloads when upstream still advertises the week we already hold, so
+# a trigger that finds nothing new costs seven small requests and no downloads.
+#
+# GitHub disables scheduled workflows after 60 days without repo activity (a warning email comes
+# first). If that happens, re-enable it in the Actions tab — this trigger is the only freshness
+# mechanism the project has between pushes.
+#
+# Needs one secret: RAILWAY_TOKEN, a Railway project token (project settings → Tokens), scoped to
+# this project's production environment. The three IDs below are not secrets.
+name: weekly-redeploy
+
+on:
+  schedule:
+    - cron: "0 6 * * 3" # Wednesday 06:00 UTC
+  workflow_dispatch: {} # manual trigger, for testing and catch-up
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger a fresh Railway deployment
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          response=$(curl -sS --fail-with-body https://backboard.railway.com/graphql/v2 \
+            -H "Authorization: Bearer $RAILWAY_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "query": "mutation($input: EnvironmentTriggersDeployInput!) { environmentTriggersDeploy(input: $input) }",
+              "variables": {
+                "input": {
+                  "projectId": "07e79116-21f5-4cd3-8478-48eb1641b6ae",
+                  "environmentId": "b2bc6205-cf15-4169-ac9f-b405503edcf6",
+                  "serviceId": "4317cf18-b419-4cc5-8aca-793f58b9117f"
+                }
+              }
+            }')
+          echo "$response"
+          # GraphQL answers 200 with an errors array on failure, so the HTTP check alone is not enough.
+          echo "$response" | jq -e '.errors == null' > /dev/null

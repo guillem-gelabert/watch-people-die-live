@@ -226,6 +226,7 @@ interface CausesOutput {
   source: string;
   citation: string;
   year: number;
+  generatedAt: string;
   coverage: Coverage;
   bands: [number, number][];
   causes: string[];
@@ -248,7 +249,15 @@ function main(): void {
     return;
   }
   const src = resolveSource();
-  console.log(`Reading WHO GHE rows from ${rel(src)} ...`);
+  const sourceYear = yearFromSourceName(src);
+  if (sourceYear === null) {
+    console.warn(
+      `Could not read a GHE year from ${rel(src)} — labelling the output 2021. ` +
+        `Rename the file to ghe-<year>-deaths.csv if that is wrong.`,
+    );
+  }
+  const year = sourceYear ?? 2021;
+  console.log(`Reading WHO GHE rows from ${rel(src)} (GHE ${year}) ...`);
   const { rows, col } = readCsv(src);
 
   const byCountry = new Map<number, CountryAgg>();
@@ -388,11 +397,14 @@ function main(): void {
   for (const [m49, o] of trimmedCountries) countries[m49] = reindex(o);
 
   const out: CausesOutput = {
-    source: "WHO Global Health Estimates 2021 — deaths by cause, age and sex",
+    source: `WHO Global Health Estimates ${year} — deaths by cause, age and sex`,
     citation:
-      "World Health Organization, data.who.int, Global Health Estimates 2021: Deaths by Cause, " +
-      "Age, Sex, by Country and by Region, 2000-2021 (CC BY 4.0).",
-    year: 2021,
+      `World Health Organization, data.who.int, Global Health Estimates ${year}: Deaths by ` +
+      `Cause, Age, Sex, by Country and by Region, 2000-${year} (CC BY 4.0).`,
+    year,
+    // When this file was built — the release label above says which estimates these are, this
+    // says when we pulled them. The same distinction conflicts.json draws with generatedAt.
+    generatedAt: new Date().toISOString(),
     coverage: { location: "country", age: "age_bands", sex: "male_female" },
     bands: BANDS,
     causes: finalCauses,
@@ -521,6 +533,16 @@ function labelOf(cause: string | undefined): string {
   return LABELS.get(v) || v;
 }
 
+// The GHE release year, read from the fetcher's filename pattern (ghe-<year>-deaths.csv). The
+// output's source/citation/year used to be hardcoded 2021 literals, which meant a --year=2022
+// refetch would have shipped a causes.json still labelled 2021 — the numbers new, the label wrong,
+// and nothing to catch it. Deriving the label from the same file the numbers come from removes
+// that failure by construction.
+export function yearFromSourceName(name: string): number | null {
+  const match = /^ghe-(\d{4})-deaths\.csv(\.gz)?$/i.exec(path.basename(name));
+  return match ? Number(match[1]) : null;
+}
+
 function resolveSource(): string {
   if (srcArg) {
     const p = path.resolve(ROOT, srcArg.split("=")[1] ?? "");
@@ -548,9 +570,13 @@ function rel(p: string): string {
   return path.relative(ROOT, p);
 }
 
-try {
-  main();
-} catch (err: unknown) {
-  console.error(err instanceof Error ? err.message : String(err));
-  process.exit(1);
+// Run only as an entrypoint. The module is also imported by its test for yearFromSourceName, and
+// an import must never kick off a full build.
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    main();
+  } catch (err: unknown) {
+    console.error(err instanceof Error ? err.message : String(err));
+    process.exit(1);
+  }
 }

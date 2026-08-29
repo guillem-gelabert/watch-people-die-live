@@ -2,7 +2,7 @@
 created: 2026-08-21T15:40:00.000Z
 title: Keep the build-time conflict layer current, and honest about its age
 priority: 5
-resolved: substance done 2026-08-21 (freshness removed); cadence outstanding
+resolved: 2026-08-29 — cadence is .github/workflows/weekly-redeploy.yml (Wed 06:00 UTC), documented in README's "How often it refetches"; the other three criteria were closed by the 72h gate work (441fba96, b2a68ed0)
 area: data
 blocked_by: s13 (nothing to schedule until the build script exists)
 mandatory: true (freshness is now deploy cadence — see below)

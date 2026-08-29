@@ -258,7 +258,7 @@ Every flash gets a sentence, drawn from the distribution of the place it fired i
 
 # Age, then sex, then one cause
 
-**Age and sex** come from the UN World Population Prospects table of deaths by age and sex. **Cause** comes from the World Health Organization's Global Health Estimates, taken at its most specific level — the recognisable causes, not the clinical groupings above them — and reduced to the strongest eight per country, sex and age band, with everything else folded into "other causes".
+**Age and sex** come from the UN World Population Prospects table of deaths by age and sex, in its 2023 figures. **Cause** comes from the World Health Organization's Global Health Estimates — the 2021 estimates, the newest release — taken at its most specific level — the recognisable causes, not the clinical groupings above them — and reduced to the strongest eight per country, sex and age band, with everything else folded into "other causes".
 
 They are sampled **in that order**, so a cause is only ever drawn from the age and sex band that plausibly dies of it. Draw the cause first and you get twenty-year-olds with dementia.
 

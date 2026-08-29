@@ -48,7 +48,7 @@ often, while each country's real total deaths/year is preserved exactly.
   from **real, per-country distributions** so it matches where the death fired — **age +
   sex** from the **UN World Population Prospects** ("Deaths by age and sex", via the
   [UN Data Portal API](https://population.un.org/dataportal/about/dataapi)) and **cause**
-  from the **IHME Global Burden of Disease** — pre-built into committed JSON
+  from the **WHO Global Health Estimates** — pre-built into committed JSON
   (`data/mortality-age-sex.json`, `data/causes.json`) with a bundled sample fallback
   (`data/sample-personas.json`), and an illustrative WHO-style table as a last resort, so the
   feed always reads sensibly. Identities are representative, not real people. See _Building
@@ -137,26 +137,24 @@ the "Deaths by age and sex" indicator, and fetches it for every mapped country. 
 `population.un.org` must be reachable — some sandboxed/CI networks block it via an egress
 allowlist; add it there (or run where it's reachable) before building.
 
-**Cause of death (IHME GBD)** — `data/causes.json`:
+**Cause of death (WHO GHE)** — `data/causes.json`:
 
-The UN portal has no cause-of-death data, and IHME GBD has no tokened API, so the cause data
-is built from a CSV you export once from the
-[GBD Results Tool](https://vizhub.healthdata.org/gbd-results/) (free account; ≤100k rows per
-request):
-
-- **Measure** Deaths · **Metric** Number · **Sex** Male, Female
-- **Cause** All causes expanded to **Level 3** (recognisable causes)
-- **Age** `<1`, `1-4`, `5-9`, … 5-year groups · **Location** all countries · **Year** most recent
-
-Save it under `data/source/` (git-ignored, like the GPWv4 raster), then:
+Causes come from the WHO Global Health Estimates via WHO's keyless xMart OData API — no
+account, no token, no quota (CC BY 4.0). The fetch and build are deliberately **not** part of
+any deploy: GHE releases land every couple of years, so refreshing is a manual, reviewed step
+rather than something a build should redo weekly. To refresh when WHO publishes a new release:
 
 ```bash
-pnpm run build:causes -- --force          # auto-discovers the CSV in data/source/
-# or: pnpm run build:causes -- --src=path/to/gbd.csv --top=8 --force
+pnpm run fetch:who-ghe -- --year=<Y> --force   # ~183 requests, ~64 MB, into data/source/who-ghe/
+pnpm run build:causes -- --force               # rebuilds data/causes.json from the newest CSV
+# review the diff, then commit — the story's Who chapter states the release year in prose,
+# and a test fails if the prose and causes.json disagree.
 ```
 
-GBD cause names are mapped to short labels and the strongest `--top` (default 8) causes per
-country/sex/age band are kept, the rest folded into "other causes".
+The output's `source`, `citation` and `year` are derived from the source file's name
+(`ghe-<year>-deaths.csv`), and `generatedAt` records when it was built. Cause names are mapped
+to short labels and the strongest `--top` (default 8) causes per country/sex/age band are kept,
+the rest folded into "other causes".
 
 > Note: some sandboxed/CI networks block outbound hosts. There, `/api/mortality` returns
 > `source: "sample"`. On a normal network (including Railway) it returns `source: "worldbank"`
@@ -220,6 +218,14 @@ A build that decides to contact ACLED and cannot will fail rather than ship a st
 current. The gate narrows when that decision is taken, so a build during a short ACLED outage now
 succeeds if the snapshot on hand is under 72 hours old.
 
+**Deploy cadence:** `.github/workflows/weekly-redeploy.yml` triggers a fresh Railway deployment
+every **Wednesday 06:00 UTC**, after ACLED's weekly publication — Africa and Latin America update
+their aggregated workbooks on Mondays, the other four regions on Tuesdays, and `commonCutoff`
+only advances once all six have. Between Wednesdays, ordinary pushes deploy as usual and the 72h
+gate makes their builds free. The workflow needs a `RAILWAY_TOKEN` project token in the GitHub
+repo secrets, and GitHub pauses scheduled workflows after 60 days without repo activity — the
+workflow file says how to re-enable it.
+
 ## Deploy on Railway
 
 1. Push this repo to GitHub.
@@ -228,7 +234,8 @@ succeeds if the snapshot on hand is under 72 hours old.
    `railway.json`) so the UN age/sex distribution (`data/mortality-age-sex.json`) is fetched
    fresh at deploy time — Railway's egress reaches `population.un.org`. Set the Data Portal
    token as the `un_api_key` (or `UN_API_KEY`) service variable; if it's missing or the fetch
-   fails the build still succeeds and the app falls back to the bundled persona sample. Then
+   fails the build still succeeds and ships the committed `data/mortality-age-sex.json`
+   snapshot instead — the bundled persona sample only engages if that file were missing. Then
    `next start` runs the server (`PORT` is injected automatically).
 4. Open the generated domain — Railway's egress reaches the World Bank API too, so the globe
    shows live death rates.
@@ -237,6 +244,6 @@ The runtime is keyless — the World Bank API is public and `data/rate-grid.json
 ahead of time. `ACLED_USERNAME` / `ACLED_PASSWORD` are needed by the **build** only (see _Conflict
 data_ above); no volume is involved, and none can be.
 `un_api_key`/`UN_API_KEY` is used only by the **build** to fetch the
-UN age/sex data. Cause data (`data/causes.json`) is _not_ fetched on build — IHME GBD has no
-API — so until it's rebuilt and committed (see _Building the persona data_), causes come from
-the bundled sample.
+UN age/sex data. Cause data (`data/causes.json`) is _not_ fetched on build **by design** — WHO
+GHE has a keyless API, but its releases land every couple of years, so the refresh is a manual,
+reviewed step (see _Building the persona data_).

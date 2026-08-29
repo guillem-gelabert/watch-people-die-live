@@ -4,6 +4,7 @@ title: Schedule the cause-data refresh and state its vintage in the Who chapter
 priority: 12
 area: data
 blocked_by: phase-04 plans 04-02, 04-03
+resolved: 2026-08-29 — WHO GHE refresh stays manual by decision, now safely labelled (build-causes derives year/source/citation from the source filename, adds generatedAt); vintages stated in the who chapter in all three languages with a drift-guard test; README's IHME section rewritten to the WHO GHE workflow
 files:
   - docs/ROADMAP.md:253-271
   - docs/ROADMAP.ca.md

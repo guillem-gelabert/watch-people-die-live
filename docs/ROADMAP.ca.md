@@ -258,7 +258,7 @@ Cada llampec rep una frase, treta de la distribució del lloc on s'ha disparat.
 
 # Edat, després sexe, després una causa
 
-**L'edat i el sexe** surten de la taula de defuncions per edat i sexe de les Perspectives de la Població Mundial de l'ONU. La **causa** surt de les Estimacions Sanitàries Mundials de l'Organització Mundial de la Salut, preses al seu nivell més específic — les causes reconeixibles, no els grups clínics que hi ha per damunt — i reduïda a les vuit més fortes per país, sexe i franja d'edat, amb tota la resta plegada en «altres causes».
+**L'edat i el sexe** surten de la taula de defuncions per edat i sexe de les Perspectives de la Població Mundial de l'ONU, en les xifres de 2023. La **causa** surt de les Estimacions Sanitàries Mundials de l'Organització Mundial de la Salut — les estimacions de 2021, l'edició més recent — preses al seu nivell més específic — les causes reconeixibles, no els grups clínics que hi ha per damunt — i reduïda a les vuit més fortes per país, sexe i franja d'edat, amb tota la resta plegada en «altres causes».
 
 Es mostregen **en aquest ordre**, de manera que una causa només es treu de la franja d'edat i sexe que plausiblement en mor. Treu la causa primer i tens vint-i-cinc-anyencs amb demència.
 
