@@ -2598,6 +2598,8 @@ footer {
   margin-top: 10px;
 }
 
+/* Always in the layout, so the card's chrome measures the same at every point in the fold — the
+   container height is computed from it. Hidden by opacity rather than by not being rendered. */
 .proxy-reorder {
   display: block;
   width: 100%;
@@ -2609,6 +2611,14 @@ footer {
     600 12px/1 var(--font-public-sans),
     sans-serif;
   cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.proxy-reorder[data-shown="1"] {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .proxy-boxes {

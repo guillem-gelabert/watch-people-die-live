@@ -7,12 +7,11 @@ import ProxyStrip from "./ProxyStrip";
 import SortableProxyList from "./SortableProxyList";
 import { PROXY_INDICES, proxyDefs, type ProxyDef } from "./proxyDefs";
 import { useProxyGuess } from "./ProxyGuessContext";
-import { FOLDED_HEIGHT, stripStyle, useProxyFold } from "./useProxyFold";
+import { foldedBoxesHeight, stackHeightFor, stripStyle, useProxyFold } from "./useProxyFold";
 
-// The stack is taller than the card so the sticky card has somewhere to travel while the strips
-// fold: roughly half a screen per strip, plus a little run-out at the end.
-const SCREENS_PER_STRIP = 0.55;
-const RUN_OUT = 0.22;
+// The card's height minus its boxes: paddings, title, both rails, the foot and its button. Only
+// alive until the first layout effect measures the real thing, one frame later and before paint.
+const CHROME_FALLBACK = 156;
 
 // A natural (unfolded) strip height, used before the real one has been measured. Only matters for
 // the first frame.
@@ -24,7 +23,7 @@ const ASSUMED_NATURAL = 210;
 // staked something on them.
 export default function ProxyRankingCard() {
   const d = useDict();
-  const { submit, spent, markSpent } = useProxyGuess();
+  const { guess, submit, spent, markSpent } = useProxyGuess();
   const [order, setOrder] = useState<number[]>(() => [...PROXY_INDICES]);
   const [modalOpen, setModalOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -34,31 +33,46 @@ export default function ProxyRankingCard() {
   const [naturalHeights, setNaturalHeights] = useState<number[]>(() =>
     PROXY_INDICES.map(() => ASSUMED_NATURAL),
   );
+  // Chrome is measured rather than the whole card: the card's height runs from ~1200px open to
+  // ~410px folded, but `card - boxes` is the same at every point in the fold.
+  const [cardChrome, setCardChrome] = useState(CHROME_FALLBACK);
   const boxesRef = useRef<HTMLDivElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  // The boxes' live height at the moment the modal opens, so the placeholder that replaces them is
+  // exactly as tall and the sticky card's box never changes under the reader. State rather than a
+  // ref because the render that swaps in the placeholder has to see it: both setters fire in the
+  // same handler, so React batches them into one render carrying both.
+  const [boxesHeight, setBoxesHeight] = useState<number | null>(null);
 
   // Colour is keyed to a proxy's identity, never to where it currently sits, so reordering the
   // list never repaints a single strip.
   const colors = useMemo(() => PROXY_INDICES.map((index) => `var(--proxy-color-${index})`), []);
   const defsByIndex = useMemo(() => new Map(proxyDefs(d).map((def) => [def.index, def])), [d]);
 
-  const openModal = useCallback(() => setModalOpen(true), []);
+  // The read has to happen before the state flip: by the time a layout effect keyed on modalOpen
+  // runs, the boxes are already gone from the DOM.
+  const openModal = useCallback(() => {
+    setBoxesHeight(boxesRef.current?.offsetHeight ?? null);
+    setModalOpen(true);
+  }, []);
   const { stackRef, fold } = useProxyFold({
     count: PROXY_INDICES.length,
     suspended: modalOpen || dragging,
     onComplete: openModal,
   });
 
-  // The container's height decides how much scroll the fold gets. Measured from the viewport rather
-  // than hardcoded, so a short phone and a tall one both get the same number of screens.
+  // The container's height decides how much scroll the fold gets, and now also where the card
+  // releases: it ends at the folded card plus exactly the fold's own travel, so the reader stops
+  // scrolling a finished card past dead space and the next paragraph sits one story gap below.
   useEffect(() => {
     const resize = () => {
       const vh = window.innerHeight || 1;
-      setStackHeight(Math.round(vh * SCREENS_PER_STRIP * PROXY_INDICES.length + vh * RUN_OUT));
+      setStackHeight(stackHeightFor(cardChrome, vh, PROXY_INDICES.length));
     };
     resize();
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
-  }, []);
+  }, [cardChrome]);
 
   // Each strip's open height at this width. The fold interpolates towards it, so it has to be a
   // real number rather than "auto".
@@ -111,6 +125,11 @@ export default function ProxyRankingCard() {
       return natural;
     });
     setNaturalHeights((prev) => (next.every((v, i) => v === prev[i]) ? prev : next));
+
+    // Same read, same keys: chrome only changes with width or language, which is exactly what this
+    // effect already guards on. No observer needed.
+    const card = cardRef.current;
+    if (card) setCardChrome(card.offsetHeight - boxes.offsetHeight);
   }, [modalOpen, fold.progress, d]);
 
   const closeModal = useCallback(
@@ -161,6 +180,7 @@ export default function ProxyRankingCard() {
       <div className="proxy-stack" ref={stackRef} style={{ height: `${stackHeight}px` }}>
         <div
           className="proxy-card"
+          ref={cardRef}
           style={{ background: "var(--tile-open)", color: "var(--body)" }}
           data-hidden={modalOpen ? "1" : "0"}
         >
@@ -172,7 +192,9 @@ export default function ProxyRankingCard() {
           {modalOpen ? (
             <div
               className="proxy-boxes-placeholder"
-              style={{ height: FOLDED_HEIGHT * PROXY_INDICES.length }}
+              style={{
+                height: boxesHeight ?? foldedBoxesHeight(PROXY_INDICES.length),
+              }}
             />
           ) : (
             <div className="proxy-boxes" ref={boxesRef}>
@@ -197,22 +219,26 @@ export default function ProxyRankingCard() {
             </div>
           )}
           <div className="proxy-card-foot">
-            {/* The rails fade in with the finished ranking; the reorder button does not, because
-                it is how the reader gets back to a modal they have already dismissed. */}
             <div className="proxy-rail proxy-rail-worst" data-shown={fold.complete ? "1" : "0"}>
               <span className="proxy-rail-line" />
               <span>{d.proxy.worst}</span>
             </div>
-            {spent ? (
-              <button
-                type="button"
-                className="proxy-reorder"
-                style={{ background: "var(--tile)", color: "var(--ink)" }}
-                onClick={openModal}
-              >
-                {d.proxy.reorder}
-              </button>
-            ) : null}
+            {/* Faded in with the rails rather than mounted with them, for two reasons. The card's
+                chrome has to measure the same at every point in the fold, or the container
+                computed from it would be a button short and the card would release early. And it
+                is reachable as soon as the ranking is legible, not only once the modal has been
+                dismissed: a reader who loaded the page past the fold has never seen the modal,
+                and this is their only way in. It reads "rank" until they have submitted one. */}
+            <button
+              type="button"
+              className="proxy-reorder"
+              data-shown={fold.complete || spent ? "1" : "0"}
+              disabled={!(fold.complete || spent)}
+              style={{ background: "var(--tile)", color: "var(--ink)" }}
+              onClick={openModal}
+            >
+              {guess ? d.proxy.reorder : d.proxy.rank}
+            </button>
           </div>
         </div>
       </div>

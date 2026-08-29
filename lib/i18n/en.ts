@@ -65,6 +65,7 @@ export const en = {
     best: "Best predictor",
     worst: "Worst",
     reorder: "Reorder the proxies",
+    rank: "Rank the proxies",
     infoLabel: " — the case for {title}",
     currentOrder: "Current order, best first: {order}",
     moveUp: "Move {title} up",

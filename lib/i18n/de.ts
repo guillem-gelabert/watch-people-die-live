@@ -57,6 +57,7 @@ export const de: Dictionary = {
     best: "Bester Prädiktor",
     worst: "Schlechtester",
     reorder: "Indikatoren neu ordnen",
+    rank: "Indikatoren ordnen",
     infoLabel: " — was für {title} spricht",
     currentOrder: "Aktuelle Reihenfolge, bester zuerst: {order}",
     moveUp: "{title} nach oben",

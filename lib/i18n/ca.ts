@@ -57,6 +57,7 @@ export const ca: Dictionary = {
     best: "Millor predictor",
     worst: "Pitjor",
     reorder: "Reordena els indicadors",
+    rank: "Ordena els indicadors",
     infoLabel: " — l'argument a favor de {title}",
     currentOrder: "Ordre actual, del millor al pitjor: {order}",
     moveUp: "Puja {title}",
