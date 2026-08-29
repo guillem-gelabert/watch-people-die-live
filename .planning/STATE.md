@@ -80,8 +80,8 @@ Each is a deliberate deferral with a recorded reason — see `milestones/v2.0-MI
 
 ### Other open follow-ups
 
-- **PUB-01** (open since v1.0) — production Railway URL smoke check pending; the checkout was never linked to a Railway project.
-- **`lib/acled-weekly.test.ts` flake** — reported 2026-08-21 as failing roughly 1 run in 3 on fixture ZIP entry order (not production). **Not re-verified since**, and `06-01`-era commits have passed the pre-commit hook, so it may already be resolved.
+- **PUB-01** (open since v1.0) — **partly closed 2026-08-29.** The checkout *is* linked (project `Watch People Die`, service `watch-people-die-live`), and production was deployed and its build logs read repeatedly that day, so "never linked" was stale. What remains is the original ask: a smoke check of the live URL itself, which nothing has done.
+- ~~**`lib/acled-weekly.test.ts` flake**~~ — **resolved 2026-08-21, verified 2026-08-29.** Fixed by `e20575fd` about seven hours after this note was written, which is why later commits passed the hook. The diagnosis here was also wrong: not fixture ZIP entry order but the streaming reader spooling each sheet to a temp file, stalling the unzip stream until it fired `end` mid-archive, so every text cell surfaced as `{sharedString: n}`. `e20575fd` reads the ZIP's metadata parts up front instead. Measured 40/40 green on 2026-08-29; at the reported 1-in-3 rate that has probability ~1e-7.
 - **`pipeline/` has no lint script**; `ruff check pipeline/` reports pre-existing B905 at `geo.py:57`.
 - **`public/data/temperature-curves.json`** stale from 2026-07-17 — not in the sync-data allowlist, not fetched.
 - **Stale prose** reference to concept tiles in `docs/mobile-parity-report.md:46`.
