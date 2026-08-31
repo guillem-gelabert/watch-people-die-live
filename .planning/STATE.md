@@ -65,9 +65,21 @@ s06 made the amplitude map a per-cell excess-deaths map with a month slider, shi
 commits and deployed. Its file records a spike finding worth not re-litigating: batching the
 cells into nine paths is **thirty times slower** than filling them one at a time.
 
-s09 regrouped the weekly conflict stack (`3a4b98ba`): the 5% floor now governs both which
-countries are named and how far a leftover coarsens through the UN M49 geoscheme, and the
-residual fell from **51.6% of the window to 6.4%** with no band thinner than 5% of its own bar.
+s09 regrouped the weekly conflict stack (`3a4b98ba`): one floor governs both which countries are
+named and how far a leftover coarsens through the UN M49 geoscheme, and the residual fell from
+**51.6% of the window to 6.4%** with no band thinner than the floor of its own bar.
+
+**The floor was then raised from 5% to 10% on 2026-08-31 (`c3e9c037`)**, which is the option s09's
+own file records as rejected. The rejection's numbers held up on remeasurement — it predicted
+Elsewhere at 15.6% of the window and 22% in its worst week against a measured **15.1% and 20.4%**
+— so this is a taste call taken with the trade-off in view, not a measurement corrected. Bands per
+bar fall from 10-12 to 5-7, countries ever named from 12 to 5, and the rollup now reaches whole
+continents, so Asia and Africa stand as bands. What the rejection did not predict is that nesting
+improves: the odd "Western Africa beside Africa" pairing falls from all twelve bars to four. The
+snapshot was migrated in place, not refetched — each band carries its members with their own
+fatalities, so the stored payload reconstructs the builder's input map exactly, which is the
+general escape from ACLED's rate limit for any change to a *derived* field.
+
 Two findings in its file are the ones worth keeping. Coarsening alone cannot bound the residual —
 a group at the top of its chain with nowhere left to go lands there, so it was itself a sliver in
 eight of twelve weeks until it started absorbing the smallest surviving band. And a hand-authored
