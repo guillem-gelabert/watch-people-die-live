@@ -13,6 +13,7 @@ import {
   discoverWorkbook,
   parseRegionalWorkbook,
   parseWeek,
+  STACK_WEEKLY_SHARE,
   validateWorkbookHeaders,
   type ConflictCountry,
   type DiscoveredWorkbook,
@@ -163,13 +164,13 @@ describe("weekly aggregation and spatial placement", () => {
   it("names a country on exactly the threshold and nothing below it", () => {
     const segments = stackOf(
       [
-        ["Ukraine", 90],
-        ["Mali", 5],
-        ["Burkina Faso", 5],
+        ["Ukraine", 80],
+        ["Mali", 10],
+        ["Burkina Faso", 10],
       ],
-      [country("Ukraine", 804, 90), country("Mali", 466, 5), country("Burkina Faso", 854, 5)],
+      [country("Ukraine", 804, 80), country("Mali", 466, 10), country("Burkina Faso", 854, 10)],
     );
-    // Mali and Burkina Faso are each exactly 5% of the 100 deaths, so both stand alone; nothing
+    // Mali and Burkina Faso are each exactly 10% of the 100 deaths, so both stand alone; nothing
     // is left over to group.
     expect(segments.map((segment) => segment.key)).toEqual(["Ukraine", "Mali", "Burkina Faso"]);
     expect(segments.every((segment) => segment.kind === "country")).toBe(true);
@@ -178,13 +179,13 @@ describe("weekly aggregation and spatial placement", () => {
   it("groups sub-threshold countries that share a subregion", () => {
     const segments = stackOf(
       [
-        ["Ukraine", 92],
-        ["Mali", 4],
-        ["Burkina Faso", 4],
+        ["Ukraine", 84],
+        ["Mali", 8],
+        ["Burkina Faso", 8],
       ],
-      [country("Ukraine", 804, 92), country("Mali", 466, 4), country("Burkina Faso", 854, 4)],
+      [country("Ukraine", 804, 84), country("Mali", 466, 8), country("Burkina Faso", 854, 8)],
     );
-    // Neither reaches 5% of the 100 deaths alone; together their subregion does, so Western
+    // Neither reaches 10% of the 100 deaths alone; together their subregion does, so Western
     // Africa is drawn rather than two slivers or an anonymous residual.
     expect(segments.map((segment) => segment.key)).toEqual(["Ukraine", "11"]);
     expect(segments[1]!.kind).toBe("region");
@@ -197,15 +198,16 @@ describe("weekly aggregation and spatial placement", () => {
   it("sends a lone sub-threshold country to the residual, however far it coarsens", () => {
     const segments = stackOf(
       [
-        ["Ukraine", 90],
-        ["Mali", 4],
-        ["Burkina Faso", 6],
+        ["Ukraine", 80],
+        ["Mali", 8],
+        ["Burkina Faso", 12],
       ],
-      [country("Ukraine", 804, 90), country("Mali", 466, 4), country("Burkina Faso", 854, 6)],
+      [country("Ukraine", 804, 80), country("Mali", 466, 8), country("Burkina Faso", 854, 12)],
     );
-    // Burkina Faso clears 5% on its own, so Mali is alone below the line: no amount of coarsening
-    // gets 4 to 5, and Western Africa, Sub-Saharan Africa and Africa each hold only Mali. It ends
-    // in the residual — which is then itself under the floor and absorbs the smallest band.
+    // Burkina Faso clears 10% on its own, so Mali is alone below the line: no amount of
+    // coarsening gets 8 to 10, and Western Africa, Sub-Saharan Africa and Africa each hold only
+    // Mali. It ends in the residual — which is then itself under the floor and absorbs the
+    // smallest band.
     expect(segments.map((segment) => segment.key)).toEqual(["Ukraine", "elsewhere"]);
     expect(segments[1]!.members.map(({ country: name }) => name)).toEqual(["Burkina Faso", "Mali"]);
   });
@@ -213,13 +215,13 @@ describe("weekly aggregation and spatial placement", () => {
   it("coarsens through the intermediary region only as far as it must", () => {
     const segments = stackOf(
       [
-        ["Ukraine", 184],
-        ["Guatemala", 8],
-        ["Haiti", 8],
+        ["Ukraine", 168],
+        ["Guatemala", 16],
+        ["Haiti", 16],
       ],
-      [country("Ukraine", 804, 184), country("Guatemala", 320, 8), country("Haiti", 332, 8)],
+      [country("Ukraine", 804, 168), country("Guatemala", 320, 16), country("Haiti", 332, 16)],
     );
-    // Of 200 deaths the floor is 10. Central America (013) and the Caribbean (029) each hold 8
+    // Of 200 deaths the floor is 20. Central America (013) and the Caribbean (029) each hold 16
     // and fail alone; both climb one step to Latin America and the Caribbean (419), where they
     // meet and clear together. The continent (019) is never reached.
     expect(segments.map((segment) => segment.key)).toEqual(["Ukraine", "419"]);
@@ -246,18 +248,18 @@ describe("weekly aggregation and spatial placement", () => {
   it("keeps the residual itself above the threshold by absorbing the smallest band", () => {
     const segments = stackOf(
       [
-        ["Ukraine", 940],
-        ["Mali", 50],
-        ["Pacific Ocean", 10],
+        ["Ukraine", 840],
+        ["Mali", 100],
+        ["Pacific Ocean", 60],
       ],
-      [country("Ukraine", 804, 940), country("Mali", 466, 50), country("Pacific Ocean", null, 10)],
+      [country("Ukraine", 804, 840), country("Mali", 466, 100), country("Pacific Ocean", null, 60)],
     );
-    // The floor is 50. The ocean's 10 cannot reach it and has nowhere to roll up, so the residual
-    // would be a 1% sliver; it takes the smallest surviving band — Mali's — and clears.
+    // The floor is 100. The ocean's 60 cannot reach it and has nowhere to roll up, so the residual
+    // would be a 6% sliver; it takes the smallest surviving band — Mali's — and clears.
     const residual = segments.find((segment) => segment.kind === "elsewhere")!;
-    expect(residual.fatalities).toBe(60);
+    expect(residual.fatalities).toBe(160);
     expect(residual.members.map(({ country: name }) => name)).toEqual(["Mali", "Pacific Ocean"]);
-    expect(segments.every((segment) => segment.fatalities >= 1000 * 0.05)).toBe(true);
+    expect(segments.every((segment) => segment.fatalities >= 1000 * STACK_WEEKLY_SHARE)).toBe(true);
   });
 
   it("ranks keys once for the window so a band keeps its colour across weeks it misses", () => {

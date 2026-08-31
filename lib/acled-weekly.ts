@@ -14,7 +14,7 @@ export const DEFAULT_CLAMP_PERCENTILE = 10;
 // A band has to be at least this much of its own week to be drawn on its own. It governs both
 // halves of the stack: which countries are named, and how far a rolled-up region has to coarsen
 // before it is big enough to stand. Nothing thinner than this survives in a bar.
-export const STACK_WEEKLY_SHARE = 0.05;
+export const STACK_WEEKLY_SHARE = 0.1;
 
 export type ConflictCell = [lon: number, lat: number, annualizedFatalities: number];
 
@@ -430,7 +430,7 @@ export async function parseRegionalWorkbook(
 
 // One week's bands, built so that every band drawn is at least STACK_WEEKLY_SHARE of that week.
 //
-// Membership is decided per week, not once for the window. Across the 12 weeks only 2-6 countries
+// Membership is decided per week, not once for the window. Across the 12 weeks only 1-2 countries
 // clear the bar in any given week, so a global list would name a country in every bar on the
 // strength of one bad week. The cost — a band appearing and vanishing — is paid by keying colour
 // to the place rather than to the slot, which is what `keys` below is for.

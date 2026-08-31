@@ -54,7 +54,9 @@ export default function ConflictEwmaWidget({ weeklyStack }: ConflictEwmaWidgetPr
   //
   // So: colour the graph of "these two bands are drawn in the same bar as each other". Greedy in
   // rank order gives every key one fixed colour that no band it ever shares a bar with also has.
-  // On the current window that needs exactly the six country hues and eight region shades.
+  // At the 10% floor the current window needs two of the six country hues and five of the eight
+  // region shades. The ramps stay wider than that on purpose: membership is decided per week and
+  // the snapshot is rebuilt weekly, so the worst bar is not the one in front of us.
   const paint = useMemo(() => {
     const byKey = new Map<string, string>();
     const weeks = weeklyStack?.weeks ?? [];

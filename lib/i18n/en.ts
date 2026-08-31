@@ -217,8 +217,8 @@ export const en = {
       "weekly series for the prediction to run on.",
     ariaLabel:
       "Weekly conflict fatalities over the last {n} complete weeks. Each week is stacked by " +
-      "country for those at or above 5% of that week, with the rest grouped into the smallest " +
-      "UN region that reaches 5% and the remainder as Elsewhere. A {weighting} weighted estimate " +
+      "country for those at or above 10% of that week, with the rest grouped into the smallest " +
+      "UN region that reaches 10% and the remainder as Elsewhere. A {weighting} weighted estimate " +
       "gives {prediction} deaths for the current week{clamp}",
     weightingFlat: "flat",
     weightingHalfLife: "{halfLife}-week half-life",

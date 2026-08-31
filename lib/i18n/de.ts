@@ -217,8 +217,8 @@ export const de: Dictionary = {
       "es keine Wochenreihe für die Schätzung.",
     ariaLabel:
       "Wöchentliche Konflikttote der letzten {n} vollständigen Wochen. Jede Woche ist nach " +
-      "Land gestapelt für Länder ab 5 % dieser Woche; der Rest wird in der kleinsten " +
-      "UN-Region zusammengefasst, die 5 % erreicht, der Überrest als Anderswo. Eine " +
+      "Land gestapelt für Länder ab 10 % dieser Woche; der Rest wird in der kleinsten " +
+      "UN-Region zusammengefasst, die 10 % erreicht, der Überrest als Anderswo. Eine " +
       "{weighting} gewichtete Schätzung ergibt {prediction} Tote für die aktuelle Woche{clamp}",
     weightingFlat: "flach",
     weightingHalfLife: "mit {halfLife} Wochen Halbwertszeit",

@@ -214,8 +214,8 @@ export const ca: Dictionary = {
       "que no hi ha cap sèrie setmanal sobre la qual fer l'estimació.",
     ariaLabel:
       "Morts setmanals per conflicte de les últimes {n} setmanes completes. Cada setmana " +
-      "s'apila per país per als que arriben al 5% d'aquella setmana; la resta s'agrupa en la " +
-      "regió de l'ONU més petita que arribi al 5%, i el sobrant com a Altres llocs. Una " +
+      "s'apila per país per als que arriben al 10% d'aquella setmana; la resta s'agrupa en la " +
+      "regió de l'ONU més petita que arribi al 10%, i el sobrant com a Altres llocs. Una " +
       "estimació ponderada {weighting} dóna {prediction} morts per a la setmana actual{clamp}",
     weightingFlat: "plana",
     weightingHalfLife: "amb semivida de {halfLife} setmanes",
