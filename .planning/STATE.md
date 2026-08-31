@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: null
 milestone_name: null
 status: milestone-complete
-last_updated: "2026-08-30T00:00:00.000Z"
-last_activity: 2026-08-30
+last_updated: "2026-08-31T00:00:00.000Z"
+last_activity: 2026-08-31
 shipped_milestones:
   - version: v1.0
     name: MVP
@@ -49,18 +49,17 @@ was archived and removed at close; the new milestone creates a fresh one.
 
 Items acknowledged and deferred at milestone close on 2026-08-28.
 
-### Open todos — `.planning/todos/pending/` (4)
+### Open todos — `.planning/todos/pending/` (2)
 
 | # | Item | Prio | Area | Note |
 |---|------|------|------|------|
-| s03 | Proxy modal opens on reload; scroll jump on close | high | story | needs discussion — same `useProxyFold` mechanic as s02 |
-| s02 | Unstick the proxy card when the fold completes | high | story | needs discussion — same mechanic as s03 |
 | s08 | Reachable chart tooltips on touch | low | story | deepest design work |
 | p09 | Subnational cause and age hunting beyond Eurostat | — | data | parked as **backlog 999.1**, not a loose todo |
 
-Five of this table's original nine closed after the milestone close and are in
-`.planning/todos/completed/`: s05, s07 and s14 during the week of 2026-08-21, **s06 on
-2026-08-29** and **s09 on 2026-08-30**.
+Seven of this table's original nine closed after the milestone close and are in
+`.planning/todos/completed/`: s05, s07 and s14 during the week of 2026-08-21, **s06, s02 and s03
+on 2026-08-29** and **s09 on 2026-08-30**. Only s08 and p09 remain, and neither is high priority —
+the table's two "needs discussion" items are done.
 
 s06 made the amplitude map a per-cell excess-deaths map with a month slider, shipped in nine
 commits and deployed. Its file records a spike finding worth not re-litigating: batching the
@@ -75,9 +74,20 @@ eight of twelve weeks until it started absorbing the smallest surviving band. An
 code table wants a coverage test: the M49 one caught Burkina Faso missing outright, silently
 losing 432 deaths in a week to the residual, which looks exactly like working software.
 
+s02 and s03 were fixed together in one commit (`3de66476`), which is what their shared
+`useProxyFold` mechanic implied. The proxy modal no longer opens on reload, because a completion
+only fires when it is continuous with the previous frame — a calibration-frame rule was tried and
+rejected, since Next restores scroll asynchronously relative to first effects and the restore can
+land as the second or third measure in one giant jump. Closing the modal no longer moves the page
+(scroll delta **0** on both round trips, folded and mid-fold), because the placeholder takes the
+boxes' live height instead of a `FOLDED_HEIGHT * 5` constant that was never right at any point in
+the fold. And the card releases when the fold ends rather than after `RUN_OUT`: **7px** of dead
+scroll where there were 115. One loose end recorded in s03's file — the ca and de wordings of
+`proxy.rank` are drafts and want a review.
+
 14 todos were moved to `.planning/todos/completed/` at close itself: p01–p08 and s01/s04/s11 (all
 promoted to shipped plans), plus s10 (closed as a no-op), s12 and s13 (both resolved 2026-08-21).
-With the five above, `completed/` now holds 19.
+With the seven above, `completed/` now holds 21.
 
 ### Accepted audit warnings from v2.0 (4 open, 1 closed)
 
@@ -122,6 +132,7 @@ The decisions that most constrain future work:
 - **The server parses JSON or CSV only at runtime.** No outstanding violations as of v2.0.
 - **Phase waves come from pairwise `files_modified` overlap**, not priority order.
 - **Source selection is an investigation.** Two of Phase 4's named sources turned out to be unusable and were replaced mid-phase.
+- **Continuity across frames, not the first frame, tells a reader's scroll from the browser's.** Any scroll-driven effect that fires a one-shot on the roadmap page has to arm on the previous frame's state — s02/s03 showed that "treat the first measure as calibration" cannot hold, because Next's scroll restore arrives asynchronously relative to first effects and a 0px-tall container makes it land as one giant jump.
 - **A schema bump is the cache's invalidation mechanism.** `resolveCachePath` namespaces the build cache by `ACLED_SCHEMA_VERSION`, so changing a payload's shape must bump it — s09 took conflicts to v3. The committed snapshot can then be migrated in place rather than refetched when the old payload still carries everything the new one is built from, which is what keeps a shape change off ACLED's rate limit.
 
 ### Open blockers

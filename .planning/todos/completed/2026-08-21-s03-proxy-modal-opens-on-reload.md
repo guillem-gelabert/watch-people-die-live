@@ -3,13 +3,22 @@ created: 2026-08-21T10:56:28.783Z
 title: Stop the proxy modal opening on reload, and fix the scroll jump on close
 priority: 8
 area: story
-discuss: true
+resolved: 2026-08-29 — shipped in 3de66476, together with s02, and every acceptance criterion in this file is met. Bug 1, the unprompted open. onComplete now fires only on a completion continuous with the previous frame — completionArmed arms only when the previous frame already had the last strip more than half folded, and lastPRef is null until the first unsuspended measure, so no first frame can fire. Any completion latches whether or not it fired, so a reader who arrived past the fold is in the same "already seen" state as one who scrolled through it; nothing resets the latch, and a dismissed modal never re-arms. Their way back in is the card's button, which now renders whenever the ranking is legible (fold.complete || spent) rather than only when spent, and reads proxy.rank until a ranking has been submitted, proxy.reorder after. Bug 2, the scroll jump. The placeholder takes the boxes' live height, captured in openModal before the state flip removes them from the DOM, with foldedBoxesHeight(5) = 254 as the fallback. FOLDED_HEIGHT * 5 = 230 was never right at any point in the fold, because folded strips keep stripStyle's 6px marginTop. Measured in a browser — folded 254/254, mid-fold 728/728, card height held, scroll delta 0 on both round trips.
+decisions:
+  - A calibration frame is not enough, which is why this file's own suggested fix was rejected. Next restores scroll asynchronously relative to first effects and the stack is 0px tall on frame one, so the restore can arrive as the second or third measure in one giant jump and fire anyway. Continuity across frames is the only reliable signal of a human scroll.
+  - suspended stays as it was, and the fold still freezes while the modal is up. measure() returns before touching lastPRef when suspended, so the pre-modal p is still the frame the post-close measure is compared against. Unsuspending would have traded one jump for another, which this file already suspected.
+  - The button fades in with the rails rather than mounting with them, because the card's chrome has to measure the same at every point in the fold — s02's stackHeightFor is built on exactly that.
+  - Deleted as dead, grep-verified — paragraphStyle, isFolded and PARAGRAPH_GONE, since ProxyStrip inlines its own 0.55. The folded gap became FOLDED_GAP so stripStyle and foldedBoxesHeight cannot drift apart.
+test_finding: 16 tests pin logic that has no component harness to catch it — the calibration frame never fires, an unarmed completion latches silently, a latched fold never refires across a suspended remount, completion precedes release, and foldedBoxesHeight(5) is 254. Each is a rule that reads as working software when broken, which is how bug 1 shipped in the first place.
+follow_up: The ca and de wordings of proxy.rank are drafts and want a review. proxy.reorder was already translated; only rank is new.
 files:
-  - app/roadmap/proxy/useProxyFold.ts:36-56
-  - app/roadmap/proxy/useProxyFold.ts:58-75
-  - app/roadmap/proxy/ProxyRankingCard.tsx:43-48
-  - app/roadmap/proxy/ProxyRankingCard.tsx:155-200
-  - app/roadmap/proxy/useProxyFold.ts:8-9
+  - app/roadmap/proxy/ProxyRankingCard.tsx
+  - app/roadmap/proxy/useProxyFold.ts
+  - app/roadmap/proxy/useProxyFold.test.ts
+  - app/roadmap/roadmap.css
+  - lib/i18n/en.ts
+  - lib/i18n/ca.ts
+  - lib/i18n/de.ts
 ---
 
 ## Problem

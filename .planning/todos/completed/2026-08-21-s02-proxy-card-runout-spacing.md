@@ -3,13 +3,18 @@ created: 2026-08-21T10:56:28.783Z
 title: Unstick the proxy card as soon as the fold completes
 priority: 9
 area: story
-discuss: true
+resolved: 2026-08-29 — shipped in 3de66476, together with s03. The container is no longer viewport multiples plus a RUN_OUT constant. stackHeightFor is the folded card's measured chrome plus the deterministic folded boxes plus exactly one strip's travel per strip, so the stack ends where the fold ends. Measured at vh 819 — completion 1909px past the pin, release at 1916, so 7px of dead scroll where there were 115, and the next paragraph sits 14px below the card, one story rhythm gap. The modal's auto-open lands at 4.93 strips with the card still pinned at top 12, which is what makes the run-out unnecessary rather than merely shorter. Answering this file's open question, the card releases essentially at completion and does not hold for a beat; the gap is a measured constant, the same on phone and desktop.
+decisions:
+  - Measured chrome, not a measured card. Card-minus-boxes is constant at every point in the fold, and the existing natural-height layout effect already invalidates on the only two things that move it, width and language, so no ResizeObserver is needed. Measuring the whole card would have wanted one.
+  - Fold progress reads the stack's top against the sticky pin (foldUnits), never rect.height. Deriving the pacing and the container height from the same number is what coupled them; splitting them is what lets the container be resized without changing the feel.
+  - STRIP_TRAVEL = 0.47 preserves the shipped pacing exactly. The old geometry gave the fold (2.97 − 0.5)vh across an overshoot of 5.25 strips, i.e. 0.4705vh per strip. SCREENS_PER_STRIP = 0.55 was nominal and never what shipped.
+  - The card releases ~0.04 strips after the fold completes, 4.96 against 5.0, a deliberate ~0.02vh lead so `complete` is robustly reachable while the card is still pinned. Releasing exactly at completion risks a frame where neither holds.
+  - Rejected shrinking or dropping RUN_OUT, the cheap direction this file proposed. It couples the release point to OVERSHOOT, so any later change to the fold curve would move the spacing again.
 files:
-  - app/roadmap/proxy/useProxyFold.ts:9-13
-  - app/roadmap/proxy/useProxyFold.ts:36-56
-  - app/roadmap/proxy/ProxyRankingCard.tsx:12-15
-  - app/roadmap/proxy/ProxyRankingCard.tsx:52-60
-  - app/roadmap/roadmap.css:2672-2692
+  - app/roadmap/proxy/ProxyRankingCard.tsx
+  - app/roadmap/proxy/useProxyFold.ts
+  - app/roadmap/proxy/useProxyFold.test.ts
+  - app/roadmap/roadmap.css
 ---
 
 ## Problem
