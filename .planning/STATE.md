@@ -49,11 +49,10 @@ was archived and removed at close; the new milestone creates a fresh one.
 
 Items acknowledged and deferred at milestone close on 2026-08-28, plus anything captured since.
 
-### Open todos — `.planning/todos/pending/` (3)
+### Open todos — `.planning/todos/pending/` (2)
 
 | # | Item | Prio | Area | Note |
 |---|------|------|------|------|
-| — | Rounded background behind the conflict chart | — | story | **captured 2026-09-01.** The 10px radius already exists; the background contradicts two stated rules that figures carry no chrome, and moves what the palette measures contrast against |
 | s08 | Reachable chart tooltips on touch | low | story | deepest design work |
 | p09 | Subnational cause and age hunting beyond Eurostat | — | data | parked as **backlog 999.1**, not a loose todo |
 
@@ -70,6 +69,22 @@ to the largest on top.
 
 The absorb removal above came out of reading that chart: colouring by continent is what made it
 obvious that a continent's countries were sitting in Others beside their own box.
+
+A third change followed the same afternoon (`02dd7f6`): the chart got the plate it was asked for —
+the one figure in the story that sits on a surface of its own, recorded as an exception on
+`.ewma-widget` with the two "figures carry no chrome" rules left standing for the other ~20 figures.
+The real work was not the CSS. Every conflict fill is generated to clear 3:1 against **the surface it
+is drawn on**, so `stackBand`, `shadeRamp` and `stackNeutral` now take the background explicitly and
+are handed the plate. A plate only 10% off the sky puts every fill under 3:1; `paper` on the dark sky
+takes the residual's neutral to 2.26:1. The neutral breaks first either way, because it sits closest
+to the background's own luminance by construction. A light plate then leaves the dark band **three
+times** the room the sky did, which took the shade pair two co-occurring bands get from 32 apart in
+RGB to 105 — and incidentally retired the open question about Asia reading as an alert, since its
+light shade is a soft lilac against paper rather than neon against peach.
+
+The lesson worth keeping: **a palette test has to name the surface it asserts about.** The old
+assertion would have kept passing after the plate landed while being a statement about a surface the
+bars are no longer drawn on.
 
 Its file records the finding worth keeping, which is about instruments rather than colour. A
 screenshot caught what none of the numeric tests could: Asia's lighter shade rendered neon magenta
