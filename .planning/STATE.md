@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: null
 milestone_name: null
 status: milestone-complete
-last_updated: "2026-09-01T00:00:00.000Z"
+last_updated: "2026-09-01T14:00:00.000Z"
 last_activity: 2026-09-01
 shipped_milestones:
   - version: v1.0
@@ -53,13 +53,28 @@ Items acknowledged and deferred at milestone close on 2026-08-28, plus anything 
 
 | # | Item | Prio | Area | Note |
 |---|------|------|------|------|
-| s08 | Reachable chart tooltips on touch | low | story | deepest design work |
+| — | Conflict centroid map's own touch representatives | — | story | **captured 2026-09-01** when s08 shipped without it. The mechanism exists; the representative rule does not — the prose names Mexico and Brazil, the map is Ukraine and Sudan |
 | p09 | Subnational cause and age hunting beyond Eurostat | — | data | parked as **backlog 999.1**, not a loose todo |
 
 Seven of this table's original nine closed after the milestone close and are in
 `.planning/todos/completed/`: s05, s07 and s14 during the week of 2026-08-21, **s06, s02 and s03
-on 2026-08-29** and **s09 on 2026-08-30**. Of the original nine only s08 and p09 remain, and
-neither is high priority — the table's two "needs discussion" items are done.
+on 2026-08-29** and **s09 on 2026-08-30**. **s08 closed 2026-09-01** (`81de1b0`), which leaves p09 as the last of the original nine, and it is
+parked as backlog.
+
+s08 is worth reading for how it shrank. It called itself "a design problem before it is a code
+problem" with six open questions, and measuring first collapsed them into one answer. Surveyed **per
+series rather than per chart**, the country series run 76-87 points at a mean of 5-14 rivals inside a
+44px target and the region series run 221-229 at a mean of 28-82 — and every chart has both. So the
+rules layer per candidate: a country dot keeps a thumb's radius, a region is reachable only through
+one labelled representative per country the prose names. Verified with 25 taps per plot — the four
+curated charts reach a labelled point 25 of 25.
+
+Its file records the lesson, which is about instruments again: **survey per series, not per chart,
+and never trust a probe's notion of what a point is.** Three assumptions died to measurement. The
+smoothing demo looked like the one already-tappable chart, and its dots are aria-hidden with no
+tooltip at all. NeighbourScatter looked like a 297-point chart needing curation, and 221 of those are
+context rings. And the region series key on ISO3, so matching representatives by display name matched
+nothing while looking exactly like "no country here is named in the prose".
 
 The 2026-09-01 capture was the first item added since the close, and it closed the same day
 (`45c994f`). The stack is now coloured by continent with the shade carrying only collision
