@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import ExcelJS from "exceljs";
 import { afterEach, describe, expect, it } from "vitest";
+import { geoschemeChain } from "./m49-geoscheme";
 import {
   ACLED_WINDOW_WEEKS,
   addUtcDays,
@@ -206,10 +207,14 @@ describe("weekly aggregation and spatial placement", () => {
     );
     // Burkina Faso clears 10% on its own, so Mali is alone below the line: no amount of
     // coarsening gets 8 to 10, and Western Africa, Sub-Saharan Africa and Africa each hold only
-    // Mali. It ends in the residual — which is then itself under the floor and absorbs the
-    // smallest band.
-    expect(segments.map((segment) => segment.key)).toEqual(["Ukraine", "elsewhere"]);
-    expect(segments[1]!.members.map(({ country: name }) => name)).toEqual(["Burkina Faso", "Mali"]);
+    // Mali. It ends in the residual, which is drawn at 8% — thinner than the floor. Burkina Faso
+    // keeps its band; until 2026-09-01 the residual ate it to reach the floor itself.
+    expect(segments.map((segment) => segment.key)).toEqual([
+      "Ukraine",
+      "Burkina Faso",
+      "elsewhere",
+    ]);
+    expect(segments[2]!.members.map(({ country: name }) => name)).toEqual(["Mali"]);
   });
 
   it("coarsens through the intermediary region only as far as it must", () => {
@@ -245,7 +250,7 @@ describe("weekly aggregation and spatial placement", () => {
     expect(segments[1]!.members.map(({ country: name }) => name)).toEqual(["Pacific Ocean"]);
   });
 
-  it("keeps the residual itself above the threshold by absorbing the smallest band", () => {
+  it("leaves the residual thin rather than eating a band to fatten it", () => {
     const segments = stackOf(
       [
         ["Ukraine", 840],
@@ -255,11 +260,58 @@ describe("weekly aggregation and spatial placement", () => {
       [country("Ukraine", 804, 840), country("Mali", 466, 100), country("Pacific Ocean", null, 60)],
     );
     // The floor is 100. The ocean's 60 cannot reach it and has nowhere to roll up, so the residual
-    // would be a 6% sliver; it takes the smallest surviving band — Mali's — and clears.
+    // is a 6% band — thinner than the floor, and drawn anyway. It used to take the smallest
+    // surviving band, Mali's, which is what dragged whole regions into a bucket that means nothing
+    // geographically.
     const residual = segments.find((segment) => segment.kind === "elsewhere")!;
-    expect(residual.fatalities).toBe(160);
-    expect(residual.members.map(({ country: name }) => name)).toEqual(["Mali", "Pacific Ocean"]);
-    expect(segments.every((segment) => segment.fatalities >= 1000 * STACK_WEEKLY_SHARE)).toBe(true);
+    expect(residual.fatalities).toBe(60);
+    expect(residual.members.map(({ country: name }) => name)).toEqual(["Pacific Ocean"]);
+    expect(segments.map((segment) => segment.key)).toEqual(["Ukraine", "Mali", "elsewhere"]);
+    // The floor still governs every band the cascade draws. The residual is the only exception,
+    // which is the whole of what removing the absorb step changed.
+    expect(
+      segments
+        .filter((segment) => segment.kind !== "elsewhere")
+        .every((segment) => segment.fatalities >= 1000 * STACK_WEEKLY_SHARE),
+    ).toBe(true);
+    expect(residual.fatalities).toBeLessThan(1000 * STACK_WEEKLY_SHARE);
+  });
+
+  // The property the removal buys, and the reason no merge-upward rule was needed to get it: a
+  // country reaches the residual only by climbing to the top of its chain without clearing, so no
+  // band containing it can have been drawn. Absorbing was the only thing that could break this,
+  // by drawing a band and then eating its sibling.
+  it("never puts a country in the residual when a band containing it is drawn", () => {
+    const segments = stackOf(
+      [
+        ["Ukraine", 500],
+        // Western Africa clears together; Sudan (Northern Africa) and Libya do not, at any depth.
+        ["Mali", 120],
+        ["Burkina Faso", 110],
+        ["Sudan", 90],
+        ["Libya", 80],
+      ],
+      [
+        country("Ukraine", 804, 500),
+        country("Mali", 466, 120),
+        country("Burkina Faso", 854, 110),
+        country("Sudan", 729, 90),
+        country("Libya", 434, 80),
+      ],
+    );
+    const residual = segments.find((segment) => segment.kind === "elsewhere");
+    const drawn = new Set(
+      segments.filter((segment) => segment.kind === "region").map((segment) => segment.key),
+    );
+    for (const member of residual?.members ?? []) {
+      const chain = member.m49 == null ? null : geoschemeChain(member.m49);
+      for (const code of chain ?? []) {
+        expect(
+          drawn.has(String(code)),
+          `${member.country} sits in the residual under ${code}`,
+        ).toBe(false);
+      }
+    }
   });
 
   it("ranks keys once for the window so a band keeps its colour across weeks it misses", () => {

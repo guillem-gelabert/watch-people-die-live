@@ -13,7 +13,7 @@ export const DEFAULT_HALF_LIFE_WEEKS = 4;
 export const DEFAULT_CLAMP_PERCENTILE = 10;
 // A band has to be at least this much of its own week to be drawn on its own. It governs both
 // halves of the stack: which countries are named, and how far a rolled-up region has to coarsen
-// before it is big enough to stand. Nothing thinner than this survives in a bar.
+// before it is big enough to stand. The residual band is outside it — see buildWeekSegments.
 export const STACK_WEEKLY_SHARE = 0.1;
 
 export type ConflictCell = [lon: number, lat: number, annualizedFatalities: number];
@@ -428,7 +428,8 @@ export async function parseRegionalWorkbook(
   return { region, latestThrough, rowsRead, rowsRetained, invalidRows, rows };
 }
 
-// One week's bands, built so that every band drawn is at least STACK_WEEKLY_SHARE of that week.
+// One week's bands. Every band the cascade draws is at least STACK_WEEKLY_SHARE of that week; the
+// residual is the deliberate exception, for the reason recorded above it.
 //
 // Membership is decided per week, not once for the window. Across the 12 weeks only 1-2 countries
 // clear the bar in any given week, so a global list would name a country in every bar on the
@@ -502,18 +503,20 @@ function buildWeekSegments(
     else segments.push({ key: String(key), kind: "region", fatalities, members });
   }
 
-  segments.sort((a, b) => b.fatalities - a.fatalities);
-
-  // The residual is the one band the rules above cannot guarantee: it collects exactly what could
-  // not reach the floor, so it may not reach it either. Feed it the smallest surviving band until
-  // it does. This is what makes "no band is thinner than the floor" true of every band, not just
-  // of the ones the cascade produced.
-  let residual = elsewhere.reduce((sum, entry) => sum + entry.fatalities, 0);
-  while (residual > 0 && residual < floor && segments.length > 0) {
-    const smallest = segments.pop()!;
-    elsewhere.push(...smallest.members);
-    residual += smallest.fatalities;
-  }
+  // The residual is the one band the floor does not govern, and that is deliberate as of
+  // 2026-09-01. It used to absorb the smallest surviving band until it cleared, which made "no
+  // band is thinner than the floor" true of every band — at the cost of dragging whole regions
+  // into a bucket that means nothing geographically. Measured over the committed window it ate six
+  // bands across twelve bars, and on 2026-08-15 a 31-death residual, 1% of the bar, swallowed
+  // Eastern Africa's 304 while an Africa band stood beside it.
+  //
+  // Without that step the reader's question — why is this country in Others when its region is
+  // right there? — cannot arise. A country only reaches the residual by climbing to the top of its
+  // chain without clearing, so no subregion, intermediary or continent band containing it exists to
+  // have put it in. Absorbing was the only thing that could break that, by drawing a band and then
+  // eating its sibling. The price is that Others itself now falls under the floor in six of twelve
+  // bars, between 1.1% and 6.6%; what it buys is Others dropping from 15.0% of the window to 9.3%.
+  const residual = elsewhere.reduce((sum, entry) => sum + entry.fatalities, 0);
   if (residual > 0) {
     segments.push({
       key: ELSEWHERE_KEY,
