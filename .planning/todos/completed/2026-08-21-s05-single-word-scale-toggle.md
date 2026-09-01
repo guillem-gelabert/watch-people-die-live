@@ -3,7 +3,11 @@ created: 2026-08-21T10:56:28.783Z
 title: Make the scale toggle one word that morphs between straight and curved
 priority: 10
 area: story
-resolved: 2026-08-29 — one textPath over one cubic whose control points tween between straight and bent; the word swaps at the midpoint. Kept the existing Logarithmic/Linear strings, so no new i18n. The anti-diagonal halves are gone and the tile is one constant surface: the word and its curvature are the state.
+resolved: >-
+  2026-08-29 — one textPath over one cubic whose control points tween between straight and bent; the
+  word swaps at the midpoint. Kept the existing Logarithmic/Linear strings, so no new i18n. The
+  anti-diagonal halves are gone and the tile is one constant surface: the word and its curvature are
+  the state.
 files:
   - app/roadmap/charts/ScaleDiagonalToggle.tsx:34-58
   - app/roadmap/charts/DensityMap.tsx:458

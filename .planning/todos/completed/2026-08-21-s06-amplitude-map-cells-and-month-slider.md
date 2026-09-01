@@ -3,8 +3,22 @@ created: 2026-08-21T10:56:28.783Z
 title: Rebuild the amplitude map as a per-cell map with a month slider
 priority: 11
 area: story
-resolved: 2026-08-29 — shipped in nine commits and deployed. The frame is now [[-18,-36],[93,72]] on an equal-area Equal Earth, and the fills are the 0.5-degree rate-grid cells rather than admin polygons, coloured by excess deaths per month — deaths x (multiplier - 1) / 12 — on a diverging ramp whose neutral band is one death a month. Not deaths x multiplier: the static term swamps the seasonal one, measured at 52.7% of cells crossing a colour bin January-to-July against 10.1%. A native range control scrubs the twelve months, and provenance moved to an SVG outline of the unit each cell's curve came from, solid where measured and dashed where reconstructed. Prose and aria rewritten in three languages, and the prose says the within-country texture is population, not seasonality, because only ZAF, western RUS and climate-modelled IND/CHN have regional curves inside this frame.
-spike_finding: The plan's batching optimisation was backwards. Nine batched paths of ~3,000 quads each take 188ms to fill; the same quads filled one at a time, still one fillStyle per bin, take 6ms — a path that large falls off the rasteriser's fast route. Cached Path2D fills in 0.3ms but costs 193ms per month to build. Recorded in amplitudeCells.ts so it is not re-litigated.
+resolved: >-
+  2026-08-29 — shipped in nine commits and deployed. The frame is now [[-18,-36],[93,72]] on an
+  equal-area Equal Earth, and the fills are the 0.5-degree rate-grid cells rather than admin
+  polygons, coloured by excess deaths per month — deaths x (multiplier - 1) / 12 — on a diverging
+  ramp whose neutral band is one death a month. Not deaths x multiplier: the static term swamps the
+  seasonal one, measured at 52.7% of cells crossing a colour bin January-to-July against 10.1%. A
+  native range control scrubs the twelve months, and provenance moved to an SVG outline of the unit
+  each cell's curve came from, solid where measured and dashed where reconstructed. Prose and aria
+  rewritten in three languages, and the prose says the within-country texture is population, not
+  seasonality, because only ZAF, western RUS and climate-modelled IND/CHN have regional curves
+  inside this frame.
+spike_finding: >-
+  The plan's batching optimisation was backwards. Nine batched paths of ~3,000 quads each take 188ms
+  to fill; the same quads filled one at a time, still one fillStyle per bin, take 6ms — a path that
+  large falls off the rasteriser's fast route. Cached Path2D fills in 0.3ms but costs 193ms per
+  month to build. Recorded in amplitudeCells.ts so it is not re-litigated.
 files:
   - app/roadmap/charts/AmplitudeMap.tsx
   - app/roadmap/charts/amplitudeCells.ts
