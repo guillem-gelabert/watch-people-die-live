@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: null
 milestone_name: null
 status: milestone-complete
-last_updated: "2026-08-31T00:00:00.000Z"
-last_activity: 2026-08-31
+last_updated: "2026-09-01T00:00:00.000Z"
+last_activity: 2026-09-01
 shipped_milestones:
   - version: v1.0
     name: MVP
@@ -49,11 +49,10 @@ was archived and removed at close; the new milestone creates a fresh one.
 
 Items acknowledged and deferred at milestone close on 2026-08-28, plus anything captured since.
 
-### Open todos — `.planning/todos/pending/` (3)
+### Open todos — `.planning/todos/pending/` (2)
 
 | # | Item | Prio | Area | Note |
 |---|------|------|------|------|
-| — | Conflict stack coloured by continent, Others pinned to the bottom | — | story | **captured 2026-09-01**, not from the close. Order half specified; colour half needs discussion |
 | s08 | Reachable chart tooltips on touch | low | story | deepest design work |
 | p09 | Subnational cause and age hunting beyond Eurostat | — | data | parked as **backlog 999.1**, not a loose todo |
 
@@ -62,11 +61,19 @@ Seven of this table's original nine closed after the milestone close and are in
 on 2026-08-29** and **s09 on 2026-08-30**. Of the original nine only s08 and p09 remain, and
 neither is high priority — the table's two "needs discussion" items are done.
 
-The 2026-09-01 capture is the first item added since the close. Its file carries the measurement
-that makes it a design question rather than a one-liner: resolving each band's continent from its
-members, **two bands share a continent in 11 of the 12 bars**, so one colour per continent would
-put two identical fills in almost every bar — the defect s09's greedy colouring exists to prevent.
-A continent scheme needs a shade ramp per continent, not a colour per continent.
+The 2026-09-01 capture was the first item added since the close, and it closed the same day
+(`45c994f`). The stack is now coloured by continent with the shade carrying only collision
+avoidance — two bands share a continent in **11 of the 12 bars**, so one colour per continent would
+have drawn those as one band — and Others is pinned to the floor of every bar with the rest climbing
+to the largest on top.
+
+Its file records the finding worth keeping, which is about instruments rather than colour. A
+screenshot caught what none of the numeric tests could: Asia's lighter shade rendered neon magenta
+beside near-black neighbours, because blue carries so little of the luminance that such a fill
+measures dark, passes every contrast assertion, and still reads as an alert. **Contrast ratios
+cannot see chroma.** Before that, the palette test caught two skies the measurement script had
+missed — `SKIES` holds ten and only eight had been sampled, so assert over the canonical list, never
+over a hand-copied one.
 
 s06 made the amplitude map a per-cell excess-deaths map with a month slider, shipped in nine
 commits and deployed. Its file records a spike finding worth not re-litigating: batching the

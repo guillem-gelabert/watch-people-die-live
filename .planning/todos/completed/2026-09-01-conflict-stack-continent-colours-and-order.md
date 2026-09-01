@@ -2,17 +2,58 @@
 created: 2026-09-01T09:59:36.652Z
 title: Colour the conflict stack by continent, and pin Others to the bottom
 area: story
-discuss: true
+resolved: >-
+  2026-09-01 — shipped in 45c994f, both halves in one change. Others is pinned to the bottom of
+  every bar and the bands above it climb to the largest at the top; colour is the band's continent,
+  and the shade within it carries nothing but collision avoidance, which is the design call taken
+  when this was captured. The order lives in charts/conflictStack.ts rather than in
+  buildWeeklyStack, so the payload stays sorted biggest-first and no snapshot rebuild was needed.
+  Verified in a browser across all 12 bars: Others is the floor of each, the heights climb above it,
+  no bar repeats a fill or a resolved colour.
+decisions:
+  - >-
+    The hue is a fixed slot from CONTINENTS, not a ranked one. That is stronger than the scheme it
+    replaces: a continent keeps its colour across weeks it misses, across a snapshot rebuild, and
+    across a change to the stack's floor, where the ranked scheme was stable only as long as the
+    ranking was.
+  - >-
+    shadeRamp exists because mono(3) through marks() cannot work. contrastFix walks a colour until
+    it clears 3:1 against the sky, so two shades of one hue both arrive at the same boundary —
+    measured at 1.03:1 on the "Who" sky. Deriving the usable luminance band from the sky first and
+    placing the shades inside it makes both properties true by construction. Ordered extremes-first
+    so two co-occurring bands spend the most separated pair available.
+  - >-
+    Shades fan 14 degrees in hue as well as climbing in luminance, because a mid-luminance sky
+    leaves almost no luminance room at 3:1 — on #cf7a68 the whole usable band is 0.02 to 0.05. The
+    fan is narrow on purpose: harmony() at six puts two of its own hues 30 degrees apart, so a wider
+    one would reach into a neighbouring continent's family.
+  - >-
+    A band's saturation is capped and the band's floor is reserved for the residual's neutral. Both
+    constants come from a sweep against all three properties at once rather than a guess. At 0.5 and
+    0.1 the pair a co-occurring couple gets is 32 apart in RGB at worst and 2.28:1 on the Conflicts
+    sky, the neutral is 28 from the nearest shade, and every fill clears 3.08:1 against its own sky.
+  - >-
+    The aria label was left alone. It never described band order, so the reorder adds no strings and
+    no translation debt.
+  - >-
+    Left open, and free to change: Asia is the loudest band on the Conflicts sky, because its slot
+    lands about 120 degrees off a peach hue. Which continent takes which hue slot only has to be
+    fixed, not CONTINENTS' own order.
+test_finding: >-
+  A screenshot caught what none of the numeric tests could. Asia's lighter shade rendered
+  rgb(157,8,241), neon magenta beside bands of near-black green and brown — blue carries so little
+  of the luminance that such a fill measures dark, passes every contrast assertion in
+  palette.test.ts, and still reads as an alert. Contrast ratios cannot see chroma. Before that, the
+  palette test caught two skies the measurement script had missed, because SKIES holds ten and only
+  eight had been sampled: assert over the canonical list, never over a hand-copied one.
 files:
-  - app/roadmap/charts/ConflictEwmaWidget.tsx:58-93
-  - app/roadmap/charts/ConflictEwmaWidget.tsx:126-130
-  - app/roadmap/charts/ConflictEwmaWidget.tsx:203-228
-  - app/roadmap/charts/ConflictEwmaWidget.tsx:302-313
-  - app/roadmap/palette.ts:584-595
-  - app/roadmap/palette.test.ts:418-425
+  - app/roadmap/charts/conflictStack.ts
+  - app/roadmap/charts/conflictStack.test.ts
+  - app/roadmap/charts/ConflictEwmaWidget.tsx
+  - app/roadmap/palette.ts
+  - app/roadmap/palette.test.ts
   - lib/m49-geoscheme.ts
-  - lib/acled-weekly.ts:505
-  - lib/acled-weekly.ts:526
+  - lib/m49-geoscheme.test.ts
 ---
 
 ## Problem
