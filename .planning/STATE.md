@@ -47,19 +47,26 @@ was archived and removed at close; the new milestone creates a fresh one.
 
 ## Deferred Items
 
-Items acknowledged and deferred at milestone close on 2026-08-28.
+Items acknowledged and deferred at milestone close on 2026-08-28, plus anything captured since.
 
-### Open todos — `.planning/todos/pending/` (2)
+### Open todos — `.planning/todos/pending/` (3)
 
 | # | Item | Prio | Area | Note |
 |---|------|------|------|------|
+| — | Conflict stack coloured by continent, Others pinned to the bottom | — | story | **captured 2026-09-01**, not from the close. Order half specified; colour half needs discussion |
 | s08 | Reachable chart tooltips on touch | low | story | deepest design work |
 | p09 | Subnational cause and age hunting beyond Eurostat | — | data | parked as **backlog 999.1**, not a loose todo |
 
 Seven of this table's original nine closed after the milestone close and are in
 `.planning/todos/completed/`: s05, s07 and s14 during the week of 2026-08-21, **s06, s02 and s03
-on 2026-08-29** and **s09 on 2026-08-30**. Only s08 and p09 remain, and neither is high priority —
-the table's two "needs discussion" items are done.
+on 2026-08-29** and **s09 on 2026-08-30**. Of the original nine only s08 and p09 remain, and
+neither is high priority — the table's two "needs discussion" items are done.
+
+The 2026-09-01 capture is the first item added since the close. Its file carries the measurement
+that makes it a design question rather than a one-liner: resolving each band's continent from its
+members, **two bands share a continent in 11 of the 12 bars**, so one colour per continent would
+put two identical fills in almost every bar — the defect s09's greedy colouring exists to prevent.
+A continent scheme needs a shade ramp per continent, not a colour per continent.
 
 s06 made the amplitude map a per-cell excess-deaths map with a month slider, shipped in nine
 commits and deployed. Its file records a spike finding worth not re-litigating: batching the
