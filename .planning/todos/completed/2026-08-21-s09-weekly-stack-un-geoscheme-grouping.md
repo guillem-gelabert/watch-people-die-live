@@ -17,10 +17,16 @@ resolved: >-
 decisions:
   - >-
     The rollup cannot bound the residual on its own. A group at the top of its chain that is still
-    short has nowhere to go, and Elsewhere collects exactly those, so it was itself under 5% in
-    eight of twelve weeks. It now absorbs the smallest surviving band until it clears — costing
-    one band in eight of the twelve weeks. Without that step the "no band thinner than 5%" rule
-    holds for most bands, not all.
+    short has nowhere to go, and Elsewhere collects exactly those, so it was itself under the floor
+    in eight of twelve weeks. It absorbed the smallest surviving band until it cleared — reversed on
+    2026-09-01, because that is what made a reader ask why a country sits in Others when its region
+    is drawn right beside it. Absorbing was the only thing that could produce that: a country
+    reaches the residual only by climbing to the top of its chain without clearing, so no band
+    containing it can exist unless a band was drawn and then its sibling eaten. Over the committed
+    window it ate six bands across twelve bars, and on 2026-08-15 a 31-death residual, 1% of the
+    bar, swallowed Eastern Africa's 304 while an Africa band stood beside it. Others now falls under
+    the floor in six of twelve bars, 1.1% to 6.6%, and in exchange drops from 15.0% of the window to
+    9.3%.
   - >-
     Colour is a graph colouring, not a cycle. 12 country keys over 6 hues and 11 region keys over
     8 shades put two identical fills in the same bar in ten of twelve bars, which with no legend

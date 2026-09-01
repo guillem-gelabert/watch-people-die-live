@@ -49,10 +49,11 @@ was archived and removed at close; the new milestone creates a fresh one.
 
 Items acknowledged and deferred at milestone close on 2026-08-28, plus anything captured since.
 
-### Open todos — `.planning/todos/pending/` (2)
+### Open todos — `.planning/todos/pending/` (3)
 
 | # | Item | Prio | Area | Note |
 |---|------|------|------|------|
+| — | Rounded background behind the conflict chart | — | story | **captured 2026-09-01.** The 10px radius already exists; the background contradicts two stated rules that figures carry no chrome, and moves what the palette measures contrast against |
 | s08 | Reachable chart tooltips on touch | low | story | deepest design work |
 | p09 | Subnational cause and age hunting beyond Eurostat | — | data | parked as **backlog 999.1**, not a loose todo |
 
@@ -66,6 +67,9 @@ The 2026-09-01 capture was the first item added since the close, and it closed t
 avoidance — two bands share a continent in **11 of the 12 bars**, so one colour per continent would
 have drawn those as one band — and Others is pinned to the floor of every bar with the rest climbing
 to the largest on top.
+
+The absorb removal above came out of reading that chart: colouring by continent is what made it
+obvious that a continent's countries were sitting in Others beside their own box.
 
 Its file records the finding worth keeping, which is about instruments rather than colour. A
 screenshot caught what none of the numeric tests could: Asia's lighter shade rendered neon magenta
@@ -94,11 +98,17 @@ snapshot was migrated in place, not refetched — each band carries its members 
 fatalities, so the stored payload reconstructs the builder's input map exactly, which is the
 general escape from ACLED's rate limit for any change to a *derived* field.
 
-Two findings in its file are the ones worth keeping. Coarsening alone cannot bound the residual —
-a group at the top of its chain with nowhere left to go lands there, so it was itself a sliver in
-eight of twelve weeks until it started absorbing the smallest surviving band. And a hand-authored
-code table wants a coverage test: the M49 one caught Burkina Faso missing outright, silently
-losing 432 deaths in a week to the residual, which looks exactly like working software.
+Two findings in its file are the ones worth keeping. A hand-authored code table wants a coverage
+test: the M49 one caught Burkina Faso missing outright, silently losing 432 deaths in a week to the
+residual, which looks exactly like working software. And coarsening alone cannot bound the residual
+— a group at the top of its chain with nowhere left to go lands there, so the residual was itself a
+sliver in eight of twelve weeks. s09's answer was to absorb the smallest surviving band until it
+cleared, and **that step was removed on 2026-09-01**: it was the only thing that could put a country
+in Others while a band containing it was drawn, because a country reaches the residual only by
+climbing to the top of its chain without clearing. It ate six bands across twelve bars, and on
+2026-08-15 a 31-death residual — 1% of the bar — swallowed Eastern Africa's 304 while an Africa band
+stood beside it. Others now falls under the floor in six of twelve bars, 1.1% to 6.6%, and in
+exchange drops from **15.0% of the window to 9.3%**.
 
 s02 and s03 were fixed together in one commit (`3de66476`), which is what their shared
 `useProxyFold` mechanic implied. The proxy modal no longer opens on reload, because a completion
