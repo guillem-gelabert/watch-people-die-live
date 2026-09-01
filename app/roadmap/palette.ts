@@ -243,6 +243,19 @@ const PALETTE_HUE_ORDER = [180, -120, 120, -150, 150, -60, -30, 30] as const;
 // on whether the scheme is vivid and whether the sky is dark.
 const MONO_OFFSETS = [-0.15, -0.1, -0.05, 0.05, 0.1, 0.15] as const;
 
+// The conflict stack's ramp: one hue per continent in the M49 geoscheme, this many shades of each.
+// Three is one more than the deepest bar needs — at most two bands share a continent in a bar —
+// and widening it costs one custom property per continent and nothing else.
+export const CONFLICT_CONTINENTS = 6;
+// The most saturation a stack band takes, however vivid the hue it is built from. See shadeRamp.
+const BAND_SAT = 0.5;
+// How much of the usable band's foot is held back for the residual's neutral, so no continent's
+// darkest shade lands on the same luminance as it.
+const NEUTRAL_RESERVE = 0.1;
+// Total width in degrees that a continent's shades fan across. See shadeRamp.
+const HUE_FAN = 14;
+export const CONFLICT_CONTINENT_SHADES = 3;
+
 const schemeCache = new Map<string, Schemes>();
 
 // A section's whole palette, generated from its own sky: every classical harmony at once.
@@ -367,6 +380,91 @@ function atLuminance(hue: number, sat: number, target: number): string {
     else hi = mid;
   }
   return hslToCss(hue, sat, (lo + hi) / 2);
+}
+
+// One continent's shades for the conflict stack: n fills of a single hue, every one of which
+// clears `min` against the sky, spread as far apart in luminance as that clearance allows.
+//
+// Not `schemes().mono(n)` put through `marks()`, which is what this replaced. mono's lightness
+// ladder runs light-to-dark whatever the sky, so on a light sky its lightest members fail 3:1 and
+// contrastFix walks them down onto the members below: measured at **1.03:1** between two shades on
+// the "Who" sky (#d9dbdd), which is two bands a reader cannot tell apart. Deriving the usable band
+// from the sky first and placing the shades inside it makes both properties true by construction
+// rather than repairing one and breaking the other.
+//
+// The order is extremes first, interior after — [darkest, lightest, middle] at n = 3. The stack's
+// greedy pass takes shades in index order, so the common case of two bands of one continent in a
+// bar spends the most separated pair it has, and only a third band reaches for the middle.
+// The luminance range a stack fill may occupy: everything in it clears `min` against the sky.
+// A fill clears that either by being dark enough or by being light enough; both bands come
+// straight from the contrast definition, and the wider one is the one to use. On any real sky
+// exactly one of them is usable at all.
+//
+// A hair inside the boundary rather than on it: atLuminance bisects in HSL and hslToCss rounds to
+// integer channels, so a target sitting exactly on the 3:1 line realises at 2.96 as often as at
+// 3.04. Measured — without the margin the darkest fill on the "First light" sky lands at 2.96:1.
+function stackBand(sky: Rgb, min: number): [number, number] {
+  const skyL = relativeLuminance(sky);
+  const darkest = 0.02;
+  const lightest = 0.95;
+  const margin = 0.01;
+  const darkCeiling = (skyL + 0.05) / min - 0.05 - margin;
+  const lightFloor = min * (skyL + 0.05) - 0.05 + margin;
+  return darkCeiling - darkest >= lightest - lightFloor
+    ? [darkest, Math.max(darkest, darkCeiling)]
+    : [Math.min(lightest, lightFloor), lightest];
+}
+
+// The residual band's neutral: the section's own hue at almost no saturation, which reads as the
+// absence of a colour rather than as one more continent. It sits at the very floor of the band,
+// which is the floor NEUTRAL_RESERVE keeps every continent's darkest shade off — desaturated to
+// BAND_SAT, a dark brown and a dark grey at one luminance are 18 apart in RGB, which is not two
+// colours to a reader.
+export function stackNeutral(sky: Rgb, min = 3): string {
+  const [lo] = stackBand(sky, min);
+  return atLuminance(rgbToHsl(sky)[0], 0.06, lo);
+}
+
+export function shadeRamp(n: number, hue: string, sky: Rgb, min = 3): string[] {
+  const [h, hueSat] = rgbToHsl(parseColor(hue)?.rgb ?? sky);
+  // Bands are large areas, and large areas take less chroma than marks do. At the vivid 0.94 the
+  // hues arrive with, the light end of a blue or violet ramp comes out neon — blue carries so
+  // little of the luminance that such a fill measures dark, passes every contrast check here, and
+  // still reads as an alert beside its muted neighbours. Seen on the Conflicts sky, where Asia's
+  // lighter shade was rgb(157,8,241) against bands of dark green and brown.
+  const sat = Math.min(hueSat, BAND_SAT);
+  // A fill clears `min` against the sky either by being dark enough or by being light enough.
+  // Both bands are computed from the contrast definition; the wider one is the one to use, and on
+  // any real sky exactly one of them is usable at all.
+  const full = stackBand(sky, min);
+  // The floor of the band belongs to the residual's neutral (see stackNeutral), so the continent
+  // ladder starts above it.
+  const room = full[1] - full[0];
+  const band: [number, number] = [full[0] + room * NEUTRAL_RESERVE, full[1]];
+
+  const ladder = Array.from({ length: n }, (_, i) =>
+    n === 1 ? band[0] : band[0] + ((band[1] - band[0]) * i) / (n - 1),
+  );
+  // Luminance alone is not enough. A mid-luminance sky leaves almost no room on either side of
+  // the 3:1 line — on "Whose deaths" (#cf7a68) the whole usable band is 0.02 to 0.05 — and three
+  // fills inside it come out 1.4:1 apart, which is not two colours. So the shades also fan out in
+  // hue, which has room where luminance has none.
+  //
+  // The fan is deliberately narrow. harmony() at six puts two of its hues only 30 degrees apart,
+  // so a wide fan would let one continent's family reach into its neighbour's; ±7 stays inside
+  // its own.
+  const fan = (i: number) => (n === 1 ? 0 : -HUE_FAN / 2 + (HUE_FAN * i) / (n - 1));
+  // Extremes first, then what is left, walking inwards from the ends.
+  const order: number[] = [];
+  let lo = 0;
+  let hi = n - 1;
+  while (lo <= hi) {
+    order.push(lo);
+    if (hi !== lo) order.push(hi);
+    lo += 1;
+    hi -= 1;
+  }
+  return order.map((i) => atLuminance(h + fan(i), sat, ladder[i]!));
 }
 
 // The five seasonality proxies, keyed to identity (their data-proxy index) so reordering the
@@ -579,19 +677,24 @@ export function chartPaletteToCssVars(sky: Rgb): Record<string, string> {
   marks(harmony(4, sky), sky).forEach((color, index) => {
     out[`--cause-color-${index}`] = color;
   });
-  // The conflict stack draws two kinds of band, and the reader has to tell which kind they are
-  // looking at before they read either: a named country, or a region several countries were
-  // rolled up into. Countries get six distinct vivid hues — harmony() returns a mono ramp past
-  // six, which is why this asks for six rather than more — and regions get the quiet mono ramp,
-  // shades of the section's own hue. Cycling within a kind is fine: a week draws at most a
-  // handful of each, and colour is keyed to the place, so a repeat is stable rather than
-  // migrating between bars.
-  marks(harmony(6, sky, true), sky).forEach((color, index) => {
-    out[`--conflict-color-${index}`] = color;
+  // The conflict stack is coloured by continent: one hue each, and a short ramp of shades within
+  // it. Six hues because there are six continents in the M49 geoscheme, which is also exactly
+  // where harmony() stops returning separated hues and starts returning a mono ramp — asking for
+  // more would hand two continents shades of one colour.
+  //
+  // The shade inside a continent carries no meaning. It exists because two bands of the same
+  // continent share a bar in most weeks, and one fill drawn twice reads as one band to a reader
+  // with no legend. charts/conflictStack.ts assigns it, and owns the mapping from a continent's
+  // M49 code to a hue slot here — this file stays free of geography.
+  harmony(CONFLICT_CONTINENTS, sky, true).forEach((hue, continent) => {
+    shadeRamp(CONFLICT_CONTINENT_SHADES, hue, sky).forEach((color, shade) => {
+      out[`--conflict-continent-${continent}-${shade}`] = color;
+    });
   });
-  marks(harmony(8, sky), sky).forEach((color, index) => {
-    out[`--conflict-region-color-${index}`] = color;
-  });
+  // The residual band is not a place — it holds leftovers from every continent at once — so it is
+  // not given a colour: the section's own hue at almost no saturation, which reads as the absence
+  // of one rather than as a sixth continent.
+  out["--conflict-other"] = stackNeutral(sky);
 
   return out;
 }

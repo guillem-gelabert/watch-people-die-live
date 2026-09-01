@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  CONFLICT_CONTINENTS,
+  CONFLICT_CONTINENT_SHADES,
   chartPaletteToCssVars,
   contrastFix,
   contrastRatio,
@@ -14,6 +16,7 @@ import {
   relativeLuminance,
   rgbToHsl,
   schemes,
+  shadeRamp,
   skinFromSky,
   skinToCssVars,
   type Rgb,
@@ -416,12 +419,97 @@ describe("chartPaletteToCssVars", () => {
       marks(harmony(4, sky), sky).forEach((color, index) => {
         expect(vars[`--cause-color-${index}`]).toBe(color);
       });
-      marks(harmony(6, sky, true), sky).forEach((color, index) => {
-        expect(vars[`--conflict-color-${index}`]).toBe(color);
+      harmony(CONFLICT_CONTINENTS, sky, true).forEach((hue, continent) => {
+        shadeRamp(CONFLICT_CONTINENT_SHADES, hue, sky).forEach((color, shade) => {
+          expect(vars[`--conflict-continent-${continent}-${shade}`]).toBe(color);
+        });
       });
-      marks(harmony(8, sky), sky).forEach((color, index) => {
-        expect(vars[`--conflict-region-color-${index}`]).toBe(color);
-      });
+    }
+  });
+});
+
+describe("shadeRamp", () => {
+  const conflictFills = (sky: Rgb) => {
+    const vars = chartPaletteToCssVars(sky);
+    return Object.entries(vars)
+      .filter(([name]) => name.startsWith("--conflict-"))
+      .map(([name, value]) => ({ name, lum: relativeLuminance(parseColor(value)!.rgb) }));
+  };
+
+  it("keeps every conflict fill clear of its own sky", () => {
+    for (const hex of SKIES) {
+      const sky = parseSky(hex);
+      const skyLum = relativeLuminance(sky);
+      for (const { name, lum } of conflictFills(sky)) {
+        expect(contrastRatio(lum, skyLum), `${name} on ${hex}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+
+  // The pair the stack's greedy pass spends first is shades 0 and 1, because shadeRamp orders its
+  // ramp extremes-first. That pair is what two bands of one continent in the same bar get, so it
+  // is the one that has to be separable. Its predecessor — mono() put through marks() — came out
+  // at 1.03:1 on the "Who" sky, two fills a reader cannot tell apart.
+  //
+  // Two thresholds rather than one, because a mid-luminance sky leaves the ramp almost no
+  // luminance room at 3:1 and the pair separates mostly by hue there. Measured floors across the
+  // ten skies at the ramp's chosen constants: 32.2 in RGB distance (on #cf7a68, luminance 0.282)
+  // and 2.27:1 in contrast on #eeb87d, the Conflicts sky this chart is actually read on. A
+  // neighbour's palette only ever paints it mid-cross-fade.
+  const shadePair = (hex: string, continent: number) => {
+    const vars = chartPaletteToCssVars(parseSky(hex));
+    return [0, 1].map(
+      (shade) => parseColor(vars[`--conflict-continent-${continent}-${shade}`]!)!.rgb,
+    ) as [Rgb, Rgb];
+  };
+
+  it("separates the two shades a co-occurring pair of bands gets, on every sky", () => {
+    for (const hex of SKIES) {
+      for (let continent = 0; continent < CONFLICT_CONTINENTS; continent += 1) {
+        const [a, b] = shadePair(hex, continent);
+        const distance = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+        expect(distance, `continent ${continent} on ${hex}`).toBeGreaterThanOrEqual(30);
+      }
+    }
+  });
+
+  it("separates that pair by luminance too, on the sky the conflict chart is read on", () => {
+    for (let continent = 0; continent < CONFLICT_CONTINENTS; continent += 1) {
+      const [a, b] = shadePair("#eeb87d", continent);
+      expect(
+        contrastRatio(relativeLuminance(a), relativeLuminance(b)),
+        `continent ${continent}`,
+      ).toBeGreaterThanOrEqual(2.1);
+    }
+  });
+
+  // The residual's neutral holds the floor of the band and the continents start above it, which is
+  // what NEUTRAL_RESERVE is for. Without that reserve a dark grey and a dark brown at one
+  // luminance came out 18 apart in RGB, which is not two colours. Measured floor now 28.1.
+  it("keeps the residual's neutral clear of every continent shade", () => {
+    for (const hex of SKIES) {
+      const vars = chartPaletteToCssVars(parseSky(hex));
+      const other = parseColor(vars["--conflict-other"]!)!.rgb;
+      for (let continent = 0; continent < CONFLICT_CONTINENTS; continent += 1) {
+        for (let shade = 0; shade < CONFLICT_CONTINENT_SHADES; shade += 1) {
+          const fill = parseColor(vars[`--conflict-continent-${continent}-${shade}`]!)!.rgb;
+          const distance = Math.hypot(other[0] - fill[0], other[1] - fill[1], other[2] - fill[2]);
+          expect(
+            distance,
+            `continent ${continent} shade ${shade} on ${hex}`,
+          ).toBeGreaterThanOrEqual(25);
+        }
+      }
+    }
+  });
+
+  it("gives no two shades of a continent the same colour", () => {
+    for (const hex of SKIES) {
+      const sky = parseSky(hex);
+      for (const hue of harmony(CONFLICT_CONTINENTS, sky, true)) {
+        const ramp = shadeRamp(CONFLICT_CONTINENT_SHADES, hue, sky);
+        expect(new Set(ramp).size, `${hue} on ${hex}`).toBe(ramp.length);
+      }
     }
   });
 });

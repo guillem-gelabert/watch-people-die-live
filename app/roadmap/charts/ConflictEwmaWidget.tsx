@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import * as d3 from "d3";
 import { robustEwma } from "@/lib/conflict-model";
 import type { ConflictStackSegment, ConflictWeeklyStack } from "../types";
+import { assignFills, drawOrder, fillVar } from "./conflictStack";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
 import { useI18n } from "../I18nContext";
 import { fill } from "@/lib/i18n/fill";
@@ -20,8 +21,6 @@ const CLAMP_RANGE = { min: 0, max: 25, step: 1 };
 const ESTIMATE_SLOT = "__estimate__";
 // How many member countries a rolled-up band names in its tooltip before it summarises the tail.
 const TOOLTIP_MEMBERS = 8;
-const COUNTRY_COLORS = 6;
-const REGION_COLORS = 8;
 const SHAPE = { aspect: 0.61, min: 210, max: 280 };
 const fmt1 = d3.format(".1f");
 const fmtInt = d3.format(",");
@@ -44,55 +43,18 @@ export default function ConflictEwmaWidget({ weeklyStack }: ConflictEwmaWidgetPr
   const [clampP, setClampP] = useState(DEFAULT_CLAMP_P);
   const [hover, setHover] = useState<{ i: number; si: number } | null>(null);
   const weeks = useMemo(() => weeklyStack?.weeks ?? [], [weeklyStack]);
-  // Which band takes which colour, decided once for the window rather than per bar.
-  //
-  // Two constraints pull against each other. Membership is per week, so a country named in one
-  // bar and absent from the next has to keep its colour across the gap — that rules out colouring
-  // by position in the bar. But there are more keys than either ramp has colours, so something
-  // has to repeat. Repeating by rank puts two identical fills in the same bar, which with no
-  // legend reads as one band.
-  //
-  // So: colour the graph of "these two bands are drawn in the same bar as each other". Greedy in
-  // rank order gives every key one fixed colour that no band it ever shares a bar with also has.
-  // At the 10% floor the current window needs two of the six country hues and five of the eight
-  // region shades. The ramps stay wider than that on purpose: membership is decided per week and
-  // the snapshot is rebuilt weekly, so the worst bar is not the one in front of us.
-  const paint = useMemo(() => {
-    const byKey = new Map<string, string>();
-    const weeks = weeklyStack?.weeks ?? [];
-    const ramps = [
-      { kind: "country", name: "--conflict-color", size: COUNTRY_COLORS },
-      { kind: "region", name: "--conflict-region-color", size: REGION_COLORS },
-    ] as const;
-    for (const ramp of ramps) {
-      const keys = (weeklyStack?.keys ?? [])
-        .filter((entry) => entry.kind === ramp.kind)
-        .map((entry) => entry.key);
-      const rank = new Map(keys.map((key, index) => [key, index]));
-      const sharesABarWith = keys.map(() => new Set<number>());
-      for (const week of weeks) {
-        const here = week.segments
-          .filter((segment) => segment.kind === ramp.kind)
-          .map((segment) => rank.get(segment.key)!);
-        for (const a of here) {
-          for (const b of here) if (a !== b) sharesABarWith[a]!.add(b);
-        }
-      }
-      const slots = new Array<number>(keys.length).fill(-1);
-      keys.forEach((key, index) => {
-        const used = new Set(
-          [...sharesABarWith[index]!].map((other) => slots[other]!).filter((slot) => slot >= 0),
-        );
-        let slot = 0;
-        while (slot < ramp.size && used.has(slot)) slot += 1;
-        // A bar with more bands of one kind than the ramp has colours. Fall back to rank, which
-        // still gives a stable colour per place and puts the repeat as far down the bar as it can.
-        slots[index] = slot < ramp.size ? slot : index % ramp.size;
-        byKey.set(key, `var(${ramp.name}-${slots[index]})`);
-      });
-    }
-    return byKey;
-  }, [weeklyStack]);
+  // Which band takes which colour: the hue is its continent, the shade only keeps two bands of
+  // one continent from being drawn the same. See charts/conflictStack.ts for why the shade has to
+  // exist at all.
+  const paint = useMemo(() => assignFills(weeklyStack), [weeklyStack]);
+  // Bottom to top, the order the bar is drawn in: Others on the floor, then everything else
+  // ascending so the biggest band is on top. Held here rather than computed in the two loops that
+  // need it — the rects and the pointer hit-test have to agree on the order, or every tooltip
+  // names the wrong band.
+  const bars = useMemo(
+    () => weeks.map((week) => ({ week: week.week, segments: drawOrder(week.segments) })),
+    [weeks],
+  );
   const totals = useMemo(
     () => weeks.map((week) => week.segments.reduce((sum, segment) => sum + segment.fatalities, 0)),
     [weeks],
@@ -123,8 +85,7 @@ export default function ConflictEwmaWidget({ weeklyStack }: ConflictEwmaWidgetPr
     if (segment.kind === "elsewhere") return t.elsewhere;
     return dict.geoscheme[Number(segment.key) as keyof typeof dict.geoscheme] ?? segment.key;
   };
-  const colorOf = (segment: ConflictStackSegment): string =>
-    paint.get(segment.key) ?? "var(--mute)";
+  const colorOf = (segment: ConflictStackSegment): string => fillVar(paint.get(segment.key));
   // A rolled-up band has to say what it rolled up, or the reader has traded one opaque "Others"
   // for several. A country band's members are just itself, so it prints the one line it always
   // did.
@@ -200,10 +161,10 @@ export default function ConflictEwmaWidget({ weeklyStack }: ConflictEwmaWidgetPr
             </>
           ) : null}
 
-          {weeks.map((week, i) => {
+          {bars.map((week, i) => {
             let cumulative = 0;
-            // Drawn largest-first from the axis up, which is the order buildWeeklyStack sorts
-            // into, so the tallest bands sit together at the bottom of every bar.
+            // Drawn from the axis up in `bars` order, so Others is the floor of every bar and the
+            // bands above it climb to the largest at the top.
             return (
               <g key={week.week}>
                 {week.segments.map((segment, si) => {
@@ -298,7 +259,7 @@ export default function ConflictEwmaWidget({ weeklyStack }: ConflictEwmaWidgetPr
               const valueAtPointer = y.invert(
                 ((event.clientY - bounds.top) / bounds.height) * innerH,
               );
-              const week = weeks[index]!;
+              const week = bars[index]!;
               let cumulative = 0;
               let segmentIndex = -1;
               for (const [candidate, segment] of week.segments.entries()) {

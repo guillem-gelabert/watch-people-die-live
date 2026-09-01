@@ -118,3 +118,28 @@ export function geoschemeChain(m49: number): readonly number[] | null {
   if (ancestors === undefined) return null;
   return [subregion, ...ancestors];
 }
+
+// Every grouping code -> the continent it ends at, derived from ANCESTORS rather than written out
+// again, so a fix to that table reaches both. Covers subregions, the two intermediary regions and
+// the continents themselves; countries go through SUBREGION_OF in continentOf below.
+const CONTINENT_OF_REGION = new Map<number, number>(
+  [...ANCESTORS].flatMap(([subregion, ancestors]) => {
+    // Antarctica hangs straight off the world with no ancestors, so it is its own continent.
+    const continent = ancestors.length > 0 ? ancestors[ancestors.length - 1]! : subregion;
+    return [subregion, ...ancestors].map((code) => [code, continent] as [number, number]);
+  }),
+);
+
+// The continent any code in the geoscheme belongs to — a country, a subregion, an intermediary
+// region, or a continent itself, which answers itself. `null` for a code with no place in the
+// scheme, the same contract as geoschemeChain.
+//
+// It accepts region codes as well as country codes on purpose. geoschemeChain takes only the
+// latter and answers null for the former, which reads as "not in the geoscheme" when it means
+// "wrong kind of code" — a trap worth closing here rather than at each call site.
+export function continentOf(m49: number): number | null {
+  const region = CONTINENT_OF_REGION.get(m49);
+  if (region !== undefined) return region;
+  const subregion = SUBREGION_OF.get(m49);
+  return subregion === undefined ? null : (CONTINENT_OF_REGION.get(subregion) ?? null);
+}

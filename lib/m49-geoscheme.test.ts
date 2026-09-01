@@ -6,6 +6,7 @@ import {
   LATIN_AMERICA_AND_THE_CARIBBEAN,
   SUB_SAHARAN_AFRICA,
   SUBREGIONS,
+  continentOf,
   geoschemeChain,
 } from "./m49-geoscheme";
 
@@ -64,6 +65,28 @@ describe("UN M49 geoscheme", () => {
     // sources group it. Asserted because it is the one placement most likely to be "corrected".
     expect(chainOf("SDN")).toEqual([15, 2]);
     expect(chainOf("IND")).toEqual([34, 142]);
+  });
+
+  // continentOf is what the conflict stack colours by, and it takes region codes as well as
+  // country codes. Same reasoning as the chain test above: a code it cannot place is a band that
+  // silently loses its colour, which looks like working software.
+  it("places every code in the scheme on a continent, country or region alike", () => {
+    for (const { alpha3, m49 } of everyIsoM49()) {
+      expect(CONTINENTS, `${alpha3} (${m49})`).toContain(continentOf(m49));
+    }
+    for (const subregion of SUBREGIONS) {
+      expect(CONTINENTS, `subregion ${subregion}`).toContain(continentOf(subregion));
+    }
+    for (const intermediary of INTERMEDIARY_REGIONS) {
+      expect(CONTINENTS, `intermediary ${intermediary}`).toContain(continentOf(intermediary));
+    }
+    for (const continent of CONTINENTS) {
+      expect(continentOf(continent), `continent ${continent}`).toBe(continent);
+    }
+  });
+
+  it("has no continent for a code outside the scheme", () => {
+    expect(continentOf(999)).toBeNull();
   });
 
   it("has no chain for a code outside the scheme", () => {
