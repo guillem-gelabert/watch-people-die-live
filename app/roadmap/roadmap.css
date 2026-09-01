@@ -1692,10 +1692,28 @@ body {
 }
 
 /* Step 6 — Robust EWMA prediction widget (ConflictEwmaWidget). */
+
+/* The one figure in the story that sits on a surface of its own.
+ *
+ * This is a deliberate exception to the two rules above — ".story-figure" is transparent and
+ * ".chart-panel" carries no chrome — and they still hold for every other figure. It was asked for
+ * on 2026-09-01 for this chart specifically, so it is scoped to this chart specifically rather than
+ * being pushed up into .story-figure, which would have restyled ~20 figures across ten skies.
+ *
+ * The plate is --conflict-plate, the palette's own paper tone rather than a new value, and the bar
+ * fills are generated against it instead of against the sky: see stackPlate in palette.ts. Moving
+ * the plate without moving that generation is what breaks the bands — measured, a plate 10% off the
+ * sky puts every fill under 3:1.
+ *
+ * It wraps the whole widget, chart and controls together. A plate behind only the <svg> would cut
+ * between the chart and its own sliders. */
 .ewma-widget {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
+  padding: 14px 16px 12px;
+  border-radius: 10px;
+  background: var(--conflict-plate);
 }
 
 .ewma-seg-focus {

@@ -395,7 +395,21 @@ function atLuminance(hue: number, sat: number, target: number): string {
 // The order is extremes first, interior after — [darkest, lightest, middle] at n = 3. The stack's
 // greedy pass takes shades in index order, so the common case of two bands of one continent in a
 // bar spends the most separated pair it has, and only a third band reaches for the middle.
-// The luminance range a stack fill may occupy: everything in it clears `min` against the sky.
+// The conflict chart's plate — the one figure in the story that sits on a surface of its own rather
+// than straight on the sky (see the exception recorded on .ewma-widget in roadmap.css). The sky
+// nudged toward ink on a light sky and toward white on a dark one, so it reads as the chart's own
+// ground rather than as a card laid over the page, which is the objection the no-chrome rule makes.
+//
+// Every conflict fill is then generated against THIS, not against the sky. Measured: a plate only
+// 10% off the sky puts the fills under 3:1 on all ten skies, because they were placed just past the
+// line against the sky — and `paper` fails on the dark sky for the same reason, at 2.26:1. The
+// residual's neutral breaks first in both cases, since it sits closest to the background's own
+// luminance by construction.
+export function stackPlate(sky: Rgb): string {
+  return skinFromSky(sky).paper;
+}
+
+// The luminance range a stack fill may occupy: everything in it clears `min` against `bg`.
 // A fill clears that either by being dark enough or by being light enough; both bands come
 // straight from the contrast definition, and the wider one is the one to use. On any real sky
 // exactly one of them is usable at all.
@@ -403,8 +417,8 @@ function atLuminance(hue: number, sat: number, target: number): string {
 // A hair inside the boundary rather than on it: atLuminance bisects in HSL and hslToCss rounds to
 // integer channels, so a target sitting exactly on the 3:1 line realises at 2.96 as often as at
 // 3.04. Measured — without the margin the darkest fill on the "First light" sky lands at 2.96:1.
-function stackBand(sky: Rgb, min: number): [number, number] {
-  const skyL = relativeLuminance(sky);
+function stackBand(bg: Rgb, min: number): [number, number] {
+  const skyL = relativeLuminance(bg);
   const darkest = 0.02;
   const lightest = 0.95;
   const margin = 0.01;
@@ -420,13 +434,14 @@ function stackBand(sky: Rgb, min: number): [number, number] {
 // which is the floor NEUTRAL_RESERVE keeps every continent's darkest shade off — desaturated to
 // BAND_SAT, a dark brown and a dark grey at one luminance are 18 apart in RGB, which is not two
 // colours to a reader.
-export function stackNeutral(sky: Rgb, min = 3): string {
-  const [lo] = stackBand(sky, min);
+export function stackNeutral(sky: Rgb, bg: Rgb, min = 3): string {
+  const [lo] = stackBand(bg, min);
+  // The hue is still the section's own, even though the luminance is placed against the plate.
   return atLuminance(rgbToHsl(sky)[0], 0.06, lo);
 }
 
-export function shadeRamp(n: number, hue: string, sky: Rgb, min = 3): string[] {
-  const [h, hueSat] = rgbToHsl(parseColor(hue)?.rgb ?? sky);
+export function shadeRamp(n: number, hue: string, bg: Rgb, min = 3): string[] {
+  const [h, hueSat] = rgbToHsl(parseColor(hue)?.rgb ?? bg);
   // Bands are large areas, and large areas take less chroma than marks do. At the vivid 0.94 the
   // hues arrive with, the light end of a blue or violet ramp comes out neon — blue carries so
   // little of the luminance that such a fill measures dark, passes every contrast check here, and
@@ -436,7 +451,7 @@ export function shadeRamp(n: number, hue: string, sky: Rgb, min = 3): string[] {
   // A fill clears `min` against the sky either by being dark enough or by being light enough.
   // Both bands are computed from the contrast definition; the wider one is the one to use, and on
   // any real sky exactly one of them is usable at all.
-  const full = stackBand(sky, min);
+  const full = stackBand(bg, min);
   // The floor of the band belongs to the residual's neutral (see stackNeutral), so the continent
   // ladder starts above it.
   const room = full[1] - full[0];
@@ -686,15 +701,18 @@ export function chartPaletteToCssVars(sky: Rgb): Record<string, string> {
   // continent share a bar in most weeks, and one fill drawn twice reads as one band to a reader
   // with no legend. charts/conflictStack.ts assigns it, and owns the mapping from a continent's
   // M49 code to a hue slot here — this file stays free of geography.
+  const plate = stackPlate(sky);
+  const plateRGB = parseColor(plate)?.rgb ?? sky;
+  out["--conflict-plate"] = plate;
   harmony(CONFLICT_CONTINENTS, sky, true).forEach((hue, continent) => {
-    shadeRamp(CONFLICT_CONTINENT_SHADES, hue, sky).forEach((color, shade) => {
+    shadeRamp(CONFLICT_CONTINENT_SHADES, hue, plateRGB).forEach((color, shade) => {
       out[`--conflict-continent-${continent}-${shade}`] = color;
     });
   });
   // The residual band is not a place — it holds leftovers from every continent at once — so it is
   // not given a colour: the section's own hue at almost no saturation, which reads as the absence
   // of one rather than as a sixth continent.
-  out["--conflict-other"] = stackNeutral(sky);
+  out["--conflict-other"] = stackNeutral(sky, plateRGB);
 
   return out;
 }

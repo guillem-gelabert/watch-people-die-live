@@ -18,6 +18,7 @@ import {
   schemes,
   shadeRamp,
   skinFromSky,
+  stackPlate,
   skinToCssVars,
   type Rgb,
 } from "./palette";
@@ -419,8 +420,10 @@ describe("chartPaletteToCssVars", () => {
       marks(harmony(4, sky), sky).forEach((color, index) => {
         expect(vars[`--cause-color-${index}`]).toBe(color);
       });
+      const plate = parseColor(stackPlate(sky))!.rgb;
+      expect(vars["--conflict-plate"]).toBe(stackPlate(sky));
       harmony(CONFLICT_CONTINENTS, sky, true).forEach((hue, continent) => {
-        shadeRamp(CONFLICT_CONTINENT_SHADES, hue, sky).forEach((color, shade) => {
+        shadeRamp(CONFLICT_CONTINENT_SHADES, hue, plate).forEach((color, shade) => {
           expect(vars[`--conflict-continent-${continent}-${shade}`]).toBe(color);
         });
       });
@@ -436,14 +439,40 @@ describe("shadeRamp", () => {
       .map(([name, value]) => ({ name, lum: relativeLuminance(parseColor(value)!.rgb) }));
   };
 
-  it("keeps every conflict fill clear of its own sky", () => {
+  // Against the plate, not the sky: the conflict chart is the one figure that sits on a surface of
+  // its own, so the sky is not what its bars are seen against. Getting this wrong is not academic —
+  // measured, a plate only 10% off the sky puts every fill under 3:1, and `paper` on the dark sky
+  // takes the residual's neutral to 2.26:1. The neutral fails first either way, because it sits
+  // closest to the background's own luminance by construction.
+  it("keeps every conflict fill clear of the plate it is drawn on", () => {
     for (const hex of SKIES) {
       const sky = parseSky(hex);
-      const skyLum = relativeLuminance(sky);
+      const plateLum = relativeLuminance(parseColor(stackPlate(sky))!.rgb);
       for (const { name, lum } of conflictFills(sky)) {
-        expect(contrastRatio(lum, skyLum), `${name} on ${hex}`).toBeGreaterThanOrEqual(3);
+        if (name === "--conflict-plate") continue;
+        expect(contrastRatio(lum, plateLum), `${name} on ${hex}`).toBeGreaterThanOrEqual(3);
       }
     }
+  });
+
+  // And the plate has to be visible against the sky, or it is not a background. The floor is the
+  // "CDR by region" sky, which is already near-white so nothing lighter can separate much from it;
+  // the Conflicts sky this chart is read on sits at 1.61.
+  it("keeps the plate visible against the sky", () => {
+    for (const hex of SKIES) {
+      const sky = parseSky(hex);
+      const ratio = contrastRatio(
+        relativeLuminance(parseColor(stackPlate(sky))!.rgb),
+        relativeLuminance(sky),
+      );
+      expect(ratio, `plate on ${hex}`).toBeGreaterThanOrEqual(1.15);
+    }
+    expect(
+      contrastRatio(
+        relativeLuminance(parseColor(stackPlate(parseSky("#eeb87d")))!.rgb),
+        relativeLuminance(parseSky("#eeb87d")),
+      ),
+    ).toBeGreaterThanOrEqual(1.5);
   });
 
   // The pair the stack's greedy pass spends first is shades 0 and 1, because shadeRamp orders its
@@ -453,9 +482,9 @@ describe("shadeRamp", () => {
   //
   // Two thresholds rather than one, because a mid-luminance sky leaves the ramp almost no
   // luminance room at 3:1 and the pair separates mostly by hue there. Measured floors across the
-  // ten skies at the ramp's chosen constants: 32.2 in RGB distance (on #cf7a68, luminance 0.282)
-  // and 2.27:1 in contrast on #eeb87d, the Conflicts sky this chart is actually read on. A
-  // neighbour's palette only ever paints it mid-cross-fade.
+  // ten skies, now that the ramp is placed against the plate rather than the sky: 105.6 in RGB
+  // distance and 3.9:1 in contrast on #eeb87d, the Conflicts sky this chart is actually read on. A
+  // light plate is what buys that — it leaves the dark band three times the room the sky did.
   const shadePair = (hex: string, continent: number) => {
     const vars = chartPaletteToCssVars(parseSky(hex));
     return [0, 1].map(
@@ -468,7 +497,7 @@ describe("shadeRamp", () => {
       for (let continent = 0; continent < CONFLICT_CONTINENTS; continent += 1) {
         const [a, b] = shadePair(hex, continent);
         const distance = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-        expect(distance, `continent ${continent} on ${hex}`).toBeGreaterThanOrEqual(30);
+        expect(distance, `continent ${continent} on ${hex}`).toBeGreaterThanOrEqual(60);
       }
     }
   });
@@ -479,13 +508,13 @@ describe("shadeRamp", () => {
       expect(
         contrastRatio(relativeLuminance(a), relativeLuminance(b)),
         `continent ${continent}`,
-      ).toBeGreaterThanOrEqual(2.1);
+      ).toBeGreaterThanOrEqual(3);
     }
   });
 
   // The residual's neutral holds the floor of the band and the continents start above it, which is
   // what NEUTRAL_RESERVE is for. Without that reserve a dark grey and a dark brown at one
-  // luminance came out 18 apart in RGB, which is not two colours. Measured floor now 28.1.
+  // luminance came out 18 apart in RGB, which is not two colours.
   it("keeps the residual's neutral clear of every continent shade", () => {
     for (const hex of SKIES) {
       const vars = chartPaletteToCssVars(parseSky(hex));
@@ -506,8 +535,9 @@ describe("shadeRamp", () => {
   it("gives no two shades of a continent the same colour", () => {
     for (const hex of SKIES) {
       const sky = parseSky(hex);
+      const plate = parseColor(stackPlate(sky))!.rgb;
       for (const hue of harmony(CONFLICT_CONTINENTS, sky, true)) {
-        const ramp = shadeRamp(CONFLICT_CONTINENT_SHADES, hue, sky);
+        const ramp = shadeRamp(CONFLICT_CONTINENT_SHADES, hue, plate);
         expect(new Set(ramp).size, `${hue} on ${hex}`).toBe(ramp.length);
       }
     }
