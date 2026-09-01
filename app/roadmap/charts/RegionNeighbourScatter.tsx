@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react";
 import * as d3 from "d3";
 import { fmtPlainPct, pearson, strength, styleAxis } from "../chartHelpers";
 import { showTooltip, hideTooltip } from "../tooltip";
+import { labelRepresentatives, namedCountryOf, representatives } from "./representatives";
+import { attachTapPicker } from "./touchPick";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
 import { useDict } from "../I18nContext";
 import type {
@@ -16,6 +18,8 @@ import type {
 
 interface Row {
   name: string;
+  // ISO3, or "" for the country series, whose points carry no name to offer.
+  country: string;
   amplitude: number;
   neighborMean: number;
 }
@@ -65,7 +69,13 @@ export default function RegionNeighbourScatter({
           .map((k) => ampByKey.get(k))
           .filter((v): v is number => v != null);
         if (!nb.length) return null;
-        return { name: r.name, amplitude: strength(r.curve), neighborMean: d3.mean(nb) ?? 0 };
+        return {
+          name: r.name,
+          // ISO3, carried so the phone can offer one labelled region per country the prose names.
+          country: r.country,
+          amplitude: strength(r.curve),
+          neighborMean: d3.mean(nb) ?? 0,
+        };
       })
       .filter((r): r is Row => r !== null);
 
@@ -78,7 +88,7 @@ export default function RegionNeighbourScatter({
           .map((n) => amplitudeById.get(n))
           .filter((v): v is number => v != null);
         if (!nb.length) return null;
-        return { name: "", amplitude, neighborMean: d3.mean(nb) ?? 0 };
+        return { name: "", country: "", amplitude, neighborMean: d3.mean(nb) ?? 0 };
       })
       .filter((r): r is Row => r !== null);
 
@@ -172,6 +182,30 @@ export default function RegionNeighbourScatter({
     legend
       .append("span")
       .html('<span class="swatch" style="color:var(--mute)"></span>countries (outline)');
+    // Only the region series carries a tooltip here — the country dots are deliberately anonymous —
+    // and at 221 points with a mean of 82 rivals inside a 44px target it is the densest cloud in the
+    // story. So the phone reaches it only through one labelled region per country the prose names.
+    attachTapPicker(g, {
+      width: innerW,
+      height: innerH,
+      candidates: labelRepresentatives(g, {
+        points: representatives(
+          regionRows.map((row) => ({
+            x: x(row.neighborMean),
+            y: y(row.amplitude),
+            text: `${row.name}: own ${fmtPlainPct(row.amplitude)}, neighbours ${fmtPlainPct(row.neighborMean)}`,
+            country: namedCountryOf(row.country) ?? "",
+            amplitude: row.amplitude,
+            reach: Infinity,
+          })),
+          { countryOf: (row) => row.country, rank: (row) => row.amplitude },
+        ),
+        text: (row) => row.country,
+        width: innerW,
+        height: innerH,
+      }),
+      describe: (row) => row.text,
+    });
   }, [regions, regionNeighbors, unified, features, neighborsByM49, accent, WIDTH, HEIGHT]);
 
   return (

@@ -13,6 +13,8 @@ import {
   gdpAlphaScale,
   olsFit,
 } from "./chartFrame";
+import { labelRepresentatives, representatives } from "./representatives";
+import { attachTapPicker } from "./touchPick";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
 import { useDict } from "../I18nContext";
 
@@ -46,6 +48,12 @@ interface AmplitudeScatterProps {
   // The fit and the coefficient describe the filled series only. With two clouds on one frame a
   // single line would be a fit to neither.
   onRingColor?: (color: string) => void;
+  // How to read a country out of a ring's name, for the phone. The filled series is sparse enough
+  // to tap directly — 76 to 86 countries, a mean of 5 to 9 rivals inside a 44px target — but the
+  // ring series is 221 regions at a mean of 71, where no tap can mean the ring under a finger. So
+  // rings are reachable only through one labelled representative per country the prose names.
+  // Omitted, or with no rings, the phone just gets the filled series. See representatives.ts.
+  ringCountryOf?: (ring: AmplitudePoint) => string;
 }
 
 // The three scatters share one shape as well as one frame, bounded so a fluid column widens the
@@ -69,6 +77,7 @@ export default function AmplitudeScatter({
   rings,
   ringLabel,
   onRingColor,
+  ringCountryOf,
 }: AmplitudeScatterProps) {
   const { amplitudeAxis } = useDict().charts.common;
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -223,6 +232,41 @@ export default function AmplitudeScatter({
     appendAxisTitle(g, { x: innerW / 2, y: innerH + 28, text: xLabel });
     // 12px from the svg's own left edge, which is outside this group's translated origin.
     appendAxisTitle(g, { x: 12 - m.left, y: innerH / 2, text: amplitudeAxis, rotate: true });
+
+    // The filled series, tappable directly within a thumb's radius.
+    const dots = points.map((p) => ({ x: x(p.value), y: y(pct(p.amplitude)), point: p }));
+    // The ring series, reachable only through labelled representatives — and only the ones whose
+    // label actually fitted, so every target the picker offers is one the reader can see.
+    const ringReps =
+      ringCountryOf && rings?.length
+        ? labelRepresentatives(g, {
+            points: representatives(
+              rings.map((p) => ({
+                x: x(p.value),
+                y: y(pct(p.amplitude)),
+                point: p,
+                reach: Infinity,
+              })),
+              {
+                countryOf: ({ point }) => ringCountryOf(point),
+                rank: ({ point }) => point.amplitude,
+              },
+            ),
+            text: ({ point }) => ringCountryOf(point),
+            width: innerW,
+            height: innerH,
+          })
+        : [];
+
+    // Last, so its tap surface sits above the dots. Touch only — a mouse keeps the exact per-dot
+    // hover above, and the picker does not attach at all where hovering works.
+    attachTapPicker(g, {
+      width: innerW,
+      height: innerH,
+      candidates: [...dots, ...ringReps],
+      describe: ({ point }) =>
+        `${point.name}: ${formatValue(point.value)}, ${fmtPlainPct(point.amplitude)}`,
+    });
   }, [
     amplitudeAxis,
     points,
@@ -234,6 +278,7 @@ export default function AmplitudeScatter({
     dotColor,
     fitColor,
     ringColor,
+    ringCountryOf,
     WIDTH,
     HEIGHT,
   ]);

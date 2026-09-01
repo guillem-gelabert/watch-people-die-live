@@ -9,6 +9,8 @@ import {
   kgFamilyName,
   strength,
 } from "../chartHelpers";
+import { labelRepresentatives, namedCountryOf, representatives } from "./representatives";
+import { attachTapPicker } from "./touchPick";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
 import { showTooltip, hideTooltip } from "../tooltip";
 import SeriesChips from "./SeriesChips";
@@ -239,6 +241,43 @@ export default function KoppenGeigerScatter({
         .text(kgFamilyName(d, family.key));
     }
     appendAxisTitle(g, { x: innerW / 2, y: innerH + 33, text: d.charts.koppenScatter.axisTitle });
+
+    // The phone's path in. 87 countries at a mean of 13.5 rivals inside a 44px target are tappable
+    // directly; 228 jittered regions at a mean of 54.5 are not, so they are reached through one
+    // labelled representative per country the prose names. The candidate positions reproduce each
+    // series' own jitter, or a tap would ring a point where nothing is drawn.
+    const countryCandidates = showCountries
+      ? countryRows.map((row, i) => ({
+          x: (x(row.family) ?? 0) + bw / 2 + hashJitter(i + 1, 4.91) * bw * 0.2,
+          y: y(pct(row.amplitude)),
+          text: `${row.name}: ${fmtPlainPct(row.amplitude)}`,
+        }))
+      : [];
+    const regionCandidates = showRegions
+      ? labelRepresentatives(g, {
+          points: representatives(
+            regionRows.map((row, i) => ({
+              x: (x(row.family) ?? 0) + bw / 2 + hashJitter(i + 1, 7.13) * bw * 0.24,
+              y: y(pct(row.amplitude)),
+              text: `${row.name}: ${fmtPlainPct(row.amplitude)}`,
+              // Region names arrive as "Region (ISO3)", so the code has to come back out of them.
+              country: namedCountryOf(row.name.replace(/^.*\((.*)\)$/, "$1")) ?? "",
+              amplitude: row.amplitude,
+              reach: Infinity,
+            })),
+            { countryOf: (row) => row.country, rank: (row) => row.amplitude },
+          ),
+          text: (row) => row.country,
+          width: innerW,
+          height: innerH,
+        })
+      : [];
+    attachTapPicker(g, {
+      width: innerW,
+      height: innerH,
+      candidates: [...countryCandidates, ...regionCandidates],
+      describe: (row) => row.text,
+    });
   }, [
     d,
     unified,

@@ -1691,6 +1691,33 @@ body {
   font-size: 0.72rem;
 }
 
+/* The permanent label on a point a phone reader can tap, and the ring that marks it as one of the
+   targets. Drawn on every device, not just touch: naming the dozen countries the prose names helps
+   a desktop reader too, and it is the only thing that makes the touch scheme honest — the reader
+   can see which points are reachable before aiming. See charts/representatives.ts. */
+.chart-point-label {
+  font-size: 0.58rem;
+  fill: var(--body);
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 2.4px;
+  stroke-linejoin: round;
+}
+
+.chart-point-labelled {
+  stroke: var(--ink);
+  stroke-width: 1.2;
+  stroke-opacity: 0.55;
+}
+
+/* The ring a tap leaves on the point it picked. A tooltip that names a point without saying which
+   one would be worse than no tooltip, because the reader would trust it. Touch only — see
+   charts/touchPick.ts, which never attaches on a device that can hover. */
+.chart-tap-marker {
+  stroke: var(--ink);
+  stroke-width: 1.6;
+}
+
 /* Step 6 — Robust EWMA prediction widget (ConflictEwmaWidget). */
 
 /* The one figure in the story that sits on a surface of its own.

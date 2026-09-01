@@ -13,6 +13,8 @@ import {
   niceMaxPercent,
   percentGridValues,
 } from "./chartFrame";
+import { labelRepresentatives, namedCountryOf, representatives } from "./representatives";
+import { attachTapPicker } from "./touchPick";
 import { figureHeight, useFigureWidth } from "./useFigureSize";
 import partidoLatitudeData from "../../../data/argentina-partido-latitudes.json";
 import { useDict } from "../I18nContext";
@@ -243,6 +245,44 @@ export default function LatitudeScatter({
         .text(`${v}°`);
     }
     appendAxisTitle(g, { x: innerW / 2, y: innerH + 30, text: "absolute latitude" });
+
+    // The phone's path into the two series, which need different rules: 87 countries at a mean of
+    // 8 rivals inside a 44px target are tappable directly, and 229 regions at a mean of 28 are not.
+    // So regions are reachable only through one labelled representative per country the prose
+    // names, and a tap in open space falls through to the nearest of those. Only the series the
+    // reader has switched on are offered.
+    const countryCandidates = showCountries
+      ? countryRows.map((d) => ({
+          x: x(Math.min(X_MAX, d.absLat)),
+          y: y(pct(d.amplitude)),
+          text: `${d.name}: ${d.absLat.toFixed(1)}° lat, ${fmtPlainPct(d.amplitude)}`,
+        }))
+      : [];
+    const regionCandidates = showRegions
+      ? labelRepresentatives(g, {
+          points: representatives(
+            regionRows.map((d) => ({
+              x: x(Math.min(X_MAX, d.absLat)),
+              y: y(pct(d.amplitude)),
+              text: `${d.name} (${d.country}): ${d.absLat.toFixed(1)}° lat, ${fmtPlainPct(d.amplitude)}`,
+              country: d.country,
+              amplitude: d.amplitude,
+              reach: Infinity,
+            })),
+            // The region data keys on ISO3, so it has to be resolved to the name the prose uses.
+            { countryOf: (d) => namedCountryOf(d.country) ?? "", rank: (d) => d.amplitude },
+          ),
+          text: (d) => namedCountryOf(d.country) ?? d.country,
+          width: innerW,
+          height: innerH,
+        })
+      : [];
+    attachTapPicker(g, {
+      width: innerW,
+      height: innerH,
+      candidates: [...countryCandidates, ...regionCandidates],
+      describe: (d) => d.text,
+    });
   }, [
     unified,
     features,

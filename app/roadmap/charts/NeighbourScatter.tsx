@@ -7,6 +7,7 @@ import { useDict } from "../I18nContext";
 import { fill } from "@/lib/i18n/fill";
 import AmplitudeScatter, { type AmplitudePoint } from "./AmplitudeScatter";
 import { PROXY } from "./chartFrame";
+import { namedCountryOf } from "./representatives";
 import type {
   CountryFeature,
   NeighborsByM49,
@@ -97,6 +98,11 @@ export default function NeighbourScatter({
       formatValue={(v) => fill(t.value, { v: v.toFixed(1) })}
       formatTick={(v) => `${v}%`}
       ariaLabel={t.aria}
+      // The rings are 221 regions named "Region (Country)", far too dense to tap; the phone reaches
+      // them through one labelled representative per country the prose names.
+      // Ring names arrive as "Region (ISO3)", and the list the representatives come from is keyed
+      // on display names, so the code has to be resolved rather than passed through.
+      ringCountryOf={(ring) => namedCountryOf(ring.name.replace(/^.*\((.*)\)$/, "$1")) ?? ""}
       footnote={excluded ? fill(t.footnote, { n: excluded }) : undefined}
       ringLabel={t.ringLabel}
     />
