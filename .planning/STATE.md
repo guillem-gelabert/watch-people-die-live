@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: null
 milestone_name: null
 status: milestone-complete
-last_updated: "2026-09-10T13:00:00.000Z"
+last_updated: "2026-09-10T15:30:00.000Z"
 last_activity: 2026-09-10
 shipped_milestones:
   - version: v1.0
@@ -133,13 +133,14 @@ todo — the derivation card is what made this urgent, since it now prints a 201
 
 Items acknowledged and deferred at milestone close on 2026-08-28, plus anything captured since.
 
-### Open todos — `.planning/todos/pending/` (4)
+### Open todos — `.planning/todos/pending/` (5)
 
 | # | Item | Prio | Area | Note |
 |---|------|------|------|------|
 | — | Conflict centroid map's own touch representatives | — | story | **captured 2026-09-01** when s08 shipped without it. The mechanism exists; the representative rule does not — the prose names Mexico and Brazil, the map is Ukraine and Sudan |
 | — | Expanded island card ignores horizontal safe areas | low | globe | **captured 2026-09-10.** Pre-existing on the pill and left alone during that day's review; it matters more now the card is 520px tall and its edges carry the bar percentages. A fixed version exists in the history to copy |
 | — | Model spans 2015-2024 and the story admits to part of it | medium | data | **captured 2026-09-10** with the cause move. Six layers, six vintages, two of them stated in prose. The derivation card now prints GPWv4 2015 beside World Bank 2024 with nothing saying why that is sound |
+| — | Subnational cause of death — IHME request sent | medium | data | **captured 2026-09-10.** A bulk-data request went to IHME the same day; the depth-2 fallback (`scripts/gbd-cause-permalinks.ts`, 8 downloads, 700k rows) is built and verified but deliberately not run |
 | p09 | Subnational cause and age hunting beyond Eurostat | — | data | parked as **backlog 999.1**, not a loose todo |
 
 Seven of this table's original nine closed after the milestone close and are in

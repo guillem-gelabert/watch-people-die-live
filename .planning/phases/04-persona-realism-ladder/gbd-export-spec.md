@@ -56,10 +56,15 @@ rows per cause:
 | All locations, most detailed | 309 | 9.83M | 99 |
 | All locations, depth 3 | 176 | 5.60M | 56 |
 | India + Brazil + Mexico + Indonesia (129 locations), most detailed | 309 | 1.75M | 18 |
-| All locations, depth 2 | 22 | 0.70M | 7 |
+| All locations, depth 2 | 22 | 0.70M | 8 |
+
+Download counts assume chunking by cause at 31,812 rows each, so they are ceilings of an uneven
+pack rather than rows/100,000: depth 2 fits 3 causes per download and needs 8, not the 7 the
+division suggests. `scripts/gbd-cause-permalinks.ts` computes this against the live endpoints.
 
 Given a single non-refilling budget of unknown size, the depth-2 row is the only one that should be
-attempted speculatively. The others are requests to make of IHME, not downloads to take.
+attempted speculatively. The others are requests to make of IHME, not downloads to take — and one
+such request was sent on 2026-09-10; see `.planning/todos/pending/2026-09-10-gbd-subnational-causes.md`.
 
 Note what a depth-2 export would and would not be. Twenty-two groups like "Cardiovascular diseases"
 cannot replace `data/causes.json`'s 87 specific WHO labels; it would be a *reweighting* layer,
