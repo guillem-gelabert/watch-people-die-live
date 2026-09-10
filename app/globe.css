@@ -136,6 +136,13 @@ body {
   border-radius: 42px;
 }
 
+/* With a derivation to hold, the card grows — but only to the point where it is still a card over
+   a globe rather than a page. The cap is what keeps the thing the arithmetic is about on screen
+   underneath it; past that the derivation scrolls in place instead of pushing the card taller. */
+#island.is-open.has-math {
+  height: min(520px, calc(100dvh - var(--sa-top, 0px) - var(--sa-bottom, 0px) - 24px));
+}
+
 #island-mini {
   position: absolute;
   inset: 0;
@@ -215,61 +222,34 @@ body {
   margin: 0;
 }
 
-/* The derivation: how the dot was placed, and how likely the person in it was.
-   Anchored to the bottom-right of the disc rather than stacked under the pill, so the globe the
-   arithmetic is about stays on screen next to it — on a phone a card tall enough to hold this
-   covered almost the whole viewport. */
-#island-math-wrap {
-  position: absolute;
-
-  /* Landscape on a notched phone puts the inset on a side, not just top and bottom, and this
-     panel's right edge is where its percentages and its scrollbar live — the two things a
-     rounded corner or a camera housing must not eat. Offset by the inset, and take both of them
-     out of the width so the left edge stays inside the safe box on either rotation. */
-  right: calc(var(--sa-right, 0px) + 12px);
-  bottom: calc(var(--sa-bottom, 0px) + 14px);
-  z-index: 4;
-  width: min(304px, calc(100vw - var(--sa-left, 0px) - var(--sa-right, 0px) - 24px));
-  max-height: min(58dvh, 420px);
-  overflow: hidden;
-  color: #fff;
-  pointer-events: auto;
-  background: rgb(0 0 0 / 82%);
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 22px;
-
-  /* Same easing as the pill, so the two read as one gesture. */
-  animation: island-math-in 0.34s cubic-bezier(0.32, 0.72, 0, 1) both;
-
-  /* The globe is a live canvas; without a backdrop the small type sits on moving pixels. */
-  backdrop-filter: blur(14px);
-}
-
-@keyframes island-math-in {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
+/* The derivation: how the dot was placed, and how likely the person in it was. It is the middle
+   of the expanded card — under the headline, over the buttons — and it is the only part that
+   scrolls, so the two lines naming the death and the two controls dismissing it stay put however
+   far down the cause bars a reader gets. */
 #island-math {
-  max-height: inherit;
-  padding: 14px 16px 16px;
+  flex: 1;
+
+  /* Without this a flex item refuses to shrink below its content, so the region would push the
+     card past its cap instead of scrolling inside it. */
+  min-height: 0;
+  padding-top: 12px;
+
+  /* The card is 360px at its widest and the bars run to its edge, so a platform's default
+     15px scrollbar would sit on top of the percentages it is meant to sit beside. */
+  padding-right: 4px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-color: rgb(255 255 255 / 22%) transparent;
+  scrollbar-width: thin;
+  border-top: 1px solid rgb(255 255 255 / 10%);
 }
 
-/* It is a tab stop only so it can be scrolled, so the ring belongs inside the panel's own radius
-   rather than around the rounded edge it would otherwise cut across. */
+/* It is a tab stop only so it can be scrolled. The ring sits just inside the region rather than
+   around it, so it does not trace the card's rounded edge or crowd the buttons below. */
 #island-math:focus-visible {
   outline: 2px solid rgb(255 255 255 / 70%);
   outline-offset: -3px;
-  border-radius: 20px;
+  border-radius: 10px;
 }
 
 .drv-block + .drv-block {
@@ -490,9 +470,5 @@ body {
   #island-full,
   .island-dot {
     transition: none;
-  }
-
-  #island-math-wrap {
-    animation: none;
   }
 }

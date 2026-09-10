@@ -52,7 +52,7 @@ export default function Island({ onPausedChange }: IslandProps) {
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (!(e.target as Element | null)?.closest("#island, #island-math-wrap")) close();
+      if (!(e.target as Element | null)?.closest("#island")) close();
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") close();
@@ -72,6 +72,13 @@ export default function Island({ onPausedChange }: IslandProps) {
       setResumed(false);
     }
   };
+
+  // The card is one big role="button", and the derivation now sits inside it: a click meant to
+  // scroll or select in there would otherwise bubble up and close the very thing being read.
+  // Space has the same problem from the other direction — it is the scroll key for the region's
+  // own tab stop, so the card must not swallow it.
+  const fromMath = (target: EventTarget | null): boolean =>
+    !!(target as Element | null)?.closest("#island-math");
 
   // The derivation is only assembled while the card is open, and only once per death: the sim
   // fires twice a second and nobody is reading most of them.
@@ -116,7 +123,7 @@ export default function Island({ onPausedChange }: IslandProps) {
           id="island"
           role="button"
           tabIndex={0}
-          className={open ? "is-open" : ""}
+          className={open ? (derivation ? "is-open has-math" : "is-open") : ""}
           // Named from the text the reader can actually see, prefixed by what the thing is. An
           // `aria-label` of "Latest death" alone read as a different control from the one on screen
           // — WCAG's Label in Name asks that a name spoken aloud contain the words next to it, so
@@ -124,8 +131,11 @@ export default function Island({ onPausedChange }: IslandProps) {
           // words leave out, and the second id follows whichever line is showing.
           aria-labelledby={`island-role ${open ? "island-big" : "island-text"}`}
           aria-expanded={open}
-          onClick={toggle}
+          onClick={(e) => {
+            if (!fromMath(e.target)) toggle();
+          }}
           onKeyDown={(e) => {
+            if (fromMath(e.target)) return;
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               toggle();
@@ -154,6 +164,15 @@ export default function Island({ onPausedChange }: IslandProps) {
             </p>
             <p id="island-big">{headline}</p>
             <p id="island-where">{where}</p>
+
+            {/* Inside the card rather than beside it: one surface to read, one to dismiss. The
+                derivation is taller than the card can be, so it scrolls in place between the
+                headline and the buttons while the card itself stops short of the viewport — the
+                globe the arithmetic is about has to stay on screen under it. */}
+            {derivation && death ? (
+              <Derivation derivation={derivation} death={death} locale={locale} words={t.math} />
+            ) : null}
+
             <div id="island-actions">
               <button
                 type="button"
@@ -177,15 +196,6 @@ export default function Island({ onPausedChange }: IslandProps) {
           </div>
         </div>
       </div>
-
-      {/* Down at the bottom-right of the disc rather than inside the pill: the full derivation is
-          taller than a phone, and a card that grew to hold it covered the globe it was explaining.
-          Rendered only while the card is open, so it shares the pill's one disclosure. */}
-      {derivation && death ? (
-        <div id="island-math-wrap">
-          <Derivation derivation={derivation} death={death} locale={locale} words={t.math} />
-        </div>
-      ) : null}
     </>
   );
 }
