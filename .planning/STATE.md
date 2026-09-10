@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: null
 milestone_name: null
 status: milestone-complete
-last_updated: "2026-09-10T11:00:00.000Z"
+last_updated: "2026-09-10T13:00:00.000Z"
 last_activity: 2026-09-10
 shipped_milestones:
   - version: v1.0
@@ -32,8 +32,9 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 ## Current Position
 
 **No active milestone.** v2.0 Persona Realism shipped 2026-08-28 and is archived. Work has
-continued outside it — most recently the island's derivation card on 2026-09-10, which is a
-feature rather than a todo and was built without a plan. See § Shipped outside a milestone.
+continued outside it — on 2026-09-10 the island's derivation card and then the cause table's move
+off the pandemic years, neither of them a todo and neither planned. See § Shipped outside a
+milestone.
 
 Progress: [██████████] 100% — 6 phases, 18 plans, across two milestones.
 
@@ -95,16 +96,50 @@ the derivation was a standalone panel, and went to the bin with the panel when i
 the card five hours later. Recaptured as a pending todo rather than silently lost — see the table
 below.
 
+### 2026-09-10 — the cause table off the pandemic years
+
+**The cause data was WHO GHE at reference year 2021 and nothing filtered covid.** It was a third of
+mid-life cause weight in India and Brazil, zero in Japan and China, and the feed drew that as a
+standing fact about how people die. Moved to reference year 2019 in `be91179`, deployed and
+verified live. Full record in
+`.planning/todos/completed/2026-09-10-cause-vintage-off-covid-years.md`.
+
+What makes this worth more than a data refresh is that **the project had already made this
+decision and only applied it to one layer.** `pipeline/seasonal_composition.py` drops
+`COVID_YEARS = [2020, 2021, 2022]` from every measured curve and has a test named for it. The
+cause table was the exception, and it survived because the two layers are built by different
+toolchains and nothing reads both.
+
+That seam then produced the finding worth keeping. **A green TypeScript suite says nothing about
+the Python build.** Dropping `thyroid cancer` from the vocabulary stranded `C73` in the Eurostat
+ICD map, and `seasonal_composition.build()` raises when `chapter_of_cause_label()` is not a subset
+of `causes.json` — so `python -m pipeline seasonal-composition` was broken while all 337 vitest
+tests passed. It was found by asking what else reads the vocabulary, not by anything automated.
+Same family as s09's hand-authored code table, one language further out.
+
+Two smaller things are recorded in the file. Release and reference year are now separate fields,
+because "GHE 2019" names a real and different release built with superseded methods — this is the
+2021 release read at its 2019 back-series, and the prose and its test now carry both numbers. And
+`resolveSource()` stopped picking whichever filename sorted highest: that reads as "the newest
+data" and became the wrong rule the moment an older year was chosen on purpose, with
+`ghe-2021-deaths.csv` still on disk and ready to win every rebuild silently.
+
+It leaves the model spanning **2015 to 2024** across six layers, one of which today moved further
+from the others deliberately. The story states two of the six vintages. Captured as a pending
+todo — the derivation card is what made this urgent, since it now prints a 2015 population and a
+2024 rate on adjacent lines of the same multiplication.
+
 ## Deferred Items
 
 Items acknowledged and deferred at milestone close on 2026-08-28, plus anything captured since.
 
-### Open todos — `.planning/todos/pending/` (3)
+### Open todos — `.planning/todos/pending/` (4)
 
 | # | Item | Prio | Area | Note |
 |---|------|------|------|------|
 | — | Conflict centroid map's own touch representatives | — | story | **captured 2026-09-01** when s08 shipped without it. The mechanism exists; the representative rule does not — the prose names Mexico and Brazil, the map is Ukraine and Sudan |
 | — | Expanded island card ignores horizontal safe areas | low | globe | **captured 2026-09-10.** Pre-existing on the pill and left alone during that day's review; it matters more now the card is 520px tall and its edges carry the bar percentages. A fixed version exists in the history to copy |
+| — | Model spans 2015-2024 and the story admits to part of it | medium | data | **captured 2026-09-10** with the cause move. Six layers, six vintages, two of them stated in prose. The derivation card now prints GPWv4 2015 beside World Bank 2024 with nothing saying why that is sound |
 | p09 | Subnational cause and age hunting beyond Eurostat | — | data | parked as **backlog 999.1**, not a loose todo |
 
 Seven of this table's original nine closed after the milestone close and are in
