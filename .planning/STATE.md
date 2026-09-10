@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: null
 milestone_name: null
 status: milestone-complete
-last_updated: "2026-09-01T14:00:00.000Z"
-last_activity: 2026-09-01
+last_updated: "2026-09-10T11:00:00.000Z"
+last_activity: 2026-09-10
 shipped_milestones:
   - version: v1.0
     name: MVP
@@ -31,7 +31,9 @@ See: .planning/PROJECT.md (updated 2026-08-28)
 
 ## Current Position
 
-**No active milestone.** v2.0 Persona Realism shipped 2026-08-28 and is archived.
+**No active milestone.** v2.0 Persona Realism shipped 2026-08-28 and is archived. Work has
+continued outside it — most recently the island's derivation card on 2026-09-10, which is a
+feature rather than a todo and was built without a plan. See § Shipped outside a milestone.
 
 Progress: [██████████] 100% — 6 phases, 18 plans, across two milestones.
 
@@ -45,15 +47,64 @@ Backlog 999.1 is unsequenced and excluded from the count.
 **Next:** `/gsd:new-milestone` — questioning → research → requirements → roadmap. `REQUIREMENTS.md`
 was archived and removed at close; the new milestone creates a fresh one.
 
+## Shipped outside a milestone
+
+Work done since the v2.0 close that is not a todo and had no plan behind it. Recorded here because
+the roadmap has no phase to hang it on, not because it was small.
+
+### 2026-09-10 — the island's derivation card
+
+**The globe used to assert. It now shows its work.** Tapping the island unfolds the arithmetic
+behind one death: the cell it was drawn in as the multiplication the bake folded away
+("331,208 people x 6.47 per 1,000 a year x 0.966 seasonal · September = 2,068.2 deaths a year,
+1 in 28,637 of the world's 59.2M"), then the person drawn inside it as the sex, age-band and cause
+distributions the draw actually ran on, each with the outcome it landed on flagged.
+
+Four commits: `aa6d538`, `4d5ebe4`, `30eaa1c`, `41a3b1f`. Full record in
+`.planning/todos/completed/2026-09-10-island-derivation-card.md`.
+
+Two things in it are worth carrying forward.
+
+**The rate was recovered by division, not refetched.** `rate-grid.json` ships only `cellPop x r`
+and throws both factors away. The World Bank could have supplied r again, but a refetched r agrees
+with the bake only approximately and the card claims an exact multiplication — so
+`build-country-rate.ts` divides the two committed grids instead: `r = SUM w / SUM cellPop` over a
+country's cells, exact because r is uniform within a country. `cellPop = w / r` then reproduces
+GPWv4 to the digit, including for countries whose gridded population differs from the World Bank
+headline figure, which is exactly the discrepancy r absorbs. **The uniformity premise is the card's
+whole claim, so it is asserted rather than trusted** — per cell, in both the build script and
+`data/country-rate.test.ts`, against a rounding term (1e-6) and a drift term (1e-8 x w). Worst case
+across the grid today is Iceland at 1.6e-9. A subnational rate replacing the country one would miss
+by percent, six orders of magnitude above that, and the card's copy would have to change with it.
+
+**The card reads the draw's own helpers, and that is the only reason it is honest.** `causeWeights()`
+was factored out of `pickCause()` so `explainPersona()` calls it rather than re-deriving a
+distribution to display. Anything added to the card later inherits the constraint: a number the card
+computes for itself is a number that can disagree with the simulation, silently.
+
+The lesson from the review is the familiar one in a new place. **A table that exists is not a table
+that can answer.** `causeWeights()` accepted any non-empty cell, so a band whose weights are all
+zero would have let the sampler fall through to its last entry while the card normalised every
+probability to zero — naming a cause and printing 0% beside it and every alternative. No test caught
+it because every test served a table with real weights. Same shape as s09's hand-authored code table
+and s08's probe: the fixture agreed with the code about what the world looks like, so neither could
+see the case where it does not.
+
+One review fix did not survive the day. The panel's horizontal safe-area handling was correct when
+the derivation was a standalone panel, and went to the bin with the panel when it was folded into
+the card five hours later. Recaptured as a pending todo rather than silently lost — see the table
+below.
+
 ## Deferred Items
 
 Items acknowledged and deferred at milestone close on 2026-08-28, plus anything captured since.
 
-### Open todos — `.planning/todos/pending/` (2)
+### Open todos — `.planning/todos/pending/` (3)
 
 | # | Item | Prio | Area | Note |
 |---|------|------|------|------|
 | — | Conflict centroid map's own touch representatives | — | story | **captured 2026-09-01** when s08 shipped without it. The mechanism exists; the representative rule does not — the prose names Mexico and Brazil, the map is Ukraine and Sudan |
+| — | Expanded island card ignores horizontal safe areas | low | globe | **captured 2026-09-10.** Pre-existing on the pill and left alone during that day's review; it matters more now the card is 520px tall and its edges carry the bar percentages. A fixed version exists in the history to copy |
 | p09 | Subnational cause and age hunting beyond Eurostat | — | data | parked as **backlog 999.1**, not a loose todo |
 
 Seven of this table's original nine closed after the milestone close and are in

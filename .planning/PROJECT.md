@@ -156,6 +156,9 @@ The story at `/roadmap` is trilingual (English, Catalan, German), selected from 
 | Treat the "other causes" residual as aseasonal by decision   | 16.6–52.1% of adult band cause weight with no derivable curve; a stated decision beats an unexplained 1.0 reweight | ⚠️ Revisit — revisit if the label mapping widens |
 | Keep 20 archetypes rather than raising `ARCHETYPE_COUNT`      | A payload-versus-fidelity trade-off with no forcing function; the UK fix survived quantisation, which was the acceptance test | ⚠️ Revisit — still flattens 19.43% of expected deaths |
 | Insert an audit-closure phase instead of accepting the gaps   | The first audit pass separated "the work is done" from "the verification says so" and found two real defects behind the second | ✓ Good — both blockers were real and are now guarded |
+| Recover the grid's discarded factors by division, not by refetching them | The bake ships only `cellPop x r`; a refetched r agrees with it approximately, and the island claims an exact multiplication. r is uniform within a country, so `SUM w / SUM cellPop` returns it exactly and is consistent with the bake by construction | ✓ Good — asserted per cell in the build and in `data/country-rate.test.ts` |
+| The island's derivation must read the sampler's own helpers, never re-derive a distribution | A card that recomputes what it displays is a second implementation of the sampler, free to disagree with the draw it claims to explain, silently | ✓ Good — `causeWeights()` is shared by `pickCause()` and `explainPersona()` |
+| Commit `data/source/synthetic-cells.json` as the one exception to the gitignored source tree | It is 2 KB and it is a pinned rejection-sampling draw, not a fetched source — regenerating it moves the cells and they stop joining to the baked grid | ✓ Good — `build:country-rate` now runs on a clean checkout |
 
 ## Next Milestone Goals
 
