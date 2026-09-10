@@ -59,6 +59,9 @@ function GlobeStage({ phaseRef }: GlobeStageProps) {
         lon,
         lat,
         at: performance.now(),
+        m49,
+        cellIndex,
+        eventDate,
       });
     },
     [d],

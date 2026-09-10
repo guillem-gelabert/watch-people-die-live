@@ -215,6 +215,218 @@ body {
   margin: 0;
 }
 
+/* The derivation: how the dot was placed, and how likely the person in it was.
+   Anchored to the bottom-right of the disc rather than stacked under the pill, so the globe the
+   arithmetic is about stays on screen next to it — on a phone a card tall enough to hold this
+   covered almost the whole viewport. */
+#island-math-wrap {
+  position: absolute;
+
+  /* Landscape on a notched phone puts the inset on a side, not just top and bottom, and this
+     panel's right edge is where its percentages and its scrollbar live — the two things a
+     rounded corner or a camera housing must not eat. Offset by the inset, and take both of them
+     out of the width so the left edge stays inside the safe box on either rotation. */
+  right: calc(var(--sa-right, 0px) + 12px);
+  bottom: calc(var(--sa-bottom, 0px) + 14px);
+  z-index: 4;
+  width: min(304px, calc(100vw - var(--sa-left, 0px) - var(--sa-right, 0px) - 24px));
+  max-height: min(58dvh, 420px);
+  overflow: hidden;
+  color: #fff;
+  pointer-events: auto;
+  background: rgb(0 0 0 / 82%);
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 22px;
+
+  /* Same easing as the pill, so the two read as one gesture. */
+  animation: island-math-in 0.34s cubic-bezier(0.32, 0.72, 0, 1) both;
+
+  /* The globe is a live canvas; without a backdrop the small type sits on moving pixels. */
+  backdrop-filter: blur(14px);
+}
+
+@keyframes island-math-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+#island-math {
+  max-height: inherit;
+  padding: 14px 16px 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* It is a tab stop only so it can be scrolled, so the ring belongs inside the panel's own radius
+   rather than around the rounded edge it would otherwise cut across. */
+#island-math:focus-visible {
+  outline: 2px solid rgb(255 255 255 / 70%);
+  outline-offset: -3px;
+  border-radius: 20px;
+}
+
+.drv-block + .drv-block {
+  padding-top: 12px;
+  margin-top: 10px;
+  border-top: 1px solid rgb(255 255 255 / 10%);
+}
+
+.drv-h {
+  margin: 0 0 6px;
+  color: rgb(255 255 255 / 50%);
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.drv-sub {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 10px 0 5px;
+  color: rgb(255 255 255 / 62%);
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.drv-block .drv-sub:first-of-type {
+  margin-top: 0;
+}
+
+.drv-tier {
+  color: rgb(255 255 255 / 38%);
+  font-weight: 500;
+  font-size: 10px;
+  text-align: right;
+}
+
+.drv-rows,
+.drv-bars {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The multiplication. A three-column grid so the operators line up under each other and the
+   numbers share a right edge, which is what makes it read as arithmetic rather than as a list. */
+.drv-row {
+  display: grid;
+  grid-template-columns: 12px minmax(0, auto) 1fr;
+  gap: 0 6px;
+  align-items: baseline;
+  padding: 2.5px 0;
+}
+
+.drv-op {
+  color: rgb(255 255 255 / 40%);
+  font-weight: 500;
+  font-size: 12px;
+  text-align: center;
+}
+
+.drv-val {
+  color: rgb(255 255 255 / 95%);
+  font-weight: 600;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.drv-unit {
+  color: rgb(255 255 255 / 55%);
+  font-weight: 500;
+  font-size: 11px;
+}
+
+/* The attribution, on its own line under the number it belongs to. */
+.drv-note {
+  grid-column: 2 / -1;
+  color: rgb(255 255 255 / 34%);
+  font-weight: 500;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+.drv-bar {
+  display: grid;
+  grid-template-columns: 62px 1fr 34px;
+  gap: 8px;
+  align-items: center;
+  padding: 2px 0;
+  color: rgb(255 255 255 / 55%);
+  font-weight: 500;
+  font-size: 10.5px;
+}
+
+.drv-bar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Cause names are a WHO taxonomy — "other cardiovascular and circulatory diseases" — not the five
+   characters an age band needs. Truncating them to "lower res…" loses the one word that says what
+   the person died of, so the cause list gets a wider column and wraps instead of clipping. */
+.drv-bars.is-causes .drv-bar {
+  grid-template-columns: 124px 1fr 30px;
+  align-items: center;
+}
+
+.drv-bars.is-causes .drv-bar-label {
+  overflow: visible;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.drv-bar-track {
+  height: 5px;
+  background: rgb(255 255 255 / 9%);
+  border-radius: 3px;
+}
+
+.drv-bar-fill {
+  display: block;
+  height: 100%;
+  background: rgb(255 255 255 / 32%);
+  border-radius: 3px;
+}
+
+.drv-bar-pct {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* The outcome this death actually got. Carries the same red as the live dot, so the card's one
+   accent means one thing throughout: this is the thing that happened. */
+.drv-bar.is-drawn {
+  color: rgb(255 255 255 / 96%);
+}
+
+.drv-bar.is-drawn .drv-bar-label,
+.drv-bar.is-drawn .drv-bar-pct {
+  font-weight: 700;
+}
+
+.drv-bar.is-drawn .drv-bar-fill {
+  background: #ff3b30;
+}
+
+.drv-empty {
+  margin: 0;
+  color: rgb(255 255 255 / 34%);
+  font-weight: 500;
+  font-size: 10.5px;
+  line-height: 1.4;
+}
+
 /* The island is quoting a system notification, so it wears the platform's own UI font — the stack
    `body` already carries — rather than the story's typefaces, and stays in sentence case. */
 #island-eyebrow {
@@ -278,5 +490,9 @@ body {
   #island-full,
   .island-dot {
     transition: none;
+  }
+
+  #island-math-wrap {
+    animation: none;
   }
 }

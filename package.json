@@ -15,6 +15,7 @@
     "build:density": "tsx scripts/build-density.ts",
     "build:mortality": "tsx scripts/build-mortality.ts",
     "build:causes": "node --import tsx scripts/build-causes.ts",
+    "build:country-rate": "node --import tsx scripts/build-country-rate.ts",
     "build:region-keys": "node --import tsx scripts/build-region-keys.ts",
     "build:age-sex-cells": "node --import tsx scripts/build-age-sex-cells.ts",
     "fetch:who-ghe": "node --import tsx scripts/fetch-who-ghe.ts",

@@ -62,10 +62,36 @@ export interface GeoPayload {
   source: string;
 }
 
+interface CountryRates {
+  rates: Record<string, number>;
+}
+
+// One cell's arithmetic, as the sampler actually performed it — the island shows this rather
+// than describing it. `population` and `rate` are the two factors data/rate-grid.json's `w`
+// folds together, recovered via data/country-rate.json (see scripts/build-country-rate.ts);
+// both are null when that file is missing, which costs a line of the card and nothing else.
+export interface CellMath {
+  m49: number;
+  // The grid's vintage, so the card can attribute the rate to a year rather than assert one that
+  // a rebake would quietly falsify.
+  year: number;
+  population: number | null;
+  rate: number | null;
+  baseDeaths: number;
+  seasonal: number;
+  seasonalDeaths: number;
+  conflict: number;
+  weight: number;
+  total: number;
+}
+
 export interface Sampler {
   // cellIndex is this cell's position in data/rate-grid.json's cells, threaded through to
   // makePersona() so it can resolve a per-cell age/sex pyramid (data/age-sex-cells.json).
   sampleCell: () => [lon: number, lat: number, m49: number, cellIndex: number];
+  // The same index, run back through the multiplication that gave the cell its weight. Kept off
+  // the hot path deliberately: the island asks for this once, when a reader opens it.
+  explainCell: (cellIndex: number) => CellMath | null;
   total: number;
 }
 
@@ -99,23 +125,35 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
         subnationalSeasonality: SubnationalSeasonality | null | undefined,
         climate: ClimateFallbackModel | null | undefined,
         appliedFallbacks: AppliedSeasonalityFallbacks | null | undefined,
-        conflicts: ConflictsPayload | null | undefined;
+        conflicts: ConflictsPayload | null | undefined,
+        countryRates: CountryRates | null | undefined;
       try {
-        [topo, grid, , seasonality, subnationalSeasonality, climate, appliedFallbacks, conflicts] =
-          await Promise.all([
-            d3.json<Topology>("/data/countries-110m.json") as Promise<Topology>,
-            d3.json<RateGrid>("/data/rate-grid.json") as Promise<RateGrid>,
-            initPersona(),
-            d3.json<Seasonality>("/data/seasonality.json").catch(() => null),
-            d3.json<SubnationalSeasonality>("/data/seasonality-subnational.json").catch(() => null),
-            d3
-              .json<ClimateFallbackModel>("/data/seasonality-climate-fallback.json")
-              .catch(() => null),
-            d3
-              .json<AppliedSeasonalityFallbacks>("/data/seasonality-applied-fallbacks.json")
-              .catch(() => null),
-            d3.json<ConflictsPayload>("/data/conflicts.json").catch(() => null),
-          ]);
+        [
+          topo,
+          grid,
+          ,
+          seasonality,
+          subnationalSeasonality,
+          climate,
+          appliedFallbacks,
+          conflicts,
+          countryRates,
+        ] = await Promise.all([
+          d3.json<Topology>("/data/countries-110m.json") as Promise<Topology>,
+          d3.json<RateGrid>("/data/rate-grid.json") as Promise<RateGrid>,
+          initPersona(),
+          d3.json<Seasonality>("/data/seasonality.json").catch(() => null),
+          d3.json<SubnationalSeasonality>("/data/seasonality-subnational.json").catch(() => null),
+          d3
+            .json<ClimateFallbackModel>("/data/seasonality-climate-fallback.json")
+            .catch(() => null),
+          d3
+            .json<AppliedSeasonalityFallbacks>("/data/seasonality-applied-fallbacks.json")
+            .catch(() => null),
+          d3.json<ConflictsPayload>("/data/conflicts.json").catch(() => null),
+          // Only the island's derivation reads this, so a failure must not cost a death.
+          d3.json<CountryRates>("/data/country-rate.json").catch(() => null),
+        ]);
       } catch (err) {
         console.error("Failed to load data:", err);
         if (!cancelled) setData({ error: true });
@@ -128,6 +166,13 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
       // with grid weight can fire, and every one of those has a name here.
       const nameById = new Map<number, string>();
       for (const [id, name] of Object.entries(grid.names)) nameById.set(Number(id), name);
+
+      // Deaths per person-year, uniform within a country by construction — so a cell's population
+      // is w / rate, exactly the GPWv4 count the bake multiplied.
+      const rateById = new Map<number, number>();
+      for (const [id, rate] of Object.entries(countryRates?.rates ?? {})) {
+        if (rate > 0) rateById.set(Number(id), rate);
+      }
 
       // world-atlas's TopoJSON always has a "countries" GeometryCollection.
       const countriesObject = topo.objects.countries as NonNullable<typeof topo.objects.countries>;
@@ -247,7 +292,29 @@ export function useGlobeData(): { data: GlobeDataState; geo: GeoPayload | null }
           ];
         }
 
-        return { sampleCell, total };
+        function explainCell(cellIndex: number): CellMath | null {
+          if (!Number.isInteger(cellIndex) || cellIndex < 0 || cellIndex >= n) return null;
+          const m49 = m49Arr[cellIndex] as number;
+          const baseDeaths = baseW[cellIndex] as number;
+          const seasonal = evaluateHarmonicCurve(seasonalCurve(m49), yearPhase);
+          const seasonalDeaths = baseDeaths > 0 ? baseDeaths * seasonal : 0;
+          const conflict = (conflictW[cellIndex] as number) * CONFLICT_WEIGHT;
+          const rate = rateById.get(m49) ?? null;
+          return {
+            m49,
+            year: grid.meta.year,
+            population: rate ? baseDeaths / rate : null,
+            rate,
+            baseDeaths,
+            seasonal,
+            seasonalDeaths,
+            conflict,
+            weight: seasonalDeaths + conflict,
+            total,
+          };
+        }
+
+        return { sampleCell, explainCell, total };
       }
 
       setData({ error: false, nameById, buildSampler });

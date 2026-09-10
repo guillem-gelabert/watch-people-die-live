@@ -1,4 +1,5 @@
 import type { Persona } from "./persona";
+import type { CellMath } from "./useGlobeData";
 
 // The simulation fires roughly twice a second. Routing that through React state on any
 // component that owns the canvas or the story would re-render those subtrees at the same
@@ -10,10 +11,28 @@ export interface Death extends Persona {
   lon: number;
   lat: number;
   at: number;
+  // The inputs the draw ran on, kept so the island can reconstruct the arithmetic on demand
+  // rather than every death paying for an explanation nobody has asked to see.
+  m49: number;
+  cellIndex: number;
+  eventDate: Date;
 }
 
 let latest: Death | null = null;
 const listeners = new Set<() => void>();
+
+// The live sampler's explainCell, handed over by Earth each time it rebuilds one (init, and on
+// every UTC day change). Lives here rather than in a prop because the island is the only reader
+// and routing it through the canvas's props would re-render the scene to deliver it.
+let explainCell: ((cellIndex: number) => CellMath | null) | null = null;
+
+export function registerExplainer(fn: (cellIndex: number) => CellMath | null): void {
+  explainCell = fn;
+}
+
+export function explainCellIndex(cellIndex: number): CellMath | null {
+  return explainCell?.(cellIndex) ?? null;
+}
 
 export function publishDeath(death: Death): void {
   latest = death;

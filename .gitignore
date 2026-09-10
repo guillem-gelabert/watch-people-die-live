@@ -117,9 +117,17 @@ public/data/
 
 # Raw data sources consumed only by build scripts / notebooks at build time.
 # The derived JSON in data/ is committed; the multi-MB sources are not.
-data/source/
+data/source/*
 climate-zones/
 data/era5-t2m-monthly-climatology-05deg.tif
+
+# ...with one exception, which is why the line above globs the contents rather than the
+# directory: a negation cannot re-include a file whose parent directory is excluded.
+# synthetic-cells.json is 2 KB, and it is not a fetched source but a *pinned draw* —
+# gen-synthetic-cells.ts places its cells by rejection sampling, so re-running it yields
+# different cells that no longer join to the baked data/rate-grid.json. Committing the draw the
+# bake actually consumed is what lets build-country-rate.ts run on a clean checkout.
+!data/source/synthetic-cells.json
 
 # Scratch exploration figure and draft correspondence, not part of the build.
 kg-subzone.png

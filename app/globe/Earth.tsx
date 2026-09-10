@@ -24,6 +24,7 @@ import {
   START_ZOOM,
 } from "./constants";
 import type { GlobeData, GeoPayload, Sampler } from "./useGlobeData";
+import { registerExplainer } from "./stageState";
 
 const PLANE_NORMAL = new THREE.Vector3(0, 0, 1); // PlaneGeometry faces +Z
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
@@ -192,6 +193,7 @@ export default function Earth({
     const seasonalDay = date.toISOString().slice(0, 10);
     const sampler = buildSampler(utcYearPhase(date));
     const mean = MS_PER_YEAR_REAL / sampler.total;
+    registerExplainer(sampler.explainCell);
 
     sim.current = {
       sampler,
@@ -335,6 +337,9 @@ export default function Earth({
       s.sampler = globeData.buildSampler(utcYearPhase(date));
       s.mean = MS_PER_YEAR_REAL / s.sampler.total;
       s.seasonalDay = seasonalDay;
+      // The seasonal multiplier and the global total both moved, so the old explainer would
+      // narrate yesterday's arithmetic.
+      registerExplainer(s.sampler.explainCell);
     }
 
     // Paused (island expanded) still advances the schedule, exactly like the existing

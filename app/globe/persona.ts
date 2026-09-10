@@ -96,6 +96,10 @@ export interface Persona {
   cause: string;
   country: string;
   text: string;
+  // Index into AGE_BANDS of the band the age was drawn from. Carried so explainPersona() can
+  // show the cause distribution for the band this death actually landed in, rather than
+  // re-deriving it from `age` and risking a different answer at a band edge.
+  bandIdx: number;
 }
 
 // --- Fallback tables (used only when real data is unavailable) --------------------
@@ -305,11 +309,61 @@ function sampleAge(
   return { age: band.min + Math.floor(Math.random() * (band.max - band.min + 1)), idx };
 }
 
-// "Woman"/"Man" for adults; softer labels for the young so a line never reads oddly.
-function sexLabel(words: PersonaWords, sex: Sex, age: number): string {
+// "Woman"/"Man" for adults; softer labels for the young so a line never reads oddly. Exported so
+// the island can rebuild the headline from a persona's fields instead of parsing its sentence.
+export function sexLabel(
+  // Only the five nouns, so a caller that has the dictionary but not the cause table — the
+  // island, rebuilding a headline — does not have to assemble a full PersonaWords to ask.
+  words: Pick<PersonaWords, "baby" | "girl" | "boy" | "woman" | "man">,
+  sex: Sex,
+  age: number,
+): string {
   if (age < 1) return words.baby;
   if (age < 15) return sex === "f" ? words.girl : words.boy;
   return sex === "f" ? words.woman : words.man;
+}
+
+// The cause weights in play for one country/sex/band/date — the exact numbers pickCause draws
+// from, factored out so explainPersona() can show the draw's odds without restating its rules.
+// Null when the export cannot speak to this band and the fallback table has to answer.
+function causeWeights(
+  m49: number | undefined,
+  sex: Sex,
+  bandIdx: number,
+  eventDate: Date | undefined,
+): { label: string; weight: number }[] | null {
+  // The band axis is only real when the builder says so. An all-ages export repeats one set of
+  // weights across every band, so reading it would hand an infant a pensioner's cause — the
+  // age-gated fallback table is strictly better than that.
+  if (CAUSE?.coverage?.age !== "age_bands") return null;
+  // Country cells exist only in a country-scoped export; a global one is used as global.
+  const byCountry = CAUSE.coverage.location === "country" ? CAUSE.countries : undefined;
+  const e = (m49 !== undefined && byCountry?.[m49]) || CAUSE.global;
+  const cell = e?.[sex]?.[bandIdx]; // { causeIdx: weight }
+  if (!cell) return null;
+  // 04-07: reweight by the month's cause multiplier — leaf group when the label is one
+  // (drowning, exposure to forces of nature), else its ICD-10 chapter, else unchanged. Applied
+  // here rather than to `cell` itself so the data file's weights stay untouched for the next
+  // persona drawn in a different month.
+  const phase = eventDate ? utcYearPhase(eventDate) : null;
+  const out: { label: string; weight: number }[] = [];
+  let total = 0;
+  for (const i of Object.keys(cell)) {
+    const label = CAUSE.causes[Number(i)];
+    if (!label) continue; // an index the taxonomy cannot name is not a cause we can show
+    const base = cell[i] as number;
+    const seasonal =
+      phase === null || !SEASONAL ? 1 : Math.max(0, SEASONAL.causeMultiplier(m49, label, phase));
+    const weight = base * seasonal;
+    out.push({ label, weight });
+    total += weight;
+  }
+  // A table that exists but carries no drawable weight — every entry zero, or a non-finite one
+  // poisoning the sum — is not an answer. weightedPick() would return its last entry regardless
+  // while normalise() sends every probability to zero, so the card would name a cause and then
+  // print "0%" beside it and every alternative. An export that cannot weigh this band is the
+  // same situation as one that has no cell for it: say so, and let the age-gated table answer.
+  return total > 0 && Number.isFinite(total) ? out : null;
 }
 
 // Cause from the real data, but only for a band the export can actually speak to.
@@ -320,35 +374,8 @@ function pickCause(
   age: number,
   eventDate: Date | undefined,
 ): string {
-  // The band axis is only real when the builder says so. An all-ages export repeats one set of
-  // weights across every band, so reading it would hand an infant a pensioner's cause — the
-  // age-gated table below is strictly better than that.
-  if (CAUSE?.coverage?.age === "age_bands") {
-    // Country cells exist only in a country-scoped export; a global one is used as global.
-    const byCountry = CAUSE.coverage.location === "country" ? CAUSE.countries : undefined;
-    const e = (m49 !== undefined && byCountry?.[m49]) || CAUSE.global;
-    const cell = e?.[sex]?.[bandIdx]; // { causeIdx: weight }
-    if (cell) {
-      const idxs = Object.keys(cell);
-      if (idxs.length) {
-        // 04-07: reweight by the month's cause multiplier — leaf group when the label is one
-        // (drowning, exposure to forces of nature), else its ICD-10 chapter, else unchanged.
-        // Applied here rather than to `cell` itself so the data file's weights stay untouched
-        // for the next persona drawn in a different month.
-        const phase = eventDate ? utcYearPhase(eventDate) : null;
-        const weightOf = (i: string) => {
-          const base = cell[i] as number;
-          if (phase === null || !SEASONAL) return base;
-          const label = CAUSE!.causes[Number(i)];
-          if (!label) return base;
-          return base * Math.max(0, SEASONAL.causeMultiplier(m49, label, phase));
-        };
-        const pick = weightedPick(idxs, weightOf);
-        const label = CAUSE.causes[Number(pick)];
-        if (label) return label;
-      }
-    }
-  }
+  const weights = causeWeights(m49, sex, bandIdx, eventDate);
+  if (weights) return weightedPick(weights, (c) => c.weight).label;
   // Fallback: the illustrative WHO-style table, filtered to a valid age + sex.
   const valid = CAUSES.filter((c) => age >= c.min && age <= c.max && (!c.sex || c.sex === sex));
   if (!valid.length) return "an undetermined cause";
@@ -388,5 +415,81 @@ export function makePersona(
     cause: causeLabel(words.causes, cause),
     country,
   });
-  return { sex, age, cause, country, text };
+  return { sex, age, cause, country, text, bandIdx: idx };
 }
+
+// --- Explaining a draw -------------------------------------------------------------
+// Everything above answers "who died". This answers "and how likely was that", for the island's
+// unfolded card. It reads the same tables through the same helpers, so the odds it shows are the
+// odds the draw ran on — nothing here re-derives a distribution of its own.
+//
+// Deliberately not computed inside makePersona(): the sim fires ~2 personas a second and the card
+// is open for a couple of seconds at a time, so this runs on demand, from the fields the death
+// already carries.
+
+export interface Outcome {
+  label: string;
+  p: number;
+}
+
+export interface PersonaMath {
+  // Share of this cell's deaths that are male / female, over the resolved pyramid.
+  sex: { m: number; f: number };
+  // Which tier of data/age-sex-cells.json answered: 0 regional, 1 derived, 2 national. Null when
+  // the cell layer did not resolve and the flat country pyramid was used instead.
+  tier: number | null;
+  // The nine age bands as probabilities for the drawn sex, month-reweighted exactly as the draw
+  // saw them, plus the band it landed in.
+  ages: number[];
+  bandIdx: number;
+  // Causes for this country/sex/band, most likely first, normalised. Empty when the WHO export
+  // could not answer and the illustrative fallback table was used.
+  causes: Outcome[];
+}
+
+function normalise(weights: number[]): number[] {
+  let total = 0;
+  for (const w of weights) total += w;
+  return total > 0 ? weights.map((w) => w / total) : weights.map(() => 0);
+}
+
+export function explainPersona(
+  m49: number | undefined,
+  cellIndex: number | undefined,
+  sex: Sex,
+  bandIdx: number,
+  eventDate: Date | undefined,
+): PersonaMath | null {
+  const pyramid = pyramidFor(m49, cellIndex);
+  if (!pyramid) return null;
+
+  const sm = pyramid.m.reduce((a, b) => a + b, 0);
+  const sf = pyramid.f.reduce((a, b) => a + b, 0);
+  const sexTotal = sm + sf;
+
+  // Only claim a tier when the cell layer is what actually answered — pyramidFor() falls back to
+  // the country pyramid on an out-of-range index or a missing archetype, and reporting "regional"
+  // for one of those would be a claim the data does not support.
+  const usedCell =
+    cellIndex !== undefined &&
+    CELLS !== null &&
+    CELLS.archetypes[CELLS.classId[cellIndex] ?? -1] !== undefined;
+  const tier = usedCell ? (CELLS?.tier?.[cellIndex] ?? null) : null;
+
+  const causes = causeWeights(m49, sex, bandIdx, eventDate) ?? [];
+  const causeP = normalise(causes.map((c) => c.weight));
+
+  return {
+    sex: sexTotal > 0 ? { m: sm / sexTotal, f: sf / sexTotal } : { m: 0.5, f: 0.5 },
+    tier,
+    ages: normalise(seasonalAgeWeights(pyramid[sex], m49, eventDate)),
+    bandIdx,
+    causes: causes
+      .map((c, i) => ({ label: c.label, p: causeP[i] as number }))
+      .sort((a, b) => b.p - a.p),
+  };
+}
+
+// The nine bands as [min, max] pairs, for labelling the age histogram. Exported rather than
+// duplicated in the view so the labels can never drift from the bands the draw used.
+export const AGE_BAND_RANGES: readonly [number, number][] = AGE_BANDS.map((b) => [b.min, b.max]);

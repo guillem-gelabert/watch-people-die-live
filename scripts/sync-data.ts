@@ -18,6 +18,7 @@ const FILES = [
   "age-sex-cells.json",
   "causes.json",
   "conflicts.json",
+  "country-rate.json",
   "closeup-outlines.json",
   "density-grid.json",
   "mortality-age-sex.json",

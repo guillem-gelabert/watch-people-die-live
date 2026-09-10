@@ -58,6 +58,32 @@ export const en = {
     south: "south",
     east: "east",
     west: "west",
+    // The derivation the unfolded card shows: how the dot was placed, and how likely the person
+    // in it was. Source attributions (GPWv4, World Bank, WHO, ACLED) are proper nouns and are
+    // rendered as they are, the same rule country and cause names follow — only the labels,
+    // units and connective words are translated.
+    math: {
+      whereTitle: "How this dot was placed",
+      whoTitle: "Who it could have been",
+      cellOf: "0.5° cell · {country}",
+      people: "people",
+      perThousand: "per 1,000 a year",
+      deathsPerYear: "deaths a year",
+      seasonalIn: "seasonal · {month}",
+      conflict: "armed conflict",
+      share: "1 in {odds} of the world's {total} a year",
+      sex: "Sex",
+      age: "Age",
+      cause: "Cause",
+      drawn: "drawn",
+      // Which tier of the per-cell age/sex data answered — the one place the persona is
+      // resolved below the country.
+      tierRegional: "regional pyramid",
+      tierDerived: "local population × national rates",
+      tierNational: "national pyramid",
+      causeOptions: "{count} causes in this group",
+      causeFallback: "No measured cause table for this group.",
+    },
   },
 
   proxy: {
