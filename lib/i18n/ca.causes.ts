@@ -26,7 +26,6 @@ export const causesCa: Record<string, string> = {
   "kidney cancer": "càncer de ronyó",
   "bladder cancer": "càncer de bufeta",
   "brain and central nervous system cancer": "càncer de cervell i sistema nerviós central",
-  "thyroid cancer": "càncer de tiroide",
   "hodgkin lymphoma": "limfoma de Hodgkin",
   "non-hodgkin lymphoma": "limfoma no hodgkinià",
   "multiple myeloma": "mieloma múltiple",
@@ -62,7 +61,6 @@ export const causesCa: Record<string, string> = {
   tuberculosis: "tuberculosi",
   "HIV/AIDS": "VIH/sida",
   "a diarrhoeal disease": "una malaltia diarreica",
-  "otitis media": "otitis mitjana",
   meningitis: "meningitis",
   encephalitis: "encefalitis",
   pertussis: "tos ferina",
@@ -72,13 +70,10 @@ export const causesCa: Record<string, string> = {
   "other unspecified infectious diseases": "altres malalties infeccioses no especificades",
   "sexually transmitted infections excluding hiv":
     "infeccions de transmissió sexual excloent-hi el VIH",
-  "covid-19": "covid-19",
 
   // --- digestives i renals ------------------------------------------------
   "upper digestive system diseases": "malalties del tracte digestiu superior",
-  appendicitis: "apendicitis",
   "paralytic ileus and intestinal obstruction": "ili paralític i obstrucció intestinal",
-  "inflammatory bowel disease": "malaltia inflamatòria intestinal",
   pancreatitis: "pancreatitis",
   "cirrhosis and other chronic liver diseases": "cirrosi i altres malalties hepàtiques cròniques",
   "other digestive diseases": "altres malalties digestives",
@@ -91,11 +86,13 @@ export const causesCa: Record<string, string> = {
   "endocrine, metabolic, blood, and immune disorders":
     "trastorns endocrins, metabòlics, hematològics i immunitaris",
   "protein-energy malnutrition": "desnutrició proteicoenergètica",
+  "other nutritional deficiencies": "altres carències nutricionals",
 
   // --- neurològiques i mentals --------------------------------------------
   "Alzheimer's & dementia": "alzheimer i demència",
   "parkinson's disease": "malaltia de Parkinson",
   "idiopathic epilepsy": "epilèpsia idiopàtica",
+  "multiple sclerosis": "esclerosi múltiple",
   "other neurological disorders": "altres trastorns neurològics",
   "alcohol use disorders": "trastorns per consum d'alcohol",
   "drug use disorders": "trastorns per consum de drogues",

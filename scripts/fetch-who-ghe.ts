@@ -6,6 +6,10 @@
 // project does. Cite as: World Health Organization, data.who.int, Global Health
 // Estimates 2021: Deaths by Cause, Age, Sex, by Country and by Region, 2000-2021.
 //
+// That endpoint is one release — the 2021 vintage — carrying a back-series of reference years
+// from 2000 to 2021, and --year picks which of them to pull. It defaults to the year the project
+// actually ships, which is not the newest: see REFERENCE_YEAR in build-causes.ts for why 2019.
+//
 // This replaces the hand-exported IHME GBD CSV the cause table used to be built from.
 // GBD's results tool gates every data endpoint behind an interactive sign-in and caps a
 // download at 100,000 rows, which makes the country x age x sex x cause cube tens of
@@ -18,19 +22,23 @@
 // Output: data/source/who-ghe/ghe-<year>-deaths.csv (gitignored; only the built
 // data/causes.json is committed)
 //
-// Usage: node --import tsx scripts/fetch-who-ghe.ts [--year=2021] [--force]
+// Usage: node --import tsx scripts/fetch-who-ghe.ts [--year=2019] [--force]
 
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { politeFetch } from "../lib/http";
+// One definition of the year this project builds from, so a bare `pnpm run fetch:who-ghe` cannot
+// quietly download a year the builder will then refuse to read. Importing the builder is safe:
+// it runs main() only when it is argv[1].
+import { REFERENCE_YEAR } from "./build-causes";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
 const API = "https://xmart-api-public.who.int/DEX_CMS/GHE_FULL";
 
 const yearArg = process.argv.find((a) => a.startsWith("--year="));
-const YEAR = yearArg ? Number(yearArg.split("=")[1]) : 2021;
+const YEAR = yearArg ? Number(yearArg.split("=")[1]) : REFERENCE_YEAR;
 const force = process.argv.includes("--force");
 
 const OUT_DIR = path.join(ROOT, "data", "source", "who-ghe");

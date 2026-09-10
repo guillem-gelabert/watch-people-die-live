@@ -56,16 +56,22 @@ describe("story translations", () => {
   }
 });
 
-// The who chapter states the data's vintage in prose — "the 2021 estimates", "2023 figures" — in
-// all three languages, because those years change only on a manual data commit. This is the
-// forcing function for that commit: refresh causes.json or mortality-age-sex.json to a new year
-// and forget the prose, and the suite fails instead of the story shipping a stale claim.
+// The who chapter states the data's vintage in prose — "the 2021 release, read at 2019", "2023
+// figures" — in all three languages, because those years change only on a manual data commit. This
+// is the forcing function for that commit: refresh causes.json or mortality-age-sex.json to a new
+// year and forget the prose, and the suite fails instead of the story shipping a stale claim.
+//
+// The cause table needs both of its years named. Release and reference year differ — the 2021
+// release carries a back-series and the project reads 2019 out of it — and a prose line that gave
+// only one of them would be as wrong as a stale one, in a chapter whose whole subject is where the
+// numbers come from.
 describe("who chapter vintages", () => {
   for (const locale of LOCALES) {
     it(`states the current data years in ${locale}`, () => {
       const who = roadmapSections(read(locale)).find((section) => section.key === "who");
       expect(who).toBeDefined();
       expect(who!.body).toContain(String(causes.year));
+      expect(who!.body).toContain(String(causes.release));
       expect(who!.body).toContain(String(mortality.year));
     });
   }

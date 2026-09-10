@@ -261,7 +261,7 @@ Jedes Aufblitzen bekommt einen Satz, gezogen aus der Verteilung des Ortes, an de
 
 # Alter, dann Geschlecht, dann eine Ursache
 
-**Alter und Geschlecht** stammen aus der UN-Tabelle der Sterbefälle nach Alter und Geschlecht aus den World Population Prospects, in den Zahlen von 2023. Die **Ursache** stammt aus den Global Health Estimates der Weltgesundheitsorganisation — den Schätzungen von 2021, der neuesten Ausgabe — genommen auf ihrer feinsten Ebene — den wiedererkennbaren Ursachen, nicht den klinischen Gruppen darüber — und reduziert auf die acht stärksten je Land, Geschlecht und Altersgruppe, wobei alles Übrige zu „andere Ursachen" zusammengefasst wird.
+**Alter und Geschlecht** stammen aus der UN-Tabelle der Sterbefälle nach Alter und Geschlecht aus den World Population Prospects, in den Zahlen von 2023. Die **Ursache** stammt aus den Global Health Estimates der Weltgesundheitsorganisation — der Ausgabe von 2021, gelesen bei 2019, dem letzten Jahr vor der Pandemie, damit Covid nicht als die gewöhnliche Art zu sterben gezeichnet wird — genommen auf ihrer feinsten Ebene — den wiedererkennbaren Ursachen, nicht den klinischen Gruppen darüber — und reduziert auf die acht stärksten je Land, Geschlecht und Altersgruppe, wobei alles Übrige zu „andere Ursachen" zusammengefasst wird.
 
 Sie werden **in dieser Reihenfolge** gezogen, sodass eine Ursache immer nur aus der Alters- und Geschlechtsgruppe kommt, die plausibel daran stirbt. Zieh die Ursache zuerst, und du bekommst Zwanzigjährige mit Demenz.
 

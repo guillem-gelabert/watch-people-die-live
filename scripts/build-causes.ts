@@ -1,8 +1,14 @@
 // Build a compact cause-of-death distribution by country, age band and sex.
 //
-// Source: WHO Global Health Estimates 2021, fetched by scripts/fetch-who-ghe.ts from
-// WHO's keyless xMart OData API. 183 countries — including every country with no usable
-// death registration — 19 disjoint five-year age bands, both sexes, 175 leaf causes.
+// Source: WHO Global Health Estimates, release 2021, at reference year 2019 — fetched by
+// scripts/fetch-who-ghe.ts from WHO's keyless xMart OData API. 183 countries — including every
+// country with no usable death registration — 19 disjoint five-year age bands, both sexes, 175
+// leaf causes.
+//
+// Release and reference year are two different things and the output names both. The xMart
+// GHE_FULL endpoint is one release — the 2021 vintage of WHO's modelling — and it serves
+// estimates for every reference year from 2000 to 2021. "GHE 2019" would otherwise be ambiguous:
+// there is also a real GHE 2019 *release*, built with superseded methods, which this is not.
 //
 // This used to be built from a hand-exported IHME GBD CSV. GBD gates every data endpoint
 // behind an interactive sign-in and caps a download at 100,000 rows, which makes the
@@ -11,7 +17,7 @@
 // subnational detail, which is a separate export (see .planning phase 04-03).
 //
 // Output: data/causes.json
-//   { source, year, coverage, bands, causes: [<label>...],
+//   { source, release, year, coverage, bands, causes: [<label>...],
 //     global: { m:[ {causeIdx:weight,...} per band ], f:[...] },
 //     countries: { <m49>: { m:[...], f:[...] }, ... } }
 //
@@ -27,6 +33,24 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, "..");
 const OUT = path.join(ROOT, "data", "causes.json");
 const SRC_DIR = path.join(ROOT, "data", "source", "who-ghe");
+
+// The release vintage the xMart GHE_FULL endpoint serves. A property of the endpoint, not of the
+// fetch: when WHO publishes a newer release the endpoint's contents and this constant change
+// together. Hardcoded deliberately, unlike the reference year, which is read from the filename so
+// a --src of some other year cannot be mislabelled.
+const GHE_RELEASE = 2021;
+
+// The reference year this project builds from, and the reason it is not simply the newest one on
+// offer. 2020 and 2021 are pandemic years: in the 2021 estimates covid-19 is a third of mid-life
+// cause weight in India and Brazil while Japan and China report none of it, which the feed would
+// draw as a permanent, present-tense fact about how people die. It is also the rule the rest of
+// the model already follows — pipeline/seasonal_composition.py drops 2020-2022 from every measured
+// curve (COVID_YEARS), and the cause table was the one layer that did not.
+//
+// 2019 is the last pre-pandemic year in the release. Consequences worth knowing: the story's prose
+// states this year in all three languages and app/roadmap/storyTranslations.test.ts fails if it
+// drifts, and the cause vintage now sits five years behind the World Bank CDR the rates come from.
+export const REFERENCE_YEAR = 2019;
 
 // MUST match BANDS in build-mortality.ts and AGE_BANDS in app/globe/persona.ts.
 const BANDS: [number, number][] = [
@@ -225,6 +249,9 @@ interface Coverage {
 interface CausesOutput {
   source: string;
   citation: string;
+  // The modelling vintage, and the year the estimates describe. Two fields because they differ:
+  // the 2021 release carries a back-series, and this project reads 2019 out of it.
+  release: number;
   year: number;
   generatedAt: string;
   coverage: Coverage;
@@ -397,10 +424,14 @@ function main(): void {
   for (const [m49, o] of trimmedCountries) countries[m49] = reindex(o);
 
   const out: CausesOutput = {
-    source: `WHO Global Health Estimates ${year} — deaths by cause, age and sex`,
+    source:
+      `WHO Global Health Estimates ${GHE_RELEASE} — deaths by cause, age and sex, ` +
+      `${year} estimates`,
     citation:
-      `World Health Organization, data.who.int, Global Health Estimates ${year}: Deaths by ` +
-      `Cause, Age, Sex, by Country and by Region, 2000-${year} (CC BY 4.0).`,
+      `World Health Organization, data.who.int, Global Health Estimates ${GHE_RELEASE}: Deaths ` +
+      `by Cause, Age, Sex, by Country and by Region, 2000-${GHE_RELEASE} (CC BY 4.0). ` +
+      `Reference year ${year}.`,
+    release: GHE_RELEASE,
     year,
     // When this file was built — the release label above says which estimates these are, this
     // says when we pulled them. The same distinction conflicts.json draws with generatedAt.
@@ -533,11 +564,11 @@ function labelOf(cause: string | undefined): string {
   return LABELS.get(v) || v;
 }
 
-// The GHE release year, read from the fetcher's filename pattern (ghe-<year>-deaths.csv). The
+// The reference year, read from the fetcher's filename pattern (ghe-<year>-deaths.csv). The
 // output's source/citation/year used to be hardcoded 2021 literals, which meant a --year=2022
 // refetch would have shipped a causes.json still labelled 2021 — the numbers new, the label wrong,
 // and nothing to catch it. Deriving the label from the same file the numbers come from removes
-// that failure by construction.
+// that failure by construction. The release vintage is GHE_RELEASE and does not come from here.
 export function yearFromSourceName(name: string): number | null {
   const match = /^ghe-(\d{4})-deaths\.csv(\.gz)?$/i.exec(path.basename(name));
   return match ? Number(match[1]) : null;
@@ -549,21 +580,18 @@ function resolveSource(): string {
     if (!fs.existsSync(p)) throw new Error(`--src file not found: ${p}`);
     return p;
   }
-  const files = fs.existsSync(SRC_DIR)
-    ? fs
-        .readdirSync(SRC_DIR)
-        .filter((f) => /\.csv(\.gz)?$/i.test(f))
-        .sort()
-        .reverse()
-    : [];
-  const pick = files[0];
-  if (!pick) {
-    throw new Error(
-      `No WHO GHE CSV found under ${rel(SRC_DIR)}. ` +
-        `Run: pnpm run fetch:who-ghe  (keyless, no account needed)`,
-    );
+  // Named, not inferred. This used to take whichever filename sorted highest, which reads as
+  // "the newest data" and silently became the wrong rule the moment the project chose an older
+  // reference year on purpose: ghe-2021-deaths.csv is still on disk and would win every time.
+  for (const name of [`ghe-${REFERENCE_YEAR}-deaths.csv`, `ghe-${REFERENCE_YEAR}-deaths.csv.gz`]) {
+    const p = path.join(SRC_DIR, name);
+    if (fs.existsSync(p)) return p;
   }
-  return path.join(SRC_DIR, pick);
+  throw new Error(
+    `No WHO GHE CSV for reference year ${REFERENCE_YEAR} under ${rel(SRC_DIR)}. ` +
+      `Run: pnpm run fetch:who-ghe -- --year=${REFERENCE_YEAR}  (keyless, no account needed). ` +
+      `Pass --src=<path> to build from a different year on purpose.`,
+  );
 }
 
 function rel(p: string): string {

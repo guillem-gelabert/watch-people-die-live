@@ -28,7 +28,6 @@ export const causesDe: Record<string, string> = {
   "kidney cancer": "Nierenkrebs",
   "bladder cancer": "Blasenkrebs",
   "brain and central nervous system cancer": "Hirn- und ZNS-Krebs",
-  "thyroid cancer": "Schilddrüsenkrebs",
   "hodgkin lymphoma": "Hodgkin-Lymphom",
   "non-hodgkin lymphoma": "Non-Hodgkin-Lymphom",
   "multiple myeloma": "multiples Myelom",
@@ -64,7 +63,6 @@ export const causesDe: Record<string, string> = {
   tuberculosis: "Tuberkulose",
   "HIV/AIDS": "HIV/Aids",
   "a diarrhoeal disease": "Durchfallerkrankung",
-  "otitis media": "Mittelohrentzündung",
   meningitis: "Hirnhautentzündung",
   encephalitis: "Gehirnentzündung",
   pertussis: "Keuchhusten",
@@ -73,13 +71,10 @@ export const causesDe: Record<string, string> = {
   "acute hepatitis": "akute Hepatitis",
   "other unspecified infectious diseases": "andere nicht näher bezeichnete Infektionskrankheiten",
   "sexually transmitted infections excluding hiv": "sexuell übertragbare Infektionen außer HIV",
-  "covid-19": "Covid-19",
 
   // --- Verdauung und Nieren -----------------------------------------------
   "upper digestive system diseases": "Erkrankungen des oberen Verdauungstrakts",
-  appendicitis: "Blinddarmentzündung",
   "paralytic ileus and intestinal obstruction": "paralytischer Ileus und Darmverschluss",
-  "inflammatory bowel disease": "chronisch-entzündliche Darmerkrankung",
   pancreatitis: "Bauchspeicheldrüsenentzündung",
   "cirrhosis and other chronic liver diseases": "Leberzirrhose und andere chronische Leberleiden",
   "other digestive diseases": "andere Verdauungskrankheiten",
@@ -92,11 +87,13 @@ export const causesDe: Record<string, string> = {
   "endocrine, metabolic, blood, and immune disorders":
     "endokrine, Stoffwechsel-, Blut- und Immunerkrankungen",
   "protein-energy malnutrition": "Protein-Energie-Mangelernährung",
+  "other nutritional deficiencies": "andere Ernährungsmängel",
 
   // --- Nerven und Psyche ---------------------------------------------------
   "Alzheimer's & dementia": "Alzheimer und Demenz",
   "parkinson's disease": "Parkinson",
   "idiopathic epilepsy": "idiopathische Epilepsie",
+  "multiple sclerosis": "Multiple Sklerose",
   "other neurological disorders": "andere neurologische Erkrankungen",
   "alcohol use disorders": "Alkoholabhängigkeit",
   "drug use disorders": "Drogenabhängigkeit",

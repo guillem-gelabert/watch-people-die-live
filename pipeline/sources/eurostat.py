@@ -143,7 +143,11 @@ ICD10_TO_CAUSE: dict[str, str] = {
     "C64": "kidney cancer",
     "C67": "bladder cancer",
     "C70-C72": "brain and central nervous system cancer",
-    "C73": "thyroid cancer",
+    # C73 (thyroid cancer) is deliberately absent. It is a real ICD-10 code and a real WHO cause,
+    # but data/causes.json ships only the strongest eight causes per country, sex and age band,
+    # and at the 2019 reference year thyroid cancer is nobody's top eight. chapter_of_cause_label()
+    # has to stay a subset of that trimmed vocabulary or seasonal_composition.build() raises, so
+    # the entry comes back the day a reference year reaches it again.
     "C81-C86": "non-hodgkin lymphoma",
     "C88_C90_C96": "multiple myeloma",
     "C91-C95": "leukaemia",

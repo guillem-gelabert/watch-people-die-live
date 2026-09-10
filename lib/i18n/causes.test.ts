@@ -70,7 +70,6 @@ describe("cause labels", () => {
         // after a person. Anything else matching its key is an untranslated placeholder.
         const SAME_IN_EVERY_LANGUAGE = new Set([
           "COPD",
-          "covid-19", // German capitalises it; Catalan does not
           "asthma",
           "malaria",
           "dengue",
