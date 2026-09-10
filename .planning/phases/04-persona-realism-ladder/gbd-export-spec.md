@@ -11,6 +11,61 @@ chunked export was never viable at `max_rows_per_download: 100000`. What GBD is 
 the one thing WHO has at no resolution: **subnational**. That is a single query, because dropping the
 cause dimension collapses the row count.
 
+## Amendment 2026-09-10 — the limit is a row budget per release, not a rate
+
+Read this before planning any export larger than the one below. It was established by reading the
+tool's own JS bundle (`/gbd-results/build/main-*.js`), not by probing, so it cost nothing and spent
+no quota.
+
+**The two 429s are different things, and only one of them is a quota.**
+
+| Client error | HTTP | What the tool tells the user | What it actually is |
+| --- | --- | --- | --- |
+| `TOO_MANY_REQUESTS` | 429 | "the maximum number of downloads you can request at one time" | Concurrency. Queue them and it clears. Not a rate limit over time. |
+| `CAP_EXCEEDED` | 429 | "your download limit **for this GBD release**" | A cumulative cap that resets only when IHME publishes a new release. |
+
+So **there is no daily or weekly quota to pace against** — earlier notes that describe one, including
+s07's "enforces daily/weekly quotas", are wrong and this section supersedes them. Pacing a large
+export over several sittings buys nothing, because the budget does not refill.
+
+**The cap is counted in rows, not requests.** The 429 body carries `cap_rows` and `rows_remaining`,
+which the client surfaces as `capRows` / `rowsRemaining`. Chunking a query into more downloads of
+100,000 rows therefore does not evade it — 99 downloads spend 9.9M rows of the same allowance that
+one download of 100,000 spends 100,000 of.
+
+**The cap's value is not published.** `app_settings.php` exposes only `max_rows_per_download`.
+`rows_remaining` arrives solely on the 429 that says you have already spent it. What is known: the
+age/sex export of 2026-08-25 spent **31,812 rows** of the GBD 2023 allowance, and the cap had not
+been reached at that point.
+
+**For anything larger, the intended door is `https://myrequests.healthdata.org/request/`** — IHME's
+own route for larger datasets, named in the `CAP_EXCEEDED` message. That is the path to take rather
+than 99 downloads, and it is the one their terms point at.
+
+### Row budget for a cause export, if one is ever attempted
+
+The cause dimension is what makes this expensive. Counts from `gbd-metadata.json` and
+`gbd-hierarchy.json` already in `data/source/gbd-subnational-age-sex/`: **380 causes, 309 of them
+`most_detailed`**, over a tree of 8 / 22 / 176 / 173 at depths 1-4.
+
+Multiply against the export that is already proven — 723 locations x 22 ages x 2 sexes = 31,812
+rows per cause:
+
+| Shape | Causes | Rows | Downloads at the 100k cap |
+| --- | --- | --- | --- |
+| All locations, most detailed | 309 | 9.83M | 99 |
+| All locations, depth 3 | 176 | 5.60M | 56 |
+| India + Brazil + Mexico + Indonesia (129 locations), most detailed | 309 | 1.75M | 18 |
+| All locations, depth 2 | 22 | 0.70M | 7 |
+
+Given a single non-refilling budget of unknown size, the depth-2 row is the only one that should be
+attempted speculatively. The others are requests to make of IHME, not downloads to take.
+
+Note what a depth-2 export would and would not be. Twenty-two groups like "Cardiovascular diseases"
+cannot replace `data/causes.json`'s 87 specific WHO labels; it would be a *reweighting* layer,
+shifting weight between chapters the way `pipeline/seasonal_composition.py` already reweights by
+ICD-10 chapter. That machinery exists and is the reason the coarse export is usable at all.
+
 ## The endpoints
 
 Base: `https://vizhub.healthdata.org/gbd-results/`. Probed 2026-08-25.
@@ -56,9 +111,10 @@ Findings from driving the endpoint with a real token. These replace guesswork in
   already exists.
 - **Unresolved: `download.php` is not reliably drivable headlessly.** After roughly twenty requests
   the same body that had just returned 409 began returning 500 consistently, including the replay of
-  a known-good query. That looks like throttling rather than a payload problem — the client code has
-  `TOO_MANY_REQUESTS` and `CAP_EXCEEDED` error paths, so an account-level cap is real. Do not brute
-  force this; see the permalink route below.
+  a known-good query. **The throttling explanation offered here was wrong** — see the 2026-09-10
+  amendment above: both quota errors return 429, not 500, so whatever produced those 500s is still
+  unknown.
+  Do not brute force this; see the permalink route below.
 
 ## Preferred route: build a permalink, download it once
 
