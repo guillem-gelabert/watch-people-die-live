@@ -38,9 +38,33 @@ from ..contract import FetchedFile
 
 API = "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data"
 
-# One reference year for the two annual tables. Eurostat publishes NUTS-2 causes on a longer
-# lag than deaths, so this is the latest year both tables carry in full.
-YEAR = 2022
+# One reference year for the two annual tables.
+#
+# Was 2022, chosen as the latest year both tables carried in full. That put the annual layers
+# inside pipeline.curve.COVID_YEARS ({2020, 2021, 2022}), which 04-07 noticed and judged
+# acceptable -- "fine for the age x sex and cause layers built above (neither varies by month)"
+# (see SEASONAL_YEARS below) -- and worked around only for the month-shape tensor.
+#
+# Reversed 2026-09-15. The annual age x sex layer is not month-shaped, but it is still a
+# distribution of *who died*, and a pandemic year is not a normal one on that axis either: it
+# reaches the globe as the tier-0 regional pyramids in scripts/build-age-sex-cells.ts, covering
+# 8.8% of simulated deaths. Two things decided it. The rest of the model excludes these years by
+# rule, and data/causes.json now reads WHO GHE at reference year 2019 -- so 2019 here puts the
+# project's two cause sources on one reference year instead of three apart.
+#
+# Measured before moving (NUTS-2 regions returning a value, 2026-09-15):
+#   demo_r_magec   2019: 460   2022: 445   2023: 444   2024: 404
+#   hlth_cd_asdr2  leaf codes hold at ~256-289 across 2019/2022/2023; C16 280/281/289
+# So 2019 is the best year for the deaths table and within a few regions on causes. 2023 was the
+# alternative -- clean by COVID_YEARS, most complete on causes -- and loses only on coherence.
+#
+# What does NOT block going back: the `TOTAL` icd10 code exists only from 2022 (older years use
+# `A-R_V-Y`). The parser maps leaf groupings and never the roll-ups, by the rule documented at
+# _ICD10_TO_LABEL below, so neither code is read.
+#
+# Eurostat publishes NUTS-2 causes on a longer lag than deaths: demo_r_magec runs to 2024,
+# hlth_cd_asdr2 only to 2023, so a shared year can never be later than the cause table's last.
+YEAR = 2019
 
 # ISO weeks of the same reference year, fetched in one request rather than 52.
 WEEKS = tuple(f"{YEAR}-W{w:02d}" for w in range(1, 53))
