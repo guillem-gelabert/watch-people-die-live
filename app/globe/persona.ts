@@ -78,6 +78,19 @@ interface AgeSexCellsData {
   tier?: number[];
 }
 
+// data/cause-cells.json, built by scripts/build-cause-regional.ts: per-cell multipliers that
+// shift cause weight between GBD chapter groups, so a death in Kerala does not draw Uttar
+// Pradesh's cause mix. Each archetype holds, per sex and age band, one multiplier per group in
+// `groups` order plus a final one for the complement — everything `labelGroup` does not name.
+// `classId` is aligned to data/rate-grid.json's cell order exactly as AgeSexCellsData's is, and
+// -1 means no regional cause data, so the national table stands unchanged.
+interface CauseCellsData {
+  groups: string[];
+  labelGroup: Record<string, number>;
+  archetypes: { m: number[][]; f: number[][] }[];
+  classId: number[];
+}
+
 // The words the sentence is assembled from, in the reader's language. The cause is not among
 // them: it comes from the cause export, which is an English taxonomy of a couple of hundred
 // labels, and a hand-translation of it would be a medical claim rather than a string.
@@ -187,6 +200,10 @@ const CAUSES: FallbackCause[] = [
 let MORT: MortalityData | null = null;
 let CAUSE: CauseData | null = null;
 let CELLS: AgeSexCellsData | null = null;
+// Regional cause reweighting, from the one GBD subnational cause download that fit inside the
+// release allowance. Optional in exactly the way CELLS and SEASONAL are: a missing or failed load
+// leaves every death drawing its country's national cause mix, which is what shipped before this.
+let CAUSE_CELLS: CauseCellsData | null = null;
 // Month-conditioned reweighting of age and cause (04-07): data/seasonal-composition.json's
 // measured curves, transferred to every country via lib/seasonal-composition.ts's donor cascade.
 // Optional in every sense CELLS is: a bonus refinement layer, never required for a persona to be
@@ -206,10 +223,11 @@ async function loadJson<T>(url: string): Promise<T | null> {
 // Fetch the real distributions once. Prefers the full build outputs, falls back to the
 // bundled sample, then leaves things null (callers use the tables above). Never throws.
 export async function initPersona(): Promise<void> {
-  const [mort, cause, cells, seasonal] = await Promise.all([
+  const [mort, cause, cells, causeCells, seasonal] = await Promise.all([
     loadJson<MortalityData>("/data/mortality-age-sex.json"),
     loadJson<CauseData>("/data/causes.json"),
     loadJson<AgeSexCellsData>("/data/age-sex-cells.json"),
+    loadJson<CauseCellsData>("/data/cause-cells.json"),
     loadSeasonalComposition().catch(() => null),
   ]);
   let sample: SamplePersonasData | null = null;
@@ -219,6 +237,7 @@ export async function initPersona(): Promise<void> {
   // No sample-file fallback for this one: it is a bonus refinement layer, not a required data
   // file, so a missing/failed fetch just means every death falls back to the national pyramid.
   CELLS = cells;
+  CAUSE_CELLS = causeCells;
   // Same story: loadSeasonalComposition() already never throws and resolves null on any
   // failure, so a missing/failed load just means every death keeps the flat annual distribution.
   SEASONAL = seasonal;
@@ -326,11 +345,26 @@ export function sexLabel(
 // The cause weights in play for one country/sex/band/date — the exact numbers pickCause draws
 // from, factored out so explainPersona() can show the draw's odds without restating its rules.
 // Null when the export cannot speak to this band and the fallback table has to answer.
+// The regional cause multipliers in play for one cell, sex and band — one per GBD group in
+// `groups` order, plus a final one for the complement. Null when this cell has no regional cause
+// data, which is every cell outside the 474 regions the subnational export reaches.
+function regionalCauseRow(
+  cellIndex: number | undefined,
+  sex: Sex,
+  bandIdx: number,
+): number[] | null {
+  if (cellIndex === undefined || !CAUSE_CELLS) return null;
+  const classId = CAUSE_CELLS.classId[cellIndex];
+  if (classId === undefined || classId < 0) return null;
+  return CAUSE_CELLS.archetypes[classId]?.[sex]?.[bandIdx] ?? null;
+}
+
 function causeWeights(
   m49: number | undefined,
   sex: Sex,
   bandIdx: number,
   eventDate: Date | undefined,
+  cellIndex?: number,
 ): { label: string; weight: number }[] | null {
   // The band axis is only real when the builder says so. An all-ages export repeats one set of
   // weights across every band, so reading it would hand an infant a pensioner's cause — the
@@ -346,6 +380,13 @@ function causeWeights(
   // here rather than to `cell` itself so the data file's weights stay untouched for the next
   // persona drawn in a different month.
   const phase = eventDate ? utcYearPhase(eventDate) : null;
+  // The region's own cause contrast, where the GBD subnational export reaches. A label named by
+  // the crosswalk takes its group's multiplier; everything else takes the complement's, which
+  // prices the unobserved remainder as a whole while leaving the national proportions inside it
+  // untouched. Applied here rather than to `cell`, for the same reason the seasonal multiplier is:
+  // the data file's weights must stay untouched for the next persona drawn somewhere else.
+  const regional = regionalCauseRow(cellIndex, sex, bandIdx);
+  const complement = regional?.[regional.length - 1] ?? 1;
   const out: { label: string; weight: number }[] = [];
   let total = 0;
   for (const i of Object.keys(cell)) {
@@ -354,7 +395,9 @@ function causeWeights(
     const base = cell[i] as number;
     const seasonal =
       phase === null || !SEASONAL ? 1 : Math.max(0, SEASONAL.causeMultiplier(m49, label, phase));
-    const weight = base * seasonal;
+    const group = CAUSE_CELLS?.labelGroup[label];
+    const spatial = !regional ? 1 : ((group === undefined ? complement : regional[group]) ?? 1);
+    const weight = base * seasonal * spatial;
     out.push({ label, weight });
     total += weight;
   }
@@ -373,8 +416,9 @@ function pickCause(
   bandIdx: number,
   age: number,
   eventDate: Date | undefined,
+  cellIndex: number | undefined,
 ): string {
-  const weights = causeWeights(m49, sex, bandIdx, eventDate);
+  const weights = causeWeights(m49, sex, bandIdx, eventDate, cellIndex);
   if (weights) return weightedPick(weights, (c) => c.weight).label;
   // Fallback: the illustrative WHO-style table, filtered to a valid age + sex.
   const valid = CAUSES.filter((c) => age >= c.min && age <= c.max && (!c.sex || c.sex === sex));
@@ -407,7 +451,7 @@ export function makePersona(
   // Sampled as the English source label, then named: `cause` stays the identity so anything
   // reading a persona downstream can still match on it, and only `text` is in the reader's
   // language.
-  const cause = pickCause(m49, sex, idx, age, eventDate);
+  const cause = pickCause(m49, sex, idx, age, eventDate, cellIndex);
   const who = sexLabel(words, sex, age);
   const text = fill(words.persona, {
     who,
@@ -476,7 +520,7 @@ export function explainPersona(
     CELLS.archetypes[CELLS.classId[cellIndex] ?? -1] !== undefined;
   const tier = usedCell ? (CELLS?.tier?.[cellIndex] ?? null) : null;
 
-  const causes = causeWeights(m49, sex, bandIdx, eventDate) ?? [];
+  const causes = causeWeights(m49, sex, bandIdx, eventDate, cellIndex) ?? [];
   const causeP = normalise(causes.map((c) => c.weight));
 
   return {

@@ -68,18 +68,24 @@ describe("data/country-rate.json", () => {
   it("recovers a population from every weight the island can be asked to explain", () => {
     // The runtime never joins the density grid — it divides. Every firing cell must therefore
     // yield a positive, finite population that rounds to the gridded count.
+    // Violations are collected and asserted once. Two expects per cell across 59,954 cells is
+    // ~120,000 of them, which ran at the edge of vitest's 5s default and timed out as soon as the
+    // suite gained another file. One assertion is fast and names every offender instead of the
+    // first — the same shape as scripts/build-cause-regional.test.ts's archetype sweep.
     let worstRounding = 0;
+    const unusable: string[] = [];
     for (const [lon, lat, m49, w] of grid.cells) {
       if (!(w > 0)) continue;
       const rate = rates[String(m49)] as number;
       const derived = w / rate;
-      expect(Number.isFinite(derived)).toBe(true);
-      expect(derived).toBeGreaterThan(0);
+      if (!Number.isFinite(derived) || derived <= 0)
+        unusable.push(`${lon},${lat},${m49}: w=${w} rate=${rate} -> ${derived}`);
       const pop = popByCell.get(`${lon},${lat},${m49}`);
       if (pop !== undefined && pop > 0) {
         worstRounding = Math.max(worstRounding, Math.abs(derived - pop) / pop);
       }
     }
+    expect(unusable).toEqual([]);
     // A tenth of a person on the smallest inhabited cell — well inside "12,400 people".
     expect(worstRounding).toBeLessThan(1e-4);
   });

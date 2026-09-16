@@ -266,6 +266,8 @@ They are sampled **in that order**, so a cause is only ever drawn from the age a
 
 Both tables ship as JSON in the repository, so the feed needs no runtime API call and reads the same offline. The cause table used to come from the IHME Global Burden of Disease, hand-exported from a results tool that puts every download behind a sign-in and a hundred-thousand-row cap. The WHO table is one request and no account, which is most of why it is the one here.
 
+Getting cause below the country level means going back to IHME, and back to that cap. The subnational export is 723 places by 22 age groups by two sexes by 22 cause groups — seven hundred thousand rows, or eight downloads, against an allowance that is spent per release and never refills. So the eight were ordered by how many deaths each carried rather than by the order the tool lists them in. The allowance ran out after the first. That one download holds cardiovascular disease, the cancers and chronic respiratory disease — 55% of all deaths — at regional resolution; in the tool's own order the same single download would have held about a tenth of that. It is in the feed: for the 45% of deaths that fall inside one of the 474 regions, those three groups are now weighted by the region rather than the country, and everything else moves with the remainder so the three do not quietly inflate. Outside those regions, and for the other nineteen groups, the national table still answers.
+
 [sampling order]
 
 # Then the month tilts it

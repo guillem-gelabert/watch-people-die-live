@@ -266,6 +266,8 @@ Es mostregen **en aquest ordre**, de manera que una causa només es treu de la f
 
 Totes dues taules s'inclouen com a JSON al repositori, així que el flux no necessita cap crida a una API en temps d'execució i es llegeix igual sense connexió. La taula de causes venia abans de l'Estudi de la Càrrega Global de Malaltia de l'IHME, exportada a mà d'una eina que tanca cada descàrrega darrere d'un compte i d'un límit de cent mil files. La de l'OMS és una sola petició sense credencials, i això és bona part del motiu que sigui la que hi ha aquí.
 
+Baixar la causa per sota del país vol dir tornar a l'IHME, i tornar a aquell límit. L'exportació subnacional són 723 llocs per 22 franges d'edat per dos sexes per 22 grups de causes — set-centes mil files, o vuit descàrregues, contra una quota que es gasta per edició i no es recupera mai. Per això les vuit es van ordenar per quantes morts portava cadascuna, i no per l'ordre en què l'eina les llista. La quota es va exhaurir després de la primera. Aquella descàrrega conté les malalties cardiovasculars, els càncers i les malalties respiratòries cròniques — el 55% de totes les morts — a resolució regional; en l'ordre propi de l'eina, la mateixa descàrrega n'hauria portat aproximadament una desena part. Ja és al flux: per al 45% de les morts que cauen dins d'una de les 474 regions, aquests tres grups ara es ponderen per la regió i no pel país, i tota la resta es mou amb el romanent perquè els tres no s'inflin en silenci. Fora d'aquestes regions, i per als altres dinou grups, continua responent la taula nacional.
+
 [sampling order]
 
 # Després el mes ho decanta

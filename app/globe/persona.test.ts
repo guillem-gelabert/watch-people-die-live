@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { en } from "@/lib/i18n/en";
-import { initPersona, makePersona, type Persona } from "./persona";
+import { explainPersona, initPersona, makePersona, type Persona } from "./persona";
 
 // initPersona() reads its distributions over fetch, so every test here serves the files it wants
 // the module to see and then drives the public API — makePersona() — rather than reaching inside.
@@ -168,6 +168,104 @@ describe("pickCause coverage guard", () => {
 
     expect(causesOf(personas(200, NGA))).toEqual(new Set(["a country cause"]));
     expect(causesOf(personas(200, 724))).toEqual(new Set(["a global cause"]));
+  });
+});
+
+// A cause export with two labels of equal weight in every band: one the crosswalk names, one it
+// does not. With a flat national table, the split a persona draws IS the regional multiplier.
+function twoLabelExport() {
+  const cells = () => Array.from({ length: 9 }, () => ({ 0: 1, 1: 1 }));
+  return {
+    causes: ["a heart thing", "something else"],
+    coverage: { location: "global", age: "age_bands", sex: "male_female" },
+    global: { m: cells(), f: cells() },
+    countries: {},
+  };
+}
+
+// One archetype that multiplies the named group by 4 and the complement by 0.25, in every band
+// and both sexes. Cell 0 gets it; cell 1 is -1, which is how the file says "no regional data".
+function causeCells(group: number[], complement: number) {
+  const row = [...group, complement];
+  const bands = Array.from({ length: 9 }, () => row);
+  return {
+    groups: ["Cardiovascular diseases"],
+    labelGroup: { "a heart thing": 0 },
+    archetypes: [{ m: bands, f: bands }],
+    classId: [0, -1],
+  };
+}
+
+const shareOf = (drawn: Persona[], label: string) =>
+  drawn.filter((p) => p.cause === label).length / drawn.length;
+
+describe("regional cause reweighting", () => {
+  it("shifts weight toward the group the region actually dies of", async () => {
+    serve({
+      "/data/mortality-age-sex.json": pyramid(5),
+      "/data/causes.json": twoLabelExport(),
+      "/data/cause-cells.json": causeCells([4], 0.25),
+    });
+    await initPersona();
+
+    // 4 against 0.25 is 94.1% of the weight; the national table alone would be 50%.
+    const drawn = personasAt(600, undefined, 0);
+    expect(shareOf(drawn, "a heart thing")).toBeGreaterThan(0.85);
+  });
+
+  it("leaves a cell with no regional data on the national mix", async () => {
+    serve({
+      "/data/mortality-age-sex.json": pyramid(5),
+      "/data/causes.json": twoLabelExport(),
+      "/data/cause-cells.json": causeCells([4], 0.25),
+    });
+    await initPersona();
+
+    // classId[1] is -1. Two equal weights, so this is a coin flip and must stay one.
+    const drawn = personasAt(600, undefined, 1);
+    expect(shareOf(drawn, "a heart thing")).toBeGreaterThan(0.4);
+    expect(shareOf(drawn, "a heart thing")).toBeLessThan(0.6);
+  });
+
+  it("draws the national mix when the layer is missing entirely", async () => {
+    // The file is optional in the way age-sex-cells.json and seasonal-composition.json are: an
+    // absent or failed fetch must leave the feed exactly as it was before this layer existed.
+    serve({
+      "/data/mortality-age-sex.json": pyramid(5),
+      "/data/causes.json": twoLabelExport(),
+    });
+    await initPersona();
+
+    const drawn = personasAt(600, undefined, 0);
+    expect(shareOf(drawn, "a heart thing")).toBeGreaterThan(0.4);
+    expect(shareOf(drawn, "a heart thing")).toBeLessThan(0.6);
+  });
+
+  it("applies the complement multiplier to labels the crosswalk does not name", async () => {
+    // The mirror of the first case: the unnamed label is the one favoured, which is only possible
+    // if the complement slot is being read rather than defaulted to 1.
+    serve({
+      "/data/mortality-age-sex.json": pyramid(5),
+      "/data/causes.json": twoLabelExport(),
+      "/data/cause-cells.json": causeCells([0.25], 4),
+    });
+    await initPersona();
+
+    const drawn = personasAt(600, undefined, 0);
+    expect(shareOf(drawn, "something else")).toBeGreaterThan(0.85);
+  });
+
+  it("reports the reweighted odds in the derivation, not the national ones", async () => {
+    serve({
+      "/data/mortality-age-sex.json": pyramid(5),
+      "/data/causes.json": twoLabelExport(),
+      "/data/cause-cells.json": causeCells([4], 0.25),
+    });
+    await initPersona();
+
+    const shown = explainPersona(undefined, 0, "m", 5, undefined);
+    const heart = shown?.causes.find((c) => c.label === "a heart thing");
+    expect(heart?.p).toBeGreaterThan(0.85);
   });
 });
 

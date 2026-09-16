@@ -16,6 +16,7 @@ const DEST = path.join(ROOT, "public", "data");
 const FILES = [
   "admin1-10m.json",
   "age-sex-cells.json",
+  "cause-cells.json",
   "causes.json",
   "conflicts.json",
   "country-rate.json",

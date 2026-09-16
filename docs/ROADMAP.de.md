@@ -267,6 +267,8 @@ Sie werden **in dieser Reihenfolge** gezogen, sodass eine Ursache immer nur aus 
 
 Beide Tabellen liegen als JSON im Repository, der Feed braucht also keinen API-Aufruf zur Laufzeit und liest sich offline genauso. Die Ursachentabelle kam früher aus der Global Burden of Disease des IHME, von Hand aus einem Werkzeug exportiert, das jeden Download hinter einer Anmeldung und einer Grenze von hunderttausend Zeilen verschließt. Die WHO-Tabelle ist eine einzige Anfrage ohne Zugangsdaten, und das ist ein guter Teil des Grundes, warum sie hier steht.
 
+Die Ursache unter die Landesebene zu bringen heißt zurück zum IHME, und zurück zu jener Grenze. Der subnationale Export sind 723 Orte mal 22 Altersgruppen mal zwei Geschlechter mal 22 Ursachengruppen — siebenhunderttausend Zeilen, also acht Downloads, gegen ein Kontingent, das pro Ausgabe verbraucht wird und sich nie wieder auffüllt. Also wurden die acht danach geordnet, wie viele Tote auf jeden entfielen, und nicht nach der Reihenfolge, in der das Werkzeug sie auflistet. Nach dem ersten war das Kontingent aufgebraucht. Dieser eine Download enthält die Herz-Kreislauf-Erkrankungen, die Krebserkrankungen und die chronischen Atemwegserkrankungen — 55% aller Todesfälle — in regionaler Auflösung; in der Reihenfolge des Werkzeugs hätte derselbe Download etwa ein Zehntel davon enthalten. Er steckt im Feed: für die 45% der Todesfälle, die in eine der 474 Regionen fallen, werden diese drei Gruppen jetzt nach der Region und nicht nach dem Land gewichtet, und alles Übrige bewegt sich mit dem Rest, damit die drei sich nicht stillschweigend aufblähen. Außerhalb dieser Regionen, und für die anderen neunzehn Gruppen, antwortet weiterhin die nationale Tabelle.
+
 [sampling order]
 
 # Dann kippt der Monat es
