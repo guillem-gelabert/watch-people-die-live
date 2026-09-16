@@ -3298,3 +3298,53 @@ footer {
     transition: none;
   }
 }
+
+/* The three translations, at the foot of the story. Same column geometry as .story-section so it
+   sits under the prose rather than beside it, and it carries the bottom safe-area inset because
+   it is the last thing on a 24,000px page — on a notched phone it would otherwise end up under
+   the home indicator. Colours are the sky-following tokens, so it cross-fades with everything
+   else instead of staying one fixed grey through six skies. */
+#story-langs {
+  max-width: var(--story-column-max);
+  margin: 0 auto;
+  padding: 18px var(--story-gutter) calc(var(--sa-bottom, 0px) + 44px);
+  color: var(--muted);
+  font-family: var(--font-libre-baskerville), Georgia, serif;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+#story-langs ul {
+  display: flex;
+  gap: 0.55em;
+  align-items: baseline;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The separator is generated rather than authored, so it is never selected by a copy and never
+   read aloud as a word between two language names. */
+#story-langs li + li::before {
+  margin-right: 0.55em;
+  color: var(--line);
+  content: "-";
+}
+
+#story-langs a {
+  color: var(--muted);
+  text-decoration-color: var(--line);
+  text-underline-offset: 3px;
+  transition: color 0.55s ease;
+}
+
+#story-langs a:hover,
+#story-langs a:focus-visible {
+  color: var(--ink);
+}
+
+/* The language you are already reading: named, not linked, and the one that is not dimmed. */
+#story-langs [aria-current] {
+  color: var(--ink);
+}

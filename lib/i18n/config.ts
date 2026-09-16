@@ -1,9 +1,13 @@
-// The three languages the story is published in, auto-detected from Accept-Language header.
+// The three languages the story is published in, chosen by the `?lang=` query parameter.
 //
-// Detection rules:
-// - Spanish or Catalan → Catalan
-// - German → German
-// - Everything else → English
+// English is the bare URL and needs no parameter: `/` is English, `/?lang=ca` is Catalan,
+// `/?lang=de` is German. Anything else — a missing parameter, a language we do not publish, a
+// typo — is English, because a reader who asked for nothing in particular should get the source
+// language rather than an error.
+//
+// This used to sniff Accept-Language instead, which meant a German browser could not reach the
+// English copy at all and no URL named the language it would render. A parameter is shareable,
+// linkable, cacheable and reversible; a header is none of those.
 
 export const LOCALES = ["en", "ca", "de"] as const;
 
@@ -22,24 +26,22 @@ export function isLocale(value: unknown): value is Locale {
   return typeof value === "string" && (LOCALES as readonly string[]).includes(value);
 }
 
-// Detect locale from Accept-Language header. Parses the header to extract language codes and
-// returns the best match, falling back to English.
-// Examples: "es-ES,es;q=0.9" → "ca", "de-DE" → "de", "fr-FR" → "en"
-export function resolveLocaleFromHeader(acceptLanguage: string | undefined): Locale {
-  if (!acceptLanguage) return DEFAULT_LOCALE;
+// The locale a `?lang=` value asks for, or English.
+//
+// Next hands a repeated parameter over as an array, so `?lang=de&lang=ca` arrives as
+// ["de", "ca"] rather than a string. Taking the first is arbitrary but it is a choice: the
+// alternative is throwing on a URL a reader can produce by hand, and the first wins matches how
+// the rest of the web reads duplicated parameters.
+export function resolveLocale(value: string | string[] | undefined): Locale {
+  const first = Array.isArray(value) ? value[0] : value;
+  const normalised = first?.trim().toLowerCase();
+  return isLocale(normalised) ? normalised : DEFAULT_LOCALE;
+}
 
-  // Parse Accept-Language header: "es-ES,es;q=0.9,en;q=0.8" → ["es", "ca", "en", ...]
-  const languages = acceptLanguage
-    .split(",")
-    .map((lang) => lang.trim().split(";")[0]?.split("-")[0]?.toLowerCase())
-    .filter((lang): lang is string => Boolean(lang));
-
-  for (const lang of languages) {
-    if (lang === "es" || lang === "ca") return "ca";
-    if (lang === "de") return "de";
-  }
-
-  return DEFAULT_LOCALE;
+// The URL this locale is published at, site-relative. English is the bare path so the canonical
+// address of the story has nothing in it; the other two name themselves.
+export function localePath(locale: Locale): string {
+  return locale === DEFAULT_LOCALE ? "/" : `/?lang=${locale}`;
 }
 
 // The story file each locale reads. English keeps the unsuffixed name it has always had, because

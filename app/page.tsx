@@ -1,23 +1,40 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { headers } from "next/headers";
 import type { Metadata } from "next";
 import StoryClient from "./roadmap/StoryClient";
 import { I18nProvider } from "./roadmap/I18nContext";
-import { LOCALES, resolveLocaleFromHeader, storyFilename } from "@/lib/i18n/config";
+import { LOCALES, localePath, resolveLocale, storyFilename } from "@/lib/i18n/config";
 import { getDictionary } from "@/lib/i18n";
 import { absoluteUrl } from "@/lib/site";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const headersList = await headers();
-  const locale = resolveLocaleFromHeader(headersList.get("accept-language") || undefined);
+// Next passes search params to a server page as a promise, and reading them is what opts this
+// route out of static rendering — which it has to be, since the same path renders three
+// languages.
+type Search = Promise<Record<string, string | string[] | undefined>>;
+
+// The three copies, for the hreflang set. `x-default` points at English because that is the bare
+// URL and the language a reader gets when they express no preference.
+const LANGUAGE_ALTERNATES: Record<string, string> = {
+  ...Object.fromEntries(LOCALES.map((l) => [l, localePath(l)])),
+  "x-default": "/",
+};
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Search;
+}): Promise<Metadata> {
+  const locale = resolveLocale((await searchParams).lang);
   const { meta } = getDictionary(locale);
-  const url = "/";
+  const url = localePath(locale);
   return {
     title: meta.title,
     description: meta.description,
     alternates: {
+      // Each language is its own canonical URL now that each has one. Pointing all three at "/"
+      // would tell a crawler the Catalan and German copies are duplicates of the English.
       canonical: url,
+      languages: LANGUAGE_ALTERNATES,
     },
     openGraph: {
       type: "website",
@@ -37,9 +54,8 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function Page() {
-  const headersList = await headers();
-  const locale = resolveLocaleFromHeader(headersList.get("accept-language") || undefined);
+export default async function Page({ searchParams }: { searchParams: Search }) {
+  const locale = resolveLocale((await searchParams).lang);
   const { meta } = getDictionary(locale);
   // The whole story — running order, section skies and prose — is authored as one markdown file
   // per language and sliced client-side by roadmapSections(). The section keys inside it are

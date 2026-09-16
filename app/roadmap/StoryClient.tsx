@@ -5,6 +5,7 @@ import type { CSSProperties } from "react";
 import GlobeStage from "../globe/GlobeStage";
 import { setHeroActive } from "../globe/stageState";
 import MiniEarth from "./MiniEarth";
+import LanguageSwitch from "./LanguageSwitch";
 import Section from "./Section";
 import { chartPaletteToCssVars, parseSky, rgbCss, skinFromSky, skinToCssVars } from "./palette";
 import { useI18n } from "./I18nContext";
@@ -326,6 +327,7 @@ export default function StoryClient({ markdown }: StoryClientProps) {
           everything a reader came to read. */}
       <main id="story-flow" ref={flowRef}>
         {flow}
+        <LanguageSwitch />
       </main>
     </div>
   );
