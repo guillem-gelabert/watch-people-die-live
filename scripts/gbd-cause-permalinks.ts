@@ -46,8 +46,17 @@ const HEADERS = {
 
 // The permalink whose download is the proven geometry: 723 locations x 22 ages x 2 sexes = 31,812
 // rows, delivered 2026-08-25 as IHME-GBD_2023_DATA-a8bd9db5-1.csv. Every parameter except `cause`
-// is taken from it, including `version: 8016` — which app_settings.php does NOT advertise; it
-// reports 8352, and the tool's own traffic uses 8016.
+// and `version` is taken from it.
+//
+// `version` is the exception, learned the expensive way. The template carries 8016, which the tool
+// was using in August and app_settings.php never advertised. By 2026-09-16 IHME had retired it:
+// every permalink built from the template opened to "The share link you are using was generated
+// from a version of the GBD that is no longer supported". The whole point of cloning a working
+// permalink was that observed facts do not rot — but a stored permalink is a dated artefact, and
+// the release it names ages out from under it. So the version now comes from app_settings.php's
+// `default_gbd_version` on every run, and a mismatch with the template is printed rather than
+// silently accepted. Verified the same day: all 723 template location ids still resolve under
+// 8352, and both versions report the same 22 depth-2 causes, so only the number was stale.
 const TEMPLATE = "gbd-api-2023-permalink/d0073be13a7f988f991b67040b9a27e0";
 
 // GBD's published per-download ceiling, from php/app_settings.php. Asserted against live settings
@@ -124,6 +133,41 @@ function atDepth(nodes: Node[], want: number, depth = 0, out: number[] = []): nu
   return out;
 }
 
+// Approximate share of global deaths per depth-2 group, used only to ORDER the downloads — never
+// to weight anything. The numbers are rounded published GBD figures, not measured here and not
+// read from the export; they are a ranking, and the ranking is not close enough to be sensitive
+// to the rounding. Ordering matters because chunking is sequential: whoever presses Download can
+// stop at any point, or IHME's budget can run out, and the causes bought first should be the ones
+// most deaths are drawn from. In hierarchy order, Cardiovascular and Neoplasms — half of all
+// deaths between them — landed in download 3 behind three of the smallest groups on the list.
+//
+// A group missing from this map is a throw, not a default: GBD renaming a group would otherwise
+// silently sort it last, which is the one outcome this ordering exists to prevent.
+const GLOBAL_DEATH_SHARE = new Map<string, number>([
+  ["Cardiovascular diseases", 32.0],
+  ["Neoplasms", 17.0],
+  ["Chronic respiratory diseases", 7.0],
+  ["Respiratory infections and tuberculosis", 6.0],
+  ["Diabetes and kidney diseases", 4.6],
+  ["Digestive diseases", 4.5],
+  ["Neurological disorders", 4.0],
+  ["Unintentional injuries", 3.1],
+  ["Maternal and neonatal disorders", 3.0],
+  ["Other non-communicable diseases", 2.5],
+  ["Transport injuries", 2.3],
+  ["Self-harm and interpersonal violence", 2.2],
+  ["Enteric infections", 2.2],
+  ["HIV/AIDS and sexually transmitted infections", 1.5],
+  ["Neglected tropical diseases and malaria", 1.2],
+  ["Other infectious diseases", 1.1],
+  ["Nutritional deficiencies", 0.6],
+  ["Substance use disorders", 0.6],
+  ["Musculoskeletal disorders", 0.5],
+  ["Mental disorders", 0.2],
+  ["Skin and subcutaneous diseases", 0.2],
+  ["Sense organ diseases", 0.02],
+]);
+
 async function depthTwoCauses(): Promise<{ id: number; name: string }[]> {
   const hierarchy = await getJson<{ data: { causes: Node[] } }>(`${BASE}/php/hierarchy/`);
   const metadata = await getJson<{ data: { cause: Record<string, { name: string }> } }>(
@@ -135,11 +179,21 @@ async function depthTwoCauses(): Promise<{ id: number; name: string }[]> {
   if (ids.length !== 22) {
     throw new Error(`Expected 22 depth-2 causes, found ${ids.length}. The cause tree has changed.`);
   }
-  return ids.map((id) => {
+  const named = ids.map((id) => {
     const name = metadata.data.cause[String(id)]?.name;
     if (!name) throw new Error(`Cause ${id} has no name in live metadata.`);
-    return { id, name };
+    const share = GLOBAL_DEATH_SHARE.get(name);
+    if (share === undefined) {
+      throw new Error(
+        `Depth-2 cause "${name}" (${id}) is not in GLOBAL_DEATH_SHARE. GBD has renamed or added ` +
+          `a group — add it with its share rather than letting it sort last.`,
+      );
+    }
+    return { id, name, share };
   });
+  // Biggest first, so stopping early costs the least. Ties break on name for a stable plan.
+  named.sort((a, b) => b.share - a.share || a.name.localeCompare(b.name));
+  return named.map(({ id, name }) => ({ id, name }));
 }
 
 function chunk<T>(items: T[], size: number): T[][] {
@@ -150,10 +204,12 @@ function chunk<T>(items: T[], size: number): T[][] {
 
 async function plan() {
   const template = await readPermalink(TEMPLATE);
-  const settings = await getJson<{ data: { max_rows_per_download: number } }>(
-    `${BASE}/php/app_settings.php`,
-  );
+  const settings = await getJson<{
+    data: { max_rows_per_download: number; default_gbd_version: number };
+  }>(`${BASE}/php/app_settings.php`);
   const cap = settings.data.max_rows_per_download;
+  const version = settings.data.default_gbd_version;
+  if (!version) throw new Error("app_settings.php reported no default_gbd_version.");
   if (cap !== MAX_ROWS_PER_DOWNLOAD) {
     console.warn(
       `app_settings.php now reports max_rows_per_download=${cap}, not ${MAX_ROWS_PER_DOWNLOAD}. ` +
@@ -168,7 +224,7 @@ async function plan() {
   const causesPerChunk = Math.max(1, Math.floor(cap / rowsPerCause));
   const chunks = chunk(causes, causesPerChunk);
 
-  return { template, causes, rowsPerCause, causesPerChunk, chunks, cap };
+  return { template, causes, rowsPerCause, causesPerChunk, chunks, cap, version };
 }
 
 async function createPermalink(params: PermalinkParams): Promise<string> {
@@ -179,14 +235,29 @@ async function createPermalink(params: PermalinkParams): Promise<string> {
   });
   const text = await res.text();
   if (!res.ok) throw new Error(`POST permalink.php -> ${res.status} ${text}`);
-  const body = JSON.parse(text) as {
+  // A fourth response shape, learned by running it: permalink.php answers with the finished URL as
+  // a bare JSON string — "https://…/gbd-results?params=gbd-api-2023-permalink/<hash>" — not an
+  // object at all. The object forms are kept because the other endpoints use them and this one is
+  // undocumented enough that assuming any single shape is how the first run failed.
+  const body: unknown = JSON.parse(text);
+  const fromUrl = (value: string): string | undefined =>
+    /[?&]params=([^&]+)/.exec(value)?.[1] ?? (value.includes("/") ? value : undefined);
+  if (typeof body === "string") {
+    const bucket = fromUrl(decodeURIComponent(body));
+    if (bucket) return bucket;
+  }
+  const obj = (body ?? {}) as {
     bucket_path?: string;
     hash?: string;
+    urlForUser?: string;
     data?: { bucket_path?: string; hash?: string };
   };
-  const found = body.bucket_path ?? body.data?.bucket_path;
-  const hash = body.hash ?? body.data?.hash;
-  const bucket = found ?? (hash && `gbd-api-2023-permalink/${hash}`);
+  const hash = obj.hash ?? obj.data?.hash;
+  const bucket =
+    obj.bucket_path ??
+    obj.data?.bucket_path ??
+    (obj.urlForUser && fromUrl(obj.urlForUser)) ??
+    (hash && `gbd-api-2023-permalink/${hash}`);
   if (!bucket) throw new Error(`No bucket_path in permalink response: ${text.slice(0, 200)}`);
   return bucket;
 }
@@ -218,14 +289,17 @@ async function main(): Promise<void> {
 
   if (mode === "check") return check();
 
-  const { template, causes, rowsPerCause, causesPerChunk, chunks, cap } = await plan();
+  const { template, causes, rowsPerCause, causesPerChunk, chunks, cap, version } = await plan();
 
   console.log(`Template ${TEMPLATE}`);
   console.log(
     `  ${template.location.length} locations x ${template.age.length} ages x ` +
       `${template.sex.length} sexes = ${rowsPerCause.toLocaleString()} rows per cause`,
   );
-  console.log(`  version ${template.version}, context ${template.context}, base ${template.base}`);
+  console.log(
+    `  version ${version}${version === template.version ? "" : ` (template says ${template.version} — using the live default)`}` +
+      `, context ${template.context}, base ${template.base}`,
+  );
   console.log(
     `\n${causes.length} depth-2 causes, ${causesPerChunk} per download ` +
       `(${(causesPerChunk * rowsPerCause).toLocaleString()} of ${cap.toLocaleString()} rows), ` +
@@ -244,7 +318,7 @@ async function main(): Promise<void> {
   console.log("");
   const urls: string[] = [];
   for (const [i, group] of chunks.entries()) {
-    const params: PermalinkParams = { ...template, cause: group.map((c) => c.id) };
+    const params: PermalinkParams = { ...template, version, cause: group.map((c) => c.id) };
     delete params.hash;
     delete params.origin;
     const bucket = await createPermalink(params);
@@ -263,8 +337,44 @@ async function main(): Promise<void> {
   );
 }
 
+// Split one CSV line, respecting double quotes. The export quotes any field containing a comma —
+// "Cotabato (North Cotabato)" does not need it but several cause names do — and a naive split
+// shifts every column after the quoted one, which reads as corrupt ids rather than as a parse bug.
+function splitCsv(line: string): string[] {
+  const out: string[] = [];
+  let field = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quoted) {
+      if (c === '"') {
+        if (line[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else quoted = false;
+      } else field += c;
+    } else if (c === '"') quoted = true;
+    else if (c === ",") {
+      out.push(field);
+      field = "";
+    } else field += c;
+  }
+  out.push(field);
+  return out;
+}
+
 // The row-count check. There is no pre-download counter on this path (php/data.php is behind
 // Turnstile), so the delivered files are the only place the selection can be confirmed.
+//
+// Two shapes reach this function. The age/sex export of 2026-08-25 had bare id columns
+// (`location`, `cause`); the cause export of 2026-09-16 has `location_id` + `location_name`
+// pairs, because the permalink asks for names. Both are accepted — the id column is the one read,
+// under whichever of the two spellings the file uses.
+//
+// Completeness is a progress report, not a precondition. The 22 groups arrive three per download,
+// so a partial set is the normal state between downloads and must not be an error. What stays an
+// error is anything that would corrupt a build: a summing total, an overlapping sex, more than one
+// year, a short age axis, or a row count that does not match the axes present.
 function check(): void {
   if (!fs.existsSync(OUT_DIR)) throw new Error(`No ${path.relative(ROOT, OUT_DIR)} yet.`);
   const files = fs.readdirSync(OUT_DIR).filter((f) => f.toLowerCase().endsWith(".csv"));
@@ -281,14 +391,17 @@ function check(): void {
   for (const file of files) {
     const text = fs.readFileSync(path.join(OUT_DIR, file), "utf8").trim();
     const [header, ...lines] = text.split("\n");
-    const cols = (header as string).split(",");
-    const idx = (name: string) => cols.indexOf(name);
+    const cols = splitCsv(header as string);
+    const idx = (name: string) => {
+      const i = cols.indexOf(`${name}_id`);
+      return i >= 0 ? i : cols.indexOf(name);
+    };
     for (const name of ["location", "age", "sex", "cause", "year", "measure", "metric", "val"]) {
       if (idx(name) < 0) problems.push(`${file}: no "${name}" column (header: ${cols.join(",")})`);
     }
     if (problems.length) break;
     for (const line of lines) {
-      const f = line.split(",");
+      const f = splitCsv(line);
       rows++;
       locations.add(Number(f[idx("location")]));
       ages.add(Number(f[idx("age")]));
@@ -310,7 +423,6 @@ function check(): void {
   if (sexes.has(3)) problems.push(`"Both" sexes (3) present — it sums on top of male + female`);
   if (years.size > 1) problems.push(`more than one year: rows would be summed across them`);
   if (ages.size !== 22) problems.push(`${ages.size} age groups, expected the 22 disjoint ones`);
-  if (causes.size !== 22) problems.push(`${causes.size} causes, expected 22 depth-2 groups`);
 
   const expected = locations.size * ages.size * sexes.size * causes.size;
   if (rows !== expected) {
@@ -323,6 +435,13 @@ function check(): void {
   if (problems.length) {
     console.error(`\nREJECT:\n  ${problems.join("\n  ")}`);
     process.exit(1);
+  }
+  if (causes.size < 22) {
+    console.log(
+      `\nDisjoint and well-formed, ${causes.size} of 22 groups so far — ` +
+        `${22 - causes.size} still to download.`,
+    );
+    return;
   }
   console.log("\nComplete and disjoint — ready to build from.");
 }
