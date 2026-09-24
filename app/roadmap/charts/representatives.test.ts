@@ -45,7 +45,6 @@ describe("NAMED_IN_PROSE", () => {
       "India",
       "Brazil",
       "South Africa",
-      "Togo",
     ].filter((country) => prose.includes(country));
     expect([...NAMED_IN_PROSE].sort()).toEqual(named.sort());
   });
@@ -77,8 +76,11 @@ describe("representatives", () => {
 
   it("orders by the story's order of mention, not by the data", () => {
     // So that labels dropped for want of room are the later-mentioned ones, not an arbitrary set.
-    const picked = representatives([pt("Togo", 9), pt("Mexico", 1), pt("Germany", 5)], opts);
-    expect(picked.map((p) => p.country)).toEqual(["Mexico", "Germany", "Togo"]);
+    const picked = representatives(
+      [pt("South Africa", 9), pt("Mexico", 1), pt("Germany", 5)],
+      opts,
+    );
+    expect(picked.map((p) => p.country)).toEqual(["Mexico", "Germany", "South Africa"]);
   });
 
   it("answers empty when the chart holds none of them", () => {

@@ -290,16 +290,16 @@ export const chartsEn = {
   },
 
   personaDemo: {
-    steps: ["Place", "Age", "Sex", "Cause"],
+    steps: ["Place", "Sex", "Age", "Cause"],
     woman: "Woman",
     man: "Man",
     womenOf: "women",
     menOf: "men",
     undetermined: "an undetermined cause",
     note:
-      "The heaviest single cell in {country}'s table. The cause was drawn from that cell — " +
-      "{group} of {age} — and never from the table at large, which is what keeps a " +
-      "twenty-year-old from dying of dementia.",
+      "The heaviest single cell in {country}'s table. After sex and age are selected — " +
+      "{group} of {age} — the cause is drawn from that group's distribution rather than from " +
+      "the table at large.",
     loading: "Loading the age, sex and cause tables…",
   },
 

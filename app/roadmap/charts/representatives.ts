@@ -21,7 +21,7 @@ import { nearestWithin, type PickCandidate } from "./touchPick";
 // before. Country names are never translated in the data, so one list serves every locale.
 //
 // The codes are here rather than resolved through i18n-iso-countries because these charts are
-// client components: twelve pairs cost nothing, and the library would follow the whole ISO table
+// client components: eleven pairs cost nothing, and the library would follow the whole ISO table
 // into the browser bundle for a lookup this narrow. The test carries the cost instead.
 export const NAMED_IN_PROSE_COUNTRIES: ReadonlyArray<{ name: string; iso3: string }> = [
   { name: "Mexico", iso3: "MEX" },
@@ -35,7 +35,6 @@ export const NAMED_IN_PROSE_COUNTRIES: ReadonlyArray<{ name: string; iso3: strin
   { name: "India", iso3: "IND" },
   { name: "Brazil", iso3: "BRA" },
   { name: "South Africa", iso3: "ZAF" },
-  { name: "Togo", iso3: "TGO" },
 ];
 
 export const NAMED_IN_PROSE: readonly string[] = NAMED_IN_PROSE_COUNTRIES.map((c) => c.name);

@@ -15,21 +15,21 @@ Q: How many people die every second?
 A: Roughly 2 people die every second globally
 ```
 
-The problem is that that is not true — or not completely true. For the last couple of years we have observed between 60 and 63 million deaths a year, worldwide. A year has 31,536,000 seconds, and dividing one by the other gives about two deaths a second. But that is a yearly average, and nothing about a death is average.
+The problem is that that is not true — or not completely true. For the last couple of years we have observed between 60 and 63 million deaths a year, worldwide. An average year has 31,557,600 seconds, and dividing one by the other gives about two deaths a second. But that is a yearly average, and nothing about a death is average.
 
 [blinking dot every 500ms]
 
-In reality there's a big chance that during any given second nobody dies, because deaths don't happen on a steady rhythm. In fact, if deaths were randomly distributed across the year at the observed annual average, there would be about a 27% chance that exactly two people died in any given second — and roughly the same chance that exactly one person died in that second.
+In reality there's about a 14% chance that during any given second nobody dies, if deaths are randomly distributed across the year at the observed annual average. Under the same model, there is about a 27% chance that exactly two people die in any given second — and roughly the same chance that exactly one person dies in that second.
 
 [blinking dot randomly blinking]
 
-So, how many people die on a given second? Our new (better) answer is: _if_ people die {{randomly}} around the year, probably somewhere between 0 and 4 (with a ~95% certainty).
+So, how many people die in a given second? Our new (better) answer is: _if_ people die {{randomly}} throughout the year, between 0 and 4 in about 95% of one-second intervals.
 
 :::rand-modal
 
 ## What do you mean by randomly?
 
-That 27% figure, and every block in the chart further down, comes straight out of the Poisson probability mass function — the standard way to model a count of independent random events (here, deaths) over a fixed window (here, one second) when you only know the average rate. The observed annual average is first converted into a per-second average:
+That 27% figure, and every block in the chart further down, comes straight out of the Poisson probability mass function — the standard way to model a count of independent random events (here, deaths) over a fixed window (here, one second). It assumes that events are independent and that the average rate stays roughly constant within the window. The observed annual average is first converted into a per-second average:
 
 $$ Per-second rate
 \lambda_{\text{second}} = \dfrac{61{,}600{,}000}{365.25 \times 24 \times 60 \times 60} \approx 1.95
@@ -45,49 +45,53 @@ _e_ and _k_! aren't arbitrary — each falls out of picturing what's actually ha
 
 ### where-global · Where [Where - global rate] · #e8956d · chapter
 
-We made a bold assumption when timing the events, that they happened randomly. As we will see this is far from the truth and we'll try improving our timing model. Nevertheless, we'll be equally naive for our first spacial distribution model: deaths will happen at random times and at random places.
+We made a bold assumption when timing the events: that they happened randomly. As we will see, this is far from the truth and we'll try improving our timing model. Nevertheless, we'll be equally naive for our first spatial distribution model: deaths will happen at random times and at random places.
 
 [map with random dots at random places]
 
-I think most people wouldn't get triggered by our timing model, but our spacial model is painful to watch. Most randomly placed dots (~71%) fall in the ocean, as this is the proportion of earth that's covered in water. The dots falling on land fall overwhelmingly on areas without any permanent human settlements (deserts, forests,…).
+I think most people wouldn't get triggered by our timing model, but our spatial model is painful to watch. Most randomly placed dots (~71%) fall in the ocean, as this is the [proportion of Earth's surface covered in water](https://oceanservice.noaa.gov/facts/oceanwater.html). The dots falling on land fall overwhelmingly in areas without any permanent human settlements (deserts, forests, …). I classify those points against the [GPWv4 population-density grid](https://sedac.ciesin.columbia.edu/data/set/gpw-v4-population-density-rev11) used by the model.
 
 [ocean uninhabited inhabited tally]
 
-We can agree that if our goal is an accurate defunction model it should be way better than that. Maybe instead of using the global mortality numbers we could use country level data. The good news is that many countries report their Crude Death Rate —how many people die in a year for every 100000 inhabitants—. The bad news is that many don't provide that data, and virtually all the ones that do overcount or undercount some deaths.
+We can agree that if our goal is an accurate mortality model it should be way better than that. Maybe instead of using the global mortality numbers we could use country-level data. The good news is that the [World Bank publishes estimates of crude death rate](https://data.worldbank.org/indicator/SP.DYN.CDRT.IN) — how many people die in a year for every 1,000 inhabitants. The bad news is that many countries don't provide that data, and virtually all the ones that do overcount or undercount some deaths.
 
-Luckily the WHO has some very smart people working on it and providing good estimates. Even if imperfect the mortality rates by country will be a huge upgrade from rendering random points wherever, with equal chances of it being in Mexico or Lithuania, Togo or the Antartica, on land or in the middle of the ocean.
+Even if imperfect, mortality rates by country will be a huge upgrade from placing points without taking account of where people live.
 
 [chart cdr per country]
 
 ### where-country · A country is not an average [Where - country rate] · #f6c58f
 
-Not having deaths pop up in the middle of the ocean is neat. And seeing the popping dots on the countries they should be is also a great improvement. But if you look carefully, you'll notice that the dots appear always exactly in the center of a given country. Sometimes that's in an uninhabited or even uninhabitable part of the country. According to the current simulation, all deaths in Russia happen in Lake Vivi, 400 kilometers away from the closest hospital. But we know that people tend to die where people tend to be, so let's apply a density map to our calculation. This way, the dots will have bigger chances to appear where there's more people and little chances of appearing at unpopulated areas.
+Not having deaths pop up in the middle of the ocean is neat. And seeing the dots pop up in the countries they should be in is also a great improvement. But if you look carefully, you'll notice that the dots always appear exactly in the center of a given country. Sometimes that's in an uninhabited or even uninhabitable part of the country. According to the current simulation, all deaths in Russia happen at [Lake Vivi](https://rgo.ru/activity/redaction/news/pamyatnyy-znak-geograficheskiy-tsentr-rossiyskoy-federatsii-v-evenkii-budet-obnovlyen/), roughly 400 kilometers from the closest hospital: a [regional study](https://elib.sfu-kras.ru/bitstream/handle/2311/28186/shatunov_a_0.pdf?isAllowed=y&sequence=2) places the lake 366 kilometers from Tura and identifies the town's central district hospital. But we know that people tend to die where people tend to be, so let's apply a density map to our calculation. This way, the dots will have a greater chance of appearing where there are more people and little chance of appearing in unpopulated areas.
 
-Small problem though: the density map is a grid of ~55 km wide cells (0.5°), it's pixelated, so to speak. But country borders aren't pixelated (colonialism got close but not quite), they often follow rivers, mountains or the sea.
+Small problem though: the density map is a grid of ~55 km wide cells (0.5°). It's pixelated, so to speak. But country borders aren't pixelated (colonialism got close but not quite), they often follow rivers, mountains or the sea.
 
 [Benelux Westafrika maps density/borders]
 
-The way we go around this is by converting every source, every complexity layer to a grid. And we assign each pixel to whichever country has the most population in that specific cell.
+The way we get around this is by converting every source, every complexity layer to a grid. And we assign each pixel to whichever country has the most population in that specific cell.
 
-This map is cheating a little bit: it uses a logarithmic scale by default. Otherwise you wouldn't see much. The fact is that the earth, even the land, is mostly empty. _Toggle between log and linear scale to see how empty it is._
+This map is cheating a little bit: it uses a logarithmic scale by default. Otherwise you wouldn't see much. The fact is that Earth, even the land, is mostly empty. _Toggle between log and linear scale to see how empty it is._
 
 [density map asia]
 
-On a linear scale you barely see anything else than a dozen megacities and some shading around the Indo-Gangetic Plain (the region south of the Himalayas that's home of one-seventh of the world's population).
+On a linear scale you barely see anything other than a dozen megacities and some shading around the Indo-Gangetic Plain (the region south of the Himalayas that's [home to about one-seventh of the world's population](https://pmc.ncbi.nlm.nih.gov/articles/PMC7125076/)).
 
 Now our dots appear mostly in cities and in very populous areas.
 
 ### where-region · CDR by region [Where - CDR by region] · #e7e9e4
 
-A single national rate hides enormous internal spread. In Japan, rural Akita dies at nearly twice the rate of Tokyo; in the US, West Virginia runs well above Utah; in Europe, north-west Bulgaria and eastern Germany far exceed Ireland or the Nordic capitals. Most of the gap is age structure — older regions bury more of their people each year — layered over real differences in health, poverty, and access to care.
+A single national rate hides enormous internal spread. In Japan, rural Akita dies at nearly twice the rate of Tokyo; in the US, West Virginia runs well above Utah; in Europe, north-west Bulgaria and eastern Germany far exceed Ireland or the Nordic capitals. [Most of the gap is age structure](https://ec.europa.eu/eurostat/cache/metadata/en/hlth_cdeath_sims.htm) — older regions bury more of their people each year — layered over real differences in health, poverty, and access to care. Japan's [official 2023 table](https://www.ipss.go.jp/syoushika/tohkei/Data/Popular2025/T12-26.files/sheet001.htm) puts the crude rates at 19.3 per 1,000 in Akita and 10.2 in Tokyo; after age standardisation, they narrow to 14.4 and 12.3.
 
-An illustrative example of how big the age structure of a place is to its CDR is that of Mexico and Lithuania. In 2000, both countries had life expectancy around 72 years, but Mexico's crude death rate was about 4 per 1,000, while Lithuania's was about 11 per 1,000. Same life expectancy, almost 3× crude death rate difference.
+An illustrative example of how much the age structure of a place matters to its CDR is that of Mexico and Lithuania. In 2000, both countries had a life expectancy of around 72 years, but Mexico's crude death rate was about 4 per 1,000, while Lithuania's was about 11 per 1,000. Same life expectancy, almost 3× crude death rate difference.
+
+Sources: World Bank series for [life expectancy at birth](https://data.worldbank.org/indicator/SP.DYN.LE00.IN?locations=MX-LT&start=2000&end=2000) and [crude death rate](https://data.worldbank.org/indicator/SP.DYN.CDRT.IN?locations=MX-LT&start=2000&end=2000).
 
 [subnational choropleth]
 
 ### borders-wrong-unit · Borders are the wrong unit [Where - region] · #a6d2f5
 
 [national vs regional bars]
+
+Source: [Eurostat's 2023 regional crude death rates](https://ec.europa.eu/eurostat/databrowser/view/demo_r_gind3/default/table?lang=en).
 
 ### when-seasonality · When [When - seasonality] · #bcd8ee · chapter
 
@@ -97,13 +101,13 @@ The only layer still recomputed in your browser, because it is the only one that
 
 # Death rate by time of year
 
-From a timing perspective, we're still at the same place that we were at the beginning. Dots still appear at random moments. This looks definitely better than having regular intervals like a metronome, but it's not closer to reality. Randomness feels more organic, but we're striving for something more than feeling.
+From a timing perspective, we're still at the same place that we were at the beginning. Dots still appear at random moments. This definitely looks better than having regular intervals like a metronome, but it's not closer to reality. Randomness feels more organic, but we're striving for something more than feeling.
 
-Do we have something better than random? Yes, at least for some countries, that provide monthly or even weekly CDR numbers. Mortality rates on a given month in a given country vary from year to year, but not by much. Actually, it is quite easy to draw a curve, showing at which time of the year people die less or more. And the data is not only consistent from year to year but also between countries.
+Do we have something better than random? Yes, at least for some countries that provide monthly or even weekly CDR numbers. Mortality rates in a given month in a given country vary from year to year, but not by much. The coronavirus pandemic is the obvious exception: mortality during 2020–2022 did vary sharply, which is why those years are excluded from the fitted curves below. Actually, it is quite easy to draw a curve showing when in the year more or fewer people die. And the data is not only consistent from year to year but also between countries.
 
 ## A cluster of similar curves
 
-Add or remove any country with a directly-measured curve to compare.
+Add or remove any country with a directly measured curve to compare.
 
 [seasonality curves]
 
@@ -119,17 +123,17 @@ Many temperate countries follow a similar pattern: winter is significantly more 
 
 Southern-hemisphere curves are shifted by half a year only when the chart compares their seasonal shape with northern countries. Their production curves retain their true calendar phase.
 
-These choices on my wording reveal an assumption that, even if quite obvious, could be flawed: that change in rates over a year are mostly based on climatic seasons. In theory they could reflect something different: think social mechanisms like Ramadan or data artifacts like late reporting of defunctions, default defunction dates, and so on.
+These choices in my wording reveal an assumption that, even if quite obvious, could be flawed: that changes in rates over a year are mostly based on climatic seasons. In theory they could reflect something different: think social mechanisms like Ramadan or data artifacts like late reporting of deaths, default dates of death, and so on.
 
 Trying to understand what causes seasonality is very interesting, but it isn't critical for the countries from which we have observed seasonal data. What do we do with the other ~100 countries that only provide yearly CDR?
 
-When I'm missing the data I need I always ask the question: are there any proxies to the data I'm looking for, that are easier to get? Are they causes of the phenomenon we study, consequences of it, or do they share a common cause with our subject? In this case I can think of a couple, each with its own strengths and weaknesses.
+When I'm missing the data I need I always ask the question: are there any proxies for the data I'm looking for, that are easier to get? Are they causes of the phenomenon we study, consequences of it, or do they share a common cause with our subject? In this case I can think of a couple, each with its own strengths and weaknesses.
 
 [proxy ranking card]
 
-Before committing to one, it's worth seeing what actually tracks the _strength_ of a country's seasonal swing among the countries that already report a curve. Many are roughly unimodal, while some tropical climates can have broader or multiple rainy-season features. Amplitude is still a useful first summary — how far the curve moves away from its annual mean — without claiming that every shape has one winter peak.
+Before committing to one, it's worth seeing what actually tracks the _strength_ of a country's seasonal swing among the countries that already report a curve. Many are roughly unimodal, while some tropical climates can have broader or multiple rainy-season features. Amplitude is still a useful first summary of how strongly the curve moves away from its annual mean, without claiming that every shape has one winter peak.
 
-In the charts that follow, every dot is a country with observed seasonal data. The y-axis shows amplitude: the higher a dot is, the bigger the difference in mortality between summer and winter. The x-axis places countries on each of the proposed proxies.
+In the charts that follow, every dot is a country with observed seasonal data. The y-axis shows amplitude: the higher a dot is, the stronger the seasonal swing. The x-axis places countries on each of the proposed proxies.
 
 The bottom axis shows absolute latitude — how far a country is from the equator. Points at the left are tropical, points near the right edge are near the poles.
 
@@ -145,21 +149,21 @@ Well, this doesn't change the picture much. We confirm that there's a correlatio
 
 [pop65 scatter]
 
-How many older people live in a country seems like a very poor proxy. I just see a cloud of dots here. Possibly because richer countries tend to have older populations and one thing offsets the other. Shading the countries by GDP per capita confirms this: countries on the left are lighter (poorer) than countries on the right.
+How many older people live in a country seems like a very poor proxy. I just see a cloud of dots here. Richer countries also tend to have older populations, which may be part of what we're seeing. The GDP shading supports that association: countries with fewer older people tend to be poorer than countries with more older people. It does not tell us whether wealth offsets seasonal mortality.
 
 [gdp scatter]
 
-More of the same. There's no visible correlation between how rich a country is and how strongly its mortality is affected by the seasons. The cause is probably the same as above: richer countries offset their seasonality with stronger health systems and better adaptations.
+More of the same. There's no clear relationship in this sample between how rich a country is and how strongly its mortality is affected by the seasons. One possibility is that stronger health systems and better adaptations offset some of the seasonal risk in richer countries, but this chart cannot tell us whether that's the reason.
 
 [neighbour scatter]
 
-How about neighbouring countries? That's better. There's a strong correlation here. Bordering-neighbour adjacency is the strongest proxy — the lowest median error, the highest correlation, and the only one with positive skill against both the mean-curve floor and latitude. Latitude and climate class land close together just behind, with climate edging latitude on the typical country.
+How about neighbouring countries? That's better. There's a strong correlation here. Among the methods tested on countries with measured curves, bordering-neighbour adjacency is the strongest proxy — the lowest median error, the highest correlation, and the only one with positive skill against both the mean-curve floor and latitude. Latitude and climate class land close together just behind, with climate edging latitude on the typical country.
 
 :::accordion
 
-## How the proxies actually score · Leave-one-out scores for all five proxies
+## How the proxies actually score · Leave-one-out reconstruction scores
 
-Those are claims about error and skill, so here they are measured. Every country that reports a curve is hidden in turn, predicted from each proxy in place of its own data, and scored against the observed shape.
+Those are claims about error and skill, so here they are measured. Every country that reports a curve is hidden in turn, predicted from each method in place of its own data, and scored against the observed shape. For these charts, amplitude is the root-mean-square deviation of the fitted curve from its annual mean.
 
 [prediction comparison]
 
@@ -167,7 +171,7 @@ Those are claims about error and skill, so here they are measured. Every country
 
 ## So how did your ranking do?
 
-You put the five in an order before any of this was on screen. Here is the order the charts above actually produce, and where your guess landed against it.
+The ranking exercise asked which proxy tracks the size of a country's seasonal swing. The leave-one-out test asks a different question: how well can each method reconstruct the whole curve when we hide it? If you ranked the five before seeing the charts, here is where your guess landed.
 
 [proxy scorecard]
 
@@ -189,21 +193,21 @@ Adjacent regions inside the same country track each other even more tightly than
 
 [amplitude map]
 
-Each square is half a degree of the same grid the globe samples, coloured by the deaths this month's season adds to, or takes from, an ordinary month there. Drag through the year and the hemispheres trade places: Europe's January surplus is southern Africa's January deficit, and by July they have swapped.
+Each square is a half-degree cell of the same grid the globe samples, coloured by the deaths this month's season adds to, or takes from, an ordinary month there. Drag through the year and the hemispheres trade places: Europe's January surplus is southern Africa's January deficit, and by July they have swapped.
 
 The texture inside a country is population, not seasonality. Ten countries have measured regional curves, and inside this frame that comes down to South Africa, western Russia, and climate-modelled India and China; Europe has none at all. Everywhere else every cell of a country shares one curve, and the outlines say which unit that curve belongs to — solid where somebody counted deaths in it, dashed where it was reconstructed from a neighbour, a climate class or a latitude. What changes from cell to cell inside one of those borders is how many people live there, not when they die.
 
 ### conflicts · A war is not a Poisson process [Conflicts] · #eeb87d
 
-The previous layers capture long-term mortality trends, which account for most deaths worldwide. But current mortality also needs finer-grained factors, the largest being conflicts. ACLED's real-time Research feed publishes weekly country and Admin-1 aggregates with fatalities and regional centroid coordinates. Those centroids are an approximation, not individual event locations.
+The previous layers capture long-term mortality trends, which account for most deaths worldwide. But current mortality also needs finer-grained factors, the largest being conflicts. [ACLED publishes weekly aggregates](https://acleddata.com/use-access/how-use-acleds-aggregated-data) of reported conflict fatalities, with country and Admin-1 centroid coordinates. Those centroids are an approximation, not individual event locations.
 
-For all other layers we multiplied the base crude death rate by a seasonality or density factor. Here we get 12 complete, reported weeks ending at the oldest publication date shared by all six ACLED regions. So what is our factor for the current week?
+For all other layers we multiplied the base crude death rate by a seasonality or density factor. Here we get 12 complete, reported weeks ending at the oldest publication date shared by all six ACLED regions. So what is our recent weekly estimate?
 
-We use a recency-weighted average to estimate the current week's mortality. Specifically, a robust exponentially weighted moving average (Robust EWMA): _use recent weeks more than older weeks, but damp suspiciously extreme values before averaging_.
+We use a recency-weighted average to estimate recent weekly mortality. Specifically, a robust exponentially weighted moving average (Robust EWMA): _use recent weeks more than older weeks, but damp extreme values before averaging_. This makes the estimate less sensitive to a single week. It also means a sudden escalation can be understated.
 
-For example:
+For example, take this self-contained seven-week illustration:
 
-Take seven weeks from the 12-week window:
+The production estimate uses 12 weeks; these seven invented values make the arithmetic easier to follow.
 
 | Week       |   1 |   2 |   3 |   4 |   5 |   6 |   7 |
 | ---------- | --: | --: | --: | --: | --: | --: | --: |
@@ -258,13 +262,13 @@ The map reports fatalities over the same 12 complete weeks at ACLED's Admin-1 ce
 Every flash gets a sentence, drawn from the distribution of the place it fired in.
 :::
 
-# Age, then sex, then one cause
+# Sex, age, then cause
 
-**Age and sex** come from the UN World Population Prospects table of deaths by age and sex, in its 2023 figures. **Cause** comes from the World Health Organization's Global Health Estimates — the 2021 release, read at 2019, the last year before the pandemic, so that covid is not drawn as how people ordinarily die — taken at its most specific level — the recognisable causes, not the clinical groupings above them — and reduced to the strongest eight per country, sex and age band, with everything else folded into "other causes".
+**Age and sex** come from the UN World Population Prospects table of deaths by age and sex, in its 2023 figures. **Cause** comes from the [WHO Global Health Estimates](https://www.who.int/data/global-health-estimates/), the GHE 2021 edition published in 2024. I use its estimates for 2019, the last year before the pandemic, so that COVID-19 is not drawn as how people ordinarily die. For each country, sex and age band, I keep the eight most common recognisable causes and fold everything else into "other causes".
 
-They are sampled **in that order**, so a cause is only ever drawn from the age and sex band that plausibly dies of it. Draw the cause first and you get twenty-year-olds with dementia.
+The age, sex and cause are drawn together rather than independently. Once sex and age have been selected, the cause comes from the distribution for that group. This avoids combinations that would be very unlikely in the source data.
 
-Both tables ship as JSON in the repository, so the feed needs no runtime API call and reads the same offline. The cause table used to come from the IHME Global Burden of Disease, hand-exported from a results tool that puts every download behind a sign-in and a hundred-thousand-row cap. The WHO table is one request and no account, which is most of why it is the one here.
+Both the [age-and-sex table](/data/mortality-age-sex.json) and the [cause table](/data/causes.json) ship as JSON in the repository, so the feed needs no runtime API call and reads the same offline. The cause table used to come from the IHME Global Burden of Disease, hand-exported from a results tool that puts every download behind a sign-in and a hundred-thousand-row cap. The WHO table is one request and no account, which is most of why it is the one here.
 
 Getting cause below the country level means going back to IHME, and back to that cap. The subnational export is 723 places by 22 age groups by two sexes by 22 cause groups — seven hundred thousand rows, or eight downloads, against an allowance that is spent per release and never refills. So the eight were ordered by how many deaths each carried rather than by the order the tool lists them in. The allowance ran out after the first. That one download holds cardiovascular disease, the cancers and chronic respiratory disease — 55% of all deaths — at regional resolution; in the tool's own order the same single download would have held about a tenth of that. It is in the feed, and it is worth being exact about how far it reaches, because two different fractions are at work. The regions cover **44.6%** of the deaths drawn; the three groups are **55.0%** of the causes. Only where both hold does the region decide, so **24.5% of all cause draws** now move with the place rather than the country. The rest keep the national mix.
 
@@ -284,9 +288,13 @@ Three things are still pending, and none of them is a detail. Nineteen of the tw
 
 # Then the month tilts it
 
-The same three tables do not give the same answer in January as in July. Every age band and every cause group carries a twelve-point curve, normalised to average one across the year, so the annual totals stay exactly what the tables say while the mix inside a month moves: a northern winter draws older, and more respiratory. South of the equator those curves run half a year out of phase, which is measured rather than assumed.
+The time of year can also change the age and cause we draw. I estimate those changes from the records available, then borrow patterns for countries without their own data. That borrowing is one of the less certain parts of the model.
 
-The curves come from monthly death records in Brazil and Mexico — the only two countries here whose microdata carries a date and a cause together — and reach everywhere else through the same climate-zone transfer the seasonality chapter uses. Age is covered completely. Cause is not: 55 of the 87 labels borrow the curve of their ICD-10 chapter, and the other 32 are left flat, multiplied by one. The largest of them is "other causes" itself — the residual that the strongest-eight truncation folds everything else into, typically a third of the weight in the adult bands and up to a half. Leaving it flat is a decision rather than an oversight: it is a bag of unrelated deaths with no chapter of its own, and handing it the average death's curve would assert a shape I have not measured.
+Age and cause use different records. The age curves are measured from [Eurostat weekly records](https://ec.europa.eu/eurostat/cache/metadata/en/demomwk_esms.htm) for 24 European countries. The cause curves come from monthly death records in [Brazil's DATASUS mortality system](https://datasus.saude.gov.br/informacoes-de-saude-tabnet/) and [Mexico's Secretaría de Salud](https://www.datos.gob.mx/dataset/registro_defunciones) — the two country sources here whose microdata carries a date and a cause together. Both are fitted as continuous order-4 harmonic curves. The twelve monthly values in the chart are snapshots of those curves, not the stored model.
+
+Countries without those records borrow curves through the same donor cascade used for timing: regional averages, neighbouring countries, climate and latitude. All nine age bands have measured curves in the 24 source countries. Cause is not completely covered: 55 of the 87 labels borrow the curve of their ICD-10 chapter, and the other 32 are left flat, multiplied by one. The largest of them is "other causes" itself — the residual that the strongest-eight truncation folds everything else into, typically a third of the weight in the adult bands and up to a half. Leaving it flat is a decision rather than an oversight: it is a bag of unrelated deaths with no chapter of its own, and handing it the average death's curve would assert a shape I have not measured.
+
+At sampling time, these multipliers change the conditional age and cause weights, which are then normalised together. Each curve averages one across the year, but that alone does not guarantee that every category preserves its exact annual share after the weights are combined.
 
 [deaths by age and cause]
 
@@ -300,15 +308,15 @@ Layers with a clear place in the model and no source good enough to fill it.
 
 ## Ongoing epidemics · Planned · source to be decided
 
-Epidemics raise mortality in specific regions and periods by a measurable amount. Excess-mortality estimates are the right measure and arrive months late; outbreak feeds arrive quickly and report cases, not deaths. Until something updates faster than the model itself, an epidemic layer would be fiction dressed as data.
+Epidemics raise mortality in specific regions and periods by a measurable amount. An epidemic layer needs timely death estimates and a way to avoid counting deaths already in the baseline. I haven't settled on a source and method for that.
 
 ## Time of day · Needs a published curve
 
-Deaths cluster in the small hours, and the globe already knows the local hour of every cell — the subsolar point lights it. The layer would plug into the weights without changing the runtime at all. What is missing is a curve worth plugging in.
+I haven't included a time-of-day pattern. To do that, I'd need evidence that can be applied across populations and causes.
 
 ## Sub-national age structure · Partially available
 
-Personas currently use a national age distribution, so a death in a rural Spanish province gets the same age draw as one in Madrid. Regional age pyramids exist for Europe and would sharpen the feed considerably; elsewhere they are the same patchwork problem as regional rates.
+Regional age and sex estimates already shape many of the personas. The remaining gaps are places where I still have to infer the mix, or where the grid is too coarse to preserve a small region.
 
 :::
 

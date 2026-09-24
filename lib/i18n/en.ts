@@ -129,7 +129,7 @@ export const en = {
         title: "Neighbouring countries",
         body:
           "Geographic proximity could reflect multiple factors at once. Take the Gulf countries: " +
-          "an average donor country there would be rich, of Muslim majority and have a very " +
+          "an average donor country there would be rich, majority-Muslim and have a very " +
           "similar climate. Italy and Switzerland have comparable health infrastructure, " +
           "similarly developed institutions and are very close in longitude and in latitude. " +
           "Some problems: neighbouring countries sometimes differ sharply, and some clusters " +
@@ -139,9 +139,9 @@ export const en = {
         title: "Climatic zone",
         body:
           "If our assumption is true, this would help us group seasonality by similar climate. " +
-          "Climatic classifications group regions by similar temperature and humidity values in " +
-          "a similar periodicity. The data is not trivial to get — there are many different " +
-          "classifications — and to apply to our mortality numbers. Furthermore, we risk " +
+          "Climatic classifications group regions by similar temperature and humidity values " +
+          "with a similar periodicity. The data is not trivial to get — there are many different " +
+          "classifications — or to apply to our mortality numbers. Furthermore, we risk " +
           "choosing a classification whose zones are too big, grouping very different countries, " +
           "or too small, leaving zones with no donor countries to take data from.",
       },
@@ -149,7 +149,7 @@ export const en = {
         title: "Latitude",
         body:
           "That was my first intuition, and it is actually a second-degree proxy that derives " +
-          "climate from latitude, which is readily available for every point on earth. " +
+          "climate from latitude, which is readily available for every point on Earth. " +
           "Nevertheless, if we take a look at Lisbon and Beijing — both around the same parallel " +
           "— we can see that extremely different climates can coexist at a single latitude: " +
           "Lisbon has a mild winter and a moderately dry summer while Beijing registers " +
@@ -160,10 +160,10 @@ export const en = {
         title: "Share of population over 65",
         body:
           "Viral infections have seasonal patterns and older people are more vulnerable to " +
-          "those. In summer, they are more at risk of a heat caused death. We could expect that " +
+          "those. In summer, they are more at risk of a heat-related death. We could expect that " +
           "places with an older population experience stronger seasonality. On the other hand, " +
           "countries with older populations are often richer and therefore tend to have better " +
-          "health access.",
+          "access to healthcare.",
       },
     ],
     scorecard: {
@@ -217,11 +217,11 @@ export const en = {
     deathsByAgeCauseTitle: "Deaths by age, and what they die of",
     deathsByAgeCauseCopy: "Share of deaths in each age band, and the cause mix within it.",
     densityClusterLabel: "Vector border and raster density close-up",
-    ewmaLabel: "Robust exponentially-weighted moving average of conflict fatalities",
+    ewmaLabel: "Robust exponentially weighted moving average of conflict fatalities",
     ewmaTitle: "Weekly fatalities, and the weighted mean the globe uses",
     ewmaCopy:
       "The globe uses the default four-week, P10–P90 estimate. Solid bars are ACLED's 12 " +
-      "complete reported weeks; the hollow bar estimates the current week. Moving the sliders is a " +
+      "complete reported weeks; the hollow bar shows the recent weekly estimate. Moving the sliders is a " +
       "counterfactual demonstration and does not change the globe.",
     conflictMapLabel: "Conflict fatalities at approximate Admin-1 centroids",
     conflictMapTitle: "Where the last 12 complete weeks' fatalities are",
@@ -245,13 +245,13 @@ export const en = {
       "Weekly conflict fatalities over the last {n} complete weeks. Each week is stacked by " +
       "country for those at or above 10% of that week, with the rest grouped into the smallest " +
       "UN region that reaches 10% and the remainder as Elsewhere. A {weighting} weighted estimate " +
-      "gives {prediction} deaths for the current week{clamp}",
+      "gives a recent weekly estimate of {prediction} deaths{clamp}",
     weightingFlat: "flat",
     weightingHalfLife: "{halfLife}-week half-life",
     clampOn: ", outliers clamped to P{lo}–P{hi}",
     clampOff: ", outliers unclamped",
     estimate: "estimate",
-    estimateApprox: "current ≈ {value}/week",
+    estimateApprox: "recent estimate ≈ {value}/week",
     halfLifeName: "Half-life",
     halfLifeFlat: "flat mean",
     halfLifeWeeks: "{n} weeks",
@@ -265,9 +265,9 @@ export const en = {
     dampingSpokenOn: "clamped to P{lo} and P{hi}",
     dampingSpokenOff: "no clamp on the totals",
     dampingNote:
-      "How far in from each end the outlier clamp bites, before any weighting. At zero the " +
-      "massacre counts in full.",
-    readout: "Estimated current week:",
+      "How far in from each end the outlier clamp bites, before any weighting. At zero, extreme " +
+      "weeks count in full; stronger damping can understate a real escalation.",
+    readout: "Recent weekly estimate:",
     readoutUnit: "deaths/week",
     readoutAsidePlain: "(plain average of the 12 weeks: {mean}",
     readoutAsideClamped: ", totals clamped to P{lo}–P{hi}",
