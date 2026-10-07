@@ -49,19 +49,19 @@ Vam fer una suposició atrevida en cronometrar els esdeveniments: que passaven a
 
 [map with random dots at random places]
 
-Crec que la majoria de la gent no s'esgarrifaria del nostre model temporal, però el model espacial fa mal de mirar. La major part dels punts col·locats aleatòriament (~71%) cauen a l'oceà, perquè aquesta és la proporció de la Terra coberta d'aigua. Els que cauen a terra ferma cauen aclaparadorament en zones sense cap assentament humà permanent (deserts, boscos…).
+Crec que la majoria de la gent no s'esgarrifaria del nostre model temporal, però el model espacial fa mal de mirar. La major part dels punts col·locats aleatòriament (~71%) cauen a l'oceà, perquè aquesta és la [proporció de la superfície de la Terra coberta d'aigua](https://oceanservice.noaa.gov/facts/oceanwater.html). Els que cauen a terra ferma cauen aclaparadorament en zones sense cap assentament humà permanent (deserts, boscos…). Classifico aquests punts contra la [graella de densitat de població GPWv4](https://sedac.ciesin.columbia.edu/data/set/gpw-v4-population-density-rev11) que fa servir el model.
 
 [ocean uninhabited inhabited tally]
 
-Podem estar d'acord que, si el nostre objectiu és un model de defuncions acurat, hauria de ser molt millor que això. Potser, en comptes de fer servir les xifres de mortalitat globals, podríem fer servir dades a escala de país. La bona notícia és que molts països declaren la seva taxa bruta de mortalitat —quantes persones moren en un any per cada 100.000 habitants—. La mala notícia és que molts no faciliten aquestes dades, i que pràcticament tots els que sí que ho fan compten de més o de menys algunes defuncions.
+Podem estar d'acord que, si el nostre objectiu és un model de mortalitat acurat, hauria de ser molt millor que això. Potser, en comptes de fer servir les xifres de mortalitat globals, podríem fer servir dades a escala de país. La bona notícia és que el [Banc Mundial publica estimacions de la taxa bruta de mortalitat](https://data.worldbank.org/indicator/SP.DYN.CDRT.IN) (quantes persones moren en un any per cada 1.000 habitants). La mala notícia és que molts països no faciliten aquestes dades, i que pràcticament tots els que sí que ho fan compten de més o de menys algunes defuncions.
 
-Per sort, l'OMS té gent molt intel·ligent treballant-hi i proporcionant bones estimacions. Encara que siguin imperfectes, les taxes de mortalitat per país seran una millora enorme respecte a dibuixar punts aleatoris arreu, amb la mateixa probabilitat de caure a Mèxic o a Lituània, al Togo o a l'Antàrtida, a terra o al mig de l'oceà.
+Encara que siguin imperfectes, les taxes de mortalitat per país seran una millora enorme respecte a col·locar punts sense tenir en compte on viu la gent.
 
 [chart cdr per country]
 
 ### where-country · Un país no és una mitjana [On - taxa per país] · #f6c58f
 
-Que no apareguin morts al mig de l'oceà està bé. I veure els punts sortint als països on toca també és una gran millora. Però si mires amb atenció, veuràs que els punts apareixen sempre exactament al centre de cada país. De vegades això és en una part deshabitada o fins i tot inhabitable del país. Segons la simulació actual, totes les morts de Rússia passen al llac Vivi, a 400 quilòmetres de l'hospital més proper. Però sabem que la gent tendeix a morir on tendeix a haver-hi gent, així que apliquem un mapa de densitat al càlcul. D'aquesta manera, els punts tindran més probabilitats d'aparèixer on hi ha més gent i poques d'aparèixer en zones despoblades.
+Que no apareguin morts al mig de l'oceà està bé. I veure els punts sortint als països on toca també és una gran millora. Però si mires amb atenció, veuràs que els punts apareixen sempre exactament al centre de cada país. De vegades això és en una part deshabitada o fins i tot inhabitable del país. Segons la simulació actual, totes les morts de Rússia passen al [llac Vivi](https://rgo.ru/activity/redaction/news/pamyatnyy-znak-geograficheskiy-tsentr-rossiyskoy-federatsii-v-evenkii-budet-obnovlyen/), a uns 400 quilòmetres de l'hospital més proper: un [estudi regional](https://elib.sfu-kras.ru/bitstream/handle/2311/28186/shatunov_a_0.pdf?isAllowed=y&sequence=2) situa el llac a 366 quilòmetres de Tura i identifica l'hospital de districte central de la vila. Però sabem que la gent tendeix a morir on tendeix a haver-hi gent, així que apliquem un mapa de densitat al càlcul. D'aquesta manera, els punts tindran més probabilitats d'aparèixer on hi ha més gent i poques d'aparèixer en zones despoblades.
 
 Un petit problema, però: el mapa de densitat és una graella de cel·les d'uns 55 km d'amplada (0,5°), està pixelat, per dir-ho així. Però les fronteres dels països no estan pixelades (el colonialisme s'hi va acostar, però no del tot), sovint segueixen rius, muntanyes o el mar.
 
@@ -73,21 +73,25 @@ Aquest mapa fa una mica de trampa: per defecte fa servir una escala logarítmica
 
 [density map asia]
 
-En escala lineal amb prou feines veus res més que una dotzena de megaciutats i una mica d'ombreig al voltant de la plana indogangètica (la regió al sud de l'Himàlaia que acull una setena part de la població mundial).
+En escala lineal amb prou feines veus res més que una dotzena de megaciutats i una mica d'ombreig al voltant de la plana indogangètica (la regió al sud de l'Himàlaia que [acull una setena part de la població mundial](https://pmc.ncbi.nlm.nih.gov/articles/PMC7125076/)).
 
 Ara els nostres punts apareixen sobretot a les ciutats i a les zones molt poblades.
 
 ### where-region · TBM per regió [On - TBM per regió] · #e7e9e4
 
-Una única taxa nacional amaga una dispersió interna enorme. Al Japó, l'Akita rural mor a gairebé el doble de la taxa de Tòquio; als Estats Units, Virgínia de l'Oest queda molt per sobre d'Utah; a Europa, el nord-oest de Bulgària i l'est d'Alemanya superen de bon tros Irlanda o les capitals nòrdiques. La major part de la diferència és l'estructura d'edat — les regions més envellides enterren més gent cada any — superposada a diferències reals de salut, pobresa i accés a l'atenció mèdica.
+Una única taxa nacional amaga una dispersió interna enorme. Al Japó, l'Akita rural mor a gairebé el doble de la taxa de Tòquio; als Estats Units, Virgínia de l'Oest queda molt per sobre d'Utah; a Europa, el nord-oest de Bulgària i l'est d'Alemanya superen de bon tros Irlanda o les capitals nòrdiques. [La major part de la diferència és l'estructura d'edat](https://ec.europa.eu/eurostat/cache/metadata/en/hlth_cdeath_sims.htm) (les regions més envellides enterren més gent cada any), superposada a diferències reals de salut, pobresa i accés a l'atenció mèdica. La [taula oficial de 2023 del Japó](https://www.ipss.go.jp/syoushika/tohkei/Data/Popular2025/T12-26.files/sheet001.htm) situa les taxes brutes en 19,3 per 1.000 a Akita i 10,2 a Tòquio; després d'estandarditzar per edat, s'acosten a 14,4 i 12,3.
 
 Un exemple il·lustratiu de com de determinant és l'estructura d'edat d'un lloc per a la seva TBM és el de Mèxic i Lituània. L'any 2000, tots dos països tenien una esperança de vida al voltant dels 72 anys, però la taxa bruta de mortalitat de Mèxic era d'uns 4 per 1.000, mentre que la de Lituània era d'uns 11 per 1.000. La mateixa esperança de vida, gairebé el triple de taxa bruta de mortalitat.
+
+Fonts: sèries del Banc Mundial d'[esperança de vida en néixer](https://data.worldbank.org/indicator/SP.DYN.LE00.IN?locations=MX-LT&start=2000&end=2000) i de [taxa bruta de mortalitat](https://data.worldbank.org/indicator/SP.DYN.CDRT.IN?locations=MX-LT&start=2000&end=2000).
 
 [subnational choropleth]
 
 ### borders-wrong-unit · Les fronteres són la unitat equivocada [On - regió] · #a6d2f5
 
 [national vs regional bars]
+
+Font: [taxes brutes de mortalitat regionals d'Eurostat de 2023](https://ec.europa.eu/eurostat/databrowser/view/demo_r_gind3/default/table?lang=en).
 
 ### when-seasonality · Quan [Quan - estacionalitat] · #bcd8ee · chapter
 

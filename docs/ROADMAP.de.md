@@ -50,19 +50,19 @@ Wir haben beim Timing der Ereignisse eine kühne Annahme gemacht: dass sie zufä
 
 [map with random dots at random places]
 
-Ich glaube, die meisten Menschen würden sich an unserem Zeitmodell nicht stoßen, aber unser räumliches Modell tut beim Zusehen weh. Die meisten zufällig platzierten Punkte (~71 %) fallen ins Meer, denn so groß ist der Anteil der Erde, der von Wasser bedeckt ist. Die Punkte, die auf Land fallen, landen überwiegend in Gebieten ohne dauerhafte menschliche Siedlungen (Wüsten, Wälder, …).
+Ich glaube, die meisten Menschen würden sich an unserem Zeitmodell nicht stoßen, aber unser räumliches Modell tut beim Zusehen weh. Die meisten zufällig platzierten Punkte (~71 %) fallen ins Meer, denn so groß ist der [Anteil der Erdoberfläche, der von Wasser bedeckt ist](https://oceanservice.noaa.gov/facts/oceanwater.html). Die Punkte, die auf Land fallen, landen überwiegend in Gebieten ohne dauerhafte menschliche Siedlungen (Wüsten, Wälder, …). Ich klassifiziere diese Punkte gegen das [GPWv4-Bevölkerungsdichteraster](https://sedac.ciesin.columbia.edu/data/set/gpw-v4-population-density-rev11), das das Modell verwendet.
 
 [ocean uninhabited inhabited tally]
 
-Wir sind uns wohl einig: Wenn wir ein genaues Sterbemodell wollen, muss es deutlich besser sein als das. Vielleicht könnten wir statt der globalen Sterbezahlen Daten auf Länderebene verwenden. Die gute Nachricht ist, dass viele Länder ihre rohe Sterberate melden — wie viele Menschen pro Jahr auf je 100.000 Einwohner sterben. Die schlechte Nachricht ist, dass viele diese Daten nicht liefern und praktisch alle, die es tun, manche Sterbefälle über- oder unterzählen.
+Wir sind uns wohl einig: Wenn wir ein genaues Sterbemodell wollen, muss es deutlich besser sein als das. Vielleicht könnten wir statt der globalen Sterbezahlen Daten auf Länderebene verwenden. Die gute Nachricht ist, dass die [Weltbank Schätzungen der rohen Sterberate veröffentlicht](https://data.worldbank.org/indicator/SP.DYN.CDRT.IN) (wie viele Menschen pro Jahr auf je 1.000 Einwohner*innen sterben). Die schlechte Nachricht ist, dass viele Länder diese Daten nicht liefern und praktisch alle, die es tun, manche Sterbefälle über- oder unterzählen.
 
-Zum Glück arbeiten bei der WHO sehr kluge Leute daran und liefern gute Schätzungen. Auch wenn sie unvollkommen sind, werden die Sterberaten nach Land ein gewaltiger Fortschritt sein gegenüber zufälligen Punkten irgendwo, mit gleicher Chance auf Mexiko oder Litauen, Togo oder die Antarktis, auf Land oder mitten im Ozean.
+Auch wenn sie unvollkommen sind, werden die Sterberaten nach Land ein gewaltiger Fortschritt sein gegenüber Punkten, die ohne Rücksicht darauf gesetzt werden, wo Menschen leben.
 
 [chart cdr per country]
 
 ### where-country · Ein Land ist kein Durchschnitt [Wo — Länderrate] · #f6c58f
 
-Dass keine Sterbefälle mehr mitten im Ozean auftauchen, ist schön. Und die aufblitzenden Punkte in den Ländern zu sehen, in die sie gehören, ist auch ein großer Fortschritt. Aber wenn du genau hinsiehst, fällt dir auf, dass die Punkte immer exakt in der Mitte eines Landes erscheinen. Manchmal ist das ein unbewohnter oder sogar unbewohnbarer Teil des Landes. Nach der aktuellen Simulation passieren alle Todesfälle Russlands im Wiwi-See, 400 Kilometer vom nächsten Krankenhaus entfernt. Aber wir wissen, dass Menschen dort zu sterben pflegen, wo Menschen zu sein pflegen — also legen wir eine Dichtekarte über unsere Rechnung. So haben die Punkte größere Chancen, dort zu erscheinen, wo mehr Menschen sind, und kleine, in unbesiedelten Gegenden aufzutauchen.
+Dass keine Sterbefälle mehr mitten im Ozean auftauchen, ist schön. Und die aufblitzenden Punkte in den Ländern zu sehen, in die sie gehören, ist auch ein großer Fortschritt. Aber wenn du genau hinsiehst, fällt dir auf, dass die Punkte immer exakt in der Mitte eines Landes erscheinen. Manchmal ist das ein unbewohnter oder sogar unbewohnbarer Teil des Landes. Nach der aktuellen Simulation passieren alle Todesfälle Russlands im [Wiwi-See](https://rgo.ru/activity/redaction/news/pamyatnyy-znak-geograficheskiy-tsentr-rossiyskoy-federatsii-v-evenkii-budet-obnovlyen/), rund 400 Kilometer vom nächsten Krankenhaus entfernt: Eine [regionale Studie](https://elib.sfu-kras.ru/bitstream/handle/2311/28186/shatunov_a_0.pdf?isAllowed=y&sequence=2) verortet den See 366 Kilometer von Tura und nennt das zentrale Bezirkskrankenhaus des Ortes. Aber wir wissen, dass Menschen dort zu sterben pflegen, wo Menschen zu sein pflegen, also legen wir eine Dichtekarte über unsere Rechnung. So haben die Punkte größere Chancen, dort zu erscheinen, wo mehr Menschen sind, und kleine, in unbesiedelten Gegenden aufzutauchen.
 
 Kleines Problem allerdings: Die Dichtekarte ist ein Raster aus rund 55 km breiten Zellen (0,5°), sie ist sozusagen verpixelt. Ländergrenzen sind aber nicht verpixelt (der Kolonialismus kam nah dran, aber nicht ganz), sie folgen oft Flüssen, Bergen oder dem Meer.
 
@@ -74,21 +74,25 @@ Diese Karte mogelt ein bisschen: Sie verwendet standardmäßig eine logarithmisc
 
 [density map asia]
 
-Auf einer linearen Skala siehst du kaum etwas außer einem Dutzend Megastädten und etwas Schattierung um die Gangesebene (die Region südlich des Himalaja, in der ein Siebtel der Weltbevölkerung lebt).
+Auf einer linearen Skala siehst du kaum etwas außer einem Dutzend Megastädten und etwas Schattierung um die Gangesebene (die Region südlich des Himalaja, in der [ein Siebtel der Weltbevölkerung lebt](https://pmc.ncbi.nlm.nih.gov/articles/PMC7125076/)).
 
 Jetzt erscheinen unsere Punkte überwiegend in Städten und in sehr bevölkerungsreichen Gegenden.
 
 ### where-region · Sterberate nach Region [Wo — Rate nach Region] · #e7e9e4
 
-Eine einzige nationale Rate verdeckt eine enorme innere Streuung. In Japan stirbt das ländliche Akita fast doppelt so schnell wie Tokio; in den USA liegt West Virginia deutlich über Utah; in Europa übertreffen Nordwestbulgarien und Ostdeutschland Irland oder die nordischen Hauptstädte bei Weitem. Der größte Teil der Lücke ist Altersstruktur — ältere Regionen begraben jedes Jahr mehr ihrer Menschen — überlagert von echten Unterschieden bei Gesundheit, Armut und Zugang zu Versorgung.
+Eine einzige nationale Rate verdeckt eine enorme innere Streuung. In Japan stirbt das ländliche Akita fast doppelt so schnell wie Tokio; in den USA liegt West Virginia deutlich über Utah; in Europa übertreffen Nordwestbulgarien und Ostdeutschland Irland oder die nordischen Hauptstädte bei Weitem. [Der größte Teil der Lücke ist Altersstruktur](https://ec.europa.eu/eurostat/cache/metadata/en/hlth_cdeath_sims.htm) (ältere Regionen begraben jedes Jahr mehr ihrer Menschen), überlagert von echten Unterschieden bei Gesundheit, Armut und Zugang zu Versorgung. Japans [amtliche Tabelle für 2023](https://www.ipss.go.jp/syoushika/tohkei/Data/Popular2025/T12-26.files/sheet001.htm) setzt die rohen Raten auf 19,3 pro 1.000 in Akita und 10,2 in Tokio; nach Altersstandardisierung rücken sie auf 14,4 und 12,3 zusammen.
 
 Ein anschauliches Beispiel dafür, wie groß der Einfluss der Altersstruktur eines Ortes auf seine Sterberate ist, sind Mexiko und Litauen. Im Jahr 2000 lag die Lebenserwartung in beiden Ländern bei etwa 72 Jahren, doch Mexikos rohe Sterberate lag bei rund 4 pro 1.000, die Litauens bei rund 11 pro 1.000. Gleiche Lebenserwartung, fast dreifacher Unterschied in der rohen Sterberate.
+
+Quellen: Weltbank-Reihen zur [Lebenserwartung bei Geburt](https://data.worldbank.org/indicator/SP.DYN.LE00.IN?locations=MX-LT&start=2000&end=2000) und zur [rohen Sterberate](https://data.worldbank.org/indicator/SP.DYN.CDRT.IN?locations=MX-LT&start=2000&end=2000).
 
 [subnational choropleth]
 
 ### borders-wrong-unit · Grenzen sind die falsche Einheit [Wo — Region] · #a6d2f5
 
 [national vs regional bars]
+
+Quelle: [Eurostats regionale rohe Sterberaten 2023](https://ec.europa.eu/eurostat/databrowser/view/demo_r_gind3/default/table?lang=en).
 
 ### when-seasonality · Wann [Wann — Saisonalität] · #bcd8ee · chapter
 
