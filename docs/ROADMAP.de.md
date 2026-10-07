@@ -110,17 +110,17 @@ Füge zum Vergleich ein Land mit direkt gemessener Kurve hinzu oder nimm eines w
 
 ## Von Beobachtungen zu einem stetigen Multiplikator
 
-Wöchentlich, monatlich und vierteljährlich beschreiben, wie oft Beobachtungen eintreffen. Es sind keine Glättungsverfahren. Wähle unten ein qualitätsgeprüftes Land mit wöchentlichen Beobachtungen, um zu sehen, was jede Kadenz bewahrt, vergleiche den früheren zirkulären Dreimonatsdurchschnitt und schalte zwischen den Ordnungen 1–4 der stetigen harmonischen Kurve um. Ordnung 4 ist das Modell, das der Globus jetzt verwendet.
+Wöchentlich, monatlich, vierteljährlich: So oft meldet ein Land, und das entscheidet, wie viel von der Form übrig bleibt. Die Glättung ist ein eigener Schritt. Wähl unten ein Land, das wöchentlich meldet, um zu sehen, was jede Kadenz behält, vergleich es mit dem zirkulären Dreimonatsdurchschnitt, mit dem der Globus früher lief, und schalte die harmonische Kurve zwischen Ordnung 1 und 4 um. Der Globus nutzt jetzt Ordnung 4.
 
 [smoothing explainer]
 
-In diesen Diagrammen bedeutet ein Faktor über 1, dass Sterbefälle schneller feuern als der Jahresdurchschnitt, und ein Faktor unter 1, dass sie langsamer feuern. Die Produktionskurve ist eine gepoolte Fourier-Regression vierter Ordnung über alle vollständigen Nicht-COVID-Jahre: Wöchentliche Beobachtungen bleiben wöchentlich, Zählungen werden in tägliche Intensität umgerechnet, und das Ergebnis lässt sich stetig an jedem Tag des Jahres auswerten.
+Ein Faktor über 1 heißt, Sterbefälle feuern schneller als der Jahresdurchschnitt, unter 1 langsamer. Die Kurve, die der Globus nutzt, ist eine Fourier-Regression vierter Ordnung, gepoolt über alle vollständigen Nicht-COVID-Jahre. Wöchentliche Beobachtungen bleiben wöchentlich, Zählungen werden zu einer täglichen Intensität, und die angepasste Kurve liefert einen Wert für jeden Tag des Jahres, auch für die, die niemand gemeldet hat.
 
-Viele gemäßigte Länder folgen einem ähnlichen Muster: Der Winter ist deutlich tödlicher als der Sommer. Näher am Äquator ist das Jahressignal meist flacher oder folgt Regen- und Trockenzeiten statt einem Winter-Sommer-Kontrast, deshalb nimmt das harmonische Modell nicht an, dass jedes Land eine Winterspitze hat.
+Die meisten gemäßigten Länder sehen ähnlich aus: Der Winter tötet spürbar mehr als der Sommer. Näher am Äquator ist die Kurve flacher oder folgt Regen- und Trockenzeit statt Winter und Sommer. Deshalb setzt das harmonische Modell nirgends eine Winterspitze voraus; es passt sich der Form an, die die Daten haben.
 
-Kurven der Südhalbkugel werden nur dann um ein halbes Jahr verschoben, wenn das Diagramm ihre saisonale Form mit nördlichen Ländern vergleicht. Ihre Produktionskurven behalten ihre echte Kalenderphase.
+Wenn das Diagramm Länder der Südhalbkugel neben nördliche stellt, verschiebt es sie um ein halbes Jahr, damit sich die Formen vergleichen lassen. Der Globus tut das nicht: Dort ist der Juli in Chile immer noch Juli.
 
-Diese Wortwahl von mir verrät eine Annahme, die zwar naheliegt, aber falsch sein könnte: dass Veränderungen der Raten über ein Jahr überwiegend auf klimatischen Jahreszeiten beruhen. Theoretisch könnten sie etwas anderes widerspiegeln — denk an soziale Mechanismen wie den Ramadan oder an Datenartefakte wie verspätete Meldung von Sterbefällen, voreingestellte Sterbedaten und so weiter.
+Diese Wortwahl von mir verrät eine Annahme, die zwar naheliegt, aber falsch sein könnte: dass Veränderungen der Raten über ein Jahr überwiegend auf klimatischen Jahreszeiten beruhen. Theoretisch könnten sie etwas anderes widerspiegeln. Denk an soziale Mechanismen wie den Ramadan oder an Datenartefakte wie verspätete Meldung von Sterbefällen, voreingestellte Sterbedaten und so weiter.
 
 Zu verstehen, was Saisonalität verursacht, ist sehr interessant, aber für die Länder, von denen wir beobachtete saisonale Daten haben, nicht entscheidend. Was machen wir mit den anderen rund 100 Ländern, die nur eine jährliche Sterberate liefern?
 
@@ -128,21 +128,21 @@ Wenn mir Daten fehlen, die ich brauche, stelle ich mir immer die Frage: Gibt es 
 
 [proxy ranking card]
 
-Bevor wir uns auf einen festlegen, lohnt es sich zu sehen, was die _Stärke_ des saisonalen Ausschlags eines Landes tatsächlich abbildet — unter den Ländern, die bereits eine Kurve melden. Viele sind grob unimodal, während manche tropischen Klimata breitere oder mehrfache Regenzeit-Merkmale haben können. Die Amplitude ist trotzdem eine brauchbare erste Zusammenfassung — wie weit sich die Kurve von ihrem Jahresmittel entfernt — ohne zu behaupten, jede Form habe eine Winterspitze.
+Bevor wir uns auf einen festlegen, lohnt es sich zu sehen, was die _Stärke_ des saisonalen Ausschlags eines Landes tatsächlich abbildet, unter den Ländern, die bereits eine Kurve melden. Viele sind grob unimodal, während manche tropischen Klimata breitere oder mehrfache Regenzeit-Merkmale haben können. Die Amplitude ist trotzdem eine brauchbare erste Zusammenfassung (wie weit sich die Kurve von ihrem Jahresmittel entfernt), ohne zu behaupten, jede Form habe eine Winterspitze.
 
 In den folgenden Diagrammen ist jeder Punkt ein Land mit beobachteten saisonalen Daten. Die y-Achse zeigt die Amplitude: Je höher ein Punkt liegt, desto größer der Unterschied der Sterblichkeit zwischen Sommer und Winter. Die x-Achse verortet die Länder auf jedem der vorgeschlagenen Indikatoren.
 
-Die untere Achse zeigt den absoluten Breitengrad — wie weit ein Land vom Äquator entfernt ist. Punkte links sind tropisch, Punkte nahe dem rechten Rand liegen nahe den Polen.
+Die untere Achse zeigt den absoluten Breitengrad, wie weit ein Land vom Äquator entfernt ist. Punkte links sind tropisch, Punkte nahe dem rechten Rand liegen nahe den Polen.
 
 [latitude scatter]
 
-Wir sehen ein erwartetes Muster: Die Amplitude ist zwischen den Wendekreisen am niedrigsten, weil Länder dort keine astronomischen Jahreszeiten erleben. Und ein — zumindest für mich — unerwartetes: Oberhalb von 35° nimmt die Saisonalität ab, statt mit kälteren und längeren Wintern zu steigen. Eine mögliche Erklärung ist, dass Menschen ab einer bestimmten Schwelle verstehen, dass sie sich an den Winter anpassen müssen, und soziale, verhaltensbezogene und bauliche Anpassungen umsetzen. Dass Spanien mit seinem milderen Klima eine höhere Wintersterblichkeit zeigt als Schweden, würde in diese Richtung deuten.
+Wir sehen ein erwartetes Muster: Die Amplitude ist zwischen den Wendekreisen am niedrigsten, weil Länder dort keine astronomischen Jahreszeiten erleben. Und ein unerwartetes (zumindest für mich): Oberhalb von 35° nimmt die Saisonalität ab, statt mit kälteren und längeren Wintern zu steigen. Eine mögliche Erklärung ist, dass Menschen ab einer bestimmten Schwelle verstehen, dass sie sich an den Winter anpassen müssen, und soziale, verhaltensbezogene und bauliche Anpassungen umsetzen. Dass Spanien mit seinem milderen Klima eine höhere Wintersterblichkeit zeigt als Schweden, würde in diese Richtung deuten.
 
 Hier stecken wir alle Länder und Regionen in ihren jeweiligen Klimatopf. Wenn das ein guter Indikator sein soll, müssten die Punkte in jedem Klima eng beieinanderliegen.
 
 [koppen scatter]
 
-Nun, das ändert das Bild kaum. Wir bestätigen, dass es eine Korrelation gibt, dass die Saisonalität zwischen den Wendekreisen niedriger ist, und dass das Klima — genau wie der Breitengrad — die Saisonalität dort am besten vorhersagt, wo sie niedrig ist.
+Nun, das ändert das Bild kaum. Wir bestätigen, dass es eine Korrelation gibt, dass die Saisonalität zwischen den Wendekreisen niedriger ist, und dass das Klima, genau wie der Breitengrad, die Saisonalität dort am besten vorhersagt, wo sie niedrig ist.
 
 [pop65 scatter]
 
@@ -154,13 +154,13 @@ Mehr vom Gleichen. Es gibt keine sichtbare Korrelation zwischen dem Reichtum ein
 
 [neighbour scatter]
 
-Und wie steht es mit Nachbarländern? Das ist besser. Hier gibt es eine starke Korrelation. Angrenzende Nachbarschaft ist der stärkste Indikator — der niedrigste mittlere Fehler, die höchste Korrelation und der einzige mit positiver Trennschärfe sowohl gegenüber der Mittelkurve als auch gegenüber dem Breitengrad. Breitengrad und Klimaklasse liegen dicht dahinter beieinander, wobei das Klima beim typischen Land knapp vor dem Breitengrad liegt.
+Und wie steht es mit Nachbarländern? Das ist besser. Hier gibt es eine starke Korrelation. Von allem, was ich an den Ländern mit gemessener Kurve ausprobiert habe, gewinnt das Borgen bei angrenzenden Nachbarn: niedrigster mittlerer Fehler, höchste Korrelation, und die einzige Methode, die sowohl die Mittelkurve als auch den Breitengrad schlägt. Breitengrad und Klimaklasse folgen dicht dahinter, wobei das Klima beim typischen Land knapp vor dem Breitengrad liegt.
 
 :::accordion
 
 ## Wie die Indikatoren tatsächlich abschneiden · Auslassungswerte für alle fünf Indikatoren
 
-Das sind Behauptungen über Fehler und Trennschärfe, also hier sind sie gemessen. Jedes Land, das eine Kurve meldet, wird der Reihe nach versteckt, aus jedem Indikator statt aus seinen eigenen Daten vorhergesagt und gegen die beobachtete Form bewertet.
+Ich habe gerade Behauptungen über Fehler und Trennschärfe aufgestellt, also hier die Messung. Ich verstecke jedes Land, das eine Kurve meldet, sage es mit jeder Methode vorher, als hätte es keine Daten, und bewerte die Vorhersage gegen die echte Form. In diesen Diagrammen ist die Amplitude die quadratische mittlere Abweichung der angepassten Kurve von ihrem Jahresmittel.
 
 [prediction comparison]
 
@@ -168,13 +168,13 @@ Das sind Behauptungen über Fehler und Trennschärfe, also hier sind sie gemesse
 
 ## Und wie hat sich deine Reihung geschlagen?
 
-Du hast die fünf in eine Reihenfolge gebracht, bevor irgendetwas davon auf dem Bildschirm war. Hier ist die Reihenfolge, die die Diagramme oben tatsächlich ergeben, und wo deine Schätzung dagegen gelandet ist.
+Die Reihung fragte, welcher Indikator die Größe des Ausschlags eines Landes abbildet. Der Auslassungstest fragt etwas anderes: Wie gut baut jede Methode die ganze Kurve nach, wenn ich sie verstecke? Wenn du die fünf vor den Diagrammen gereiht hast, hier ist deine Schätzung gelandet.
 
 [proxy scorecard]
 
 ## Angrenzende Regionen, nicht nur angrenzende Länder
 
-Benachbarte Regionen innerhalb desselben Landes laufen noch enger miteinander als angrenzende Länder. Diese Übereinstimmung ist der Grund, warum die Rekonstruktion aus der nächstgelegenen Region jeden anderen Indikator auf Regionsebene schlägt. Zwei russische Regionen, Inguschetien und Tschukotka, hatten unbrauchbare rohe Wochendaten — Wochen mit Rate null oder übermäßiges Spitzenrauschen — und werden aus dem Durchschnitt ihrer nächsten brauchbaren Nachbarn geschätzt, statt unverändert gezeigt oder verworfen zu werden.
+Benachbarte Regionen innerhalb eines Landes laufen noch enger miteinander als benachbarte Länder, und deshalb schlägt die Rekonstruktion aus der nächstgelegenen Region jeden anderen Indikator auf Regionsebene. Zwei russische Regionen, Inguschetien und Tschukotka, hatten rohe Wochendaten, die ich nicht verwenden konnte (Wochen mit null Toten oder Spitzen, viel zu groß, um echt zu sein), also habe ich sie, statt sie unverändert zu zeigen oder zu verwerfen, mit dem Durchschnitt ihrer nächsten brauchbaren Nachbarn gefüllt.
 
 [region neighbour scatter]
 
@@ -192,32 +192,30 @@ Benachbarte Regionen innerhalb desselben Landes laufen noch enger miteinander al
 
 Jedes Quadrat ist ein halbes Grad desselben Rasters, das der Globus abtastet, eingefärbt nach den Todesfällen, die die Saison dieses Monats einem gewöhnlichen Monat dort hinzufügt oder nimmt. Zieh durch das Jahr, und die Hemisphären tauschen die Plätze: Europas Januarüberschuss ist das Januardefizit im südlichen Afrika, und im Juli ist es umgekehrt.
 
-Die Textur innerhalb eines Landes ist Bevölkerung, nicht Saisonalität. Zehn Länder haben gemessene Regionalkurven, und in diesem Ausschnitt bleiben davon Südafrika, das westliche Russland sowie das klimamodellierte Indien und China; Europa hat keine einzige. Überall sonst teilen sich alle Zellen eines Landes eine Kurve, und die Umrisse sagen, zu welcher Einheit diese Kurve gehört — durchgezogen, wo jemand dort Todesfälle gezählt hat, gestrichelt, wo sie aus einem Nachbarn, einer Klimaklasse oder einem Breitengrad rekonstruiert wurde. Was sich innerhalb einer solchen Grenze von Zelle zu Zelle ändert, ist, wie viele Menschen dort leben, nicht wann sie sterben.
+Die Textur, die du innerhalb eines Landes siehst, ist Bevölkerung. Nur zehn Länder haben gemessene Regionalkurven, und in diesem Ausschnitt bleiben davon Südafrika, das westliche Russland sowie das klimamodellierte Indien und China; Europa hat keine einzige. Überall sonst teilen sich alle Zellen eines Landes eine Kurve, und die Umrisse sagen dir, zu welcher Einheit sie gehört: durchgezogen, wo jemand dort Todesfälle gezählt hat, gestrichelt, wo ich sie aus einem Nachbarn, einer Klimaklasse oder einem Breitengrad rekonstruiert habe. Innerhalb einer solchen Grenze ändert sich von Zelle zu Zelle, wie viele Menschen dort leben. Wann sie sterben, ist überall gleich.
 
 ### conflicts · Ein Krieg ist kein Poisson-Prozess [Konflikte] · #eeb87d
 
-Die bisherigen Ebenen erfassen langfristige Sterblichkeitstrends, die den größten Teil der Todesfälle weltweit ausmachen. Aktuelle Sterblichkeit braucht aber auch feinkörnigere Faktoren, vor allem Konflikte. ACLEDs Echtzeitangebot für Forschung veröffentlicht wöchentliche Aggregate nach Land und Admin-1 mit Todesopfern und regionalen Zentroidkoordinaten. Diese Zentroide sind eine Annäherung, keine einzelnen Ereignisorte.
+Alles bisher ist langsame Sterblichkeit: die langfristigen Trends, die den größten Teil der Todesfälle weltweit ausmachen. Aber manche Todesfälle folgen keinem Trend, und die größte Gruppe davon ist Krieg. [ACLED veröffentlicht wöchentliche Aggregate](https://acleddata.com/use-access/how-use-acleds-aggregated-data) gemeldeter Konflikttoter, festgemacht an den Zentroiden von Ländern und Admin-1-Regionen. ACLED summiert die Ereignisse jeder Woche in der Mitte einer Provinz; wo jedes einzelne passiert ist, sagt es nicht.
 
-Bei allen anderen Ebenen haben wir die zugrunde liegende rohe Sterberate mit einem Saisonalitäts- oder Dichtefaktor multipliziert. Hier erhalten wir 12 vollständige Berichtswochen bis zum ältesten Veröffentlichungsdatum, das alle sechs ACLED-Regionen gemeinsam haben. Was ist also unser Faktor für die aktuelle Woche?
+Jede andere Ebene bisher war ein Faktor, mit dem wir die rohe Sterberate multiplizieren: Dichte, Jahreszeit. Diese hier ist eine Zählung. Wir bekommen 12 vollständige gemeldete Wochen bis zum ältesten Veröffentlichungsdatum, das die sechs ACLED-Regionen gemeinsam haben. Wie viele Menschen sterben also gerade jetzt in einer beliebigen Woche in Kriegen?
 
-Wir bilden einen nach Aktualität gewichteten Durchschnitt, um die Sterblichkeit der aktuellen Woche zu schätzen. Konkret nutzen wir einen robusten exponentiell gewichteten gleitenden Mittelwert (Robust EWMA): _gewichte jüngere Wochen stärker als ältere, aber dämpfe verdächtig extreme Werte vor dem Mitteln_.
+Ich nehme einen gewichteten Durchschnitt, der jüngeren Wochen mehr traut als alten und die Extreme vor dem Mitteln zusammendrückt. Das heißt robuster exponentiell gewichteter gleitender Mittelwert, Robust EWMA. Eine einzelne wilde Woche kann die Schätzung kaum bewegen. Die Kehrseite: Wenn ein Krieg plötzlich schlimmer wird, hinkt die Schätzung hinterher.
 
-Zum Beispiel:
-
-Nehmen wir sieben Wochen aus dem 12-Wochen-Fenster:
+So funktioniert das an sieben erfundenen Wochen (die echte Schätzung nutzt 12; mit sieben bleibt die Rechnung kurz).
 
 | Woche      |   1 |   2 |   3 |   4 |   5 |   6 |   7 |
 | ---------- | --: | --: | --: | --: | --: | --: | --: |
 | Todesopfer |  20 |  22 |  21 |  90 |  24 |  26 |  28 |
 
-Wir berechnen das 10. und das 90. Perzentil.
+Zuerst das 10. und das 90. Perzentil.
 
 | Perzentil | Grenze | Bedeutung                                        |
 | --------- | -----: | ------------------------------------------------ |
 | P10       |   20,6 | Etwa 10 % der Wochen haben niedrigere Zahlen. |
 | P90       |   52,8 | Etwa 90 % der Wochen haben niedrigere Zahlen. |
 
-Dann passen wir die Zahlen über und unter diesen Grenzen an:
+Alles außerhalb wird hereingezogen:
 
 | Woche | Ursprungswert | Gekappter Wert | Änderung          |
 | --: | ------------: | -------------: | ----------------- |
@@ -229,9 +227,9 @@ Dann passen wir die Zahlen über und unter diesen Grenzen an:
 |   6 |            26 |             26 | Unverändert       |
 |   7 |            28 |             28 | Unverändert       |
 
-Für die Gewichte wählen wir eine Halbwertszeit: wie viele Wochen es dauert, bis sich der Einfluss einer Woche auf die endgültige Schätzung halbiert. Eine Anpassung würde eine längere Validierung erfordern; hier beträgt der Produktionsstandard vier Wochen.
+Dann die Gewichte. Sie kommen aus einer Halbwertszeit: wie viele Wochen es dauert, bis eine Woche nur noch halb so viel zählt. Ich habe sie nicht angepasst (das bräuchte eine richtige Validierung); der Globus nutzt vier Wochen.
 
-Die Gewichte für eine Halbierung alle vier Wochen sehen so aus:
+Mit einer Halbwertszeit von vier Wochen sind die Gewichte:
 
 | Woche | Gewicht | Anmerkung                     |
 | --: | ------: | ----------------------------- |
@@ -243,15 +241,15 @@ Die Gewichte für eine Halbierung alle vier Wochen sehen so aus:
 |   6 |   0,841 |                               |
 |   7 |   1,000 | Jüngste vollständige Woche    |
 
-Dann bilden wir mit diesen Gewichten einen gewichteten Durchschnitt. Das ergibt 28,4.
+Gewichteter Durchschnitt der gekappten Werte: 28,4. Der einfache Durchschnitt der Rohzahlen liegt bei 33, hochgezogen von dieser einen Woche mit 90.
 
-Beide Entscheidungen — wie schnell der Einfluss einer Woche abklingt und wie stark die Extreme hereingezogen werden — sind meine, nicht die der Daten. Der Globus nutzt immer das Standardergebnis mit vier Wochen und P10–P90, verteilt nach dem Anteil jeder Admin-1-Region an den Todesopfern der 12 Wochen und auf ein Jahr hochgerechnet. Die Regler sind eine kontrafaktische Demonstration; sie verändern den Globus nicht.
+Beide Regler (wie schnell eine Woche verblasst, wie stark die Extreme hereingezogen werden) sind meine Entscheidungen; die Daten haben sie nicht gewählt. Der Globus läuft immer mit dem Standard, vier Wochen und P10–P90, verteilt das Ergebnis dann nach dem Anteil jeder Admin-1-Region an den Todesopfern der 12 Wochen und rechnet es auf ein Jahr hoch. Mit den Reglern unten siehst du, was andere Einstellungen ergeben würden. Sie zu bewegen verändert den Globus nicht.
 
 [widget to update half life, curve smoothness, and see prediction]
 
 [map of conflict fatalities]
 
-Die Karte zeigt die Todesopfer derselben 12 vollständigen Wochen an ACLEDs Admin-1-Zentroiden. Für den Globus wird jeder Zentroid dem nächsten besiedelten Rasterfeld im selben Land zugeordnet.
+Die Karte zeigt dieselben 12 Wochen Todesopfer an ACLEDs Admin-1-Zentroiden. Auf dem Globus springt jeder Zentroid auf die nächste besiedelte Rasterzelle im selben Land, damit ein Punkt nicht in einer leeren Wüste landet, nur weil dort die Mitte der Provinz liegt.
 
 ### who · Wer · #d9dbdd · chapter
 
@@ -259,15 +257,17 @@ Die Karte zeigt die Todesopfer derselben 12 vollständigen Wochen an ACLEDs Admi
 Jedes Aufblitzen bekommt einen Satz, gezogen aus der Verteilung des Ortes, an dem es gefeuert hat.
 :::
 
-# Alter, dann Geschlecht, dann eine Ursache
+# Geschlecht, Alter, dann Ursache
 
-**Alter und Geschlecht** stammen aus der UN-Tabelle der Sterbefälle nach Alter und Geschlecht aus den World Population Prospects, in den Zahlen von 2023. Die **Ursache** stammt aus den Global Health Estimates der Weltgesundheitsorganisation — der Ausgabe von 2021, gelesen bei 2019, dem letzten Jahr vor der Pandemie, damit Covid nicht als die gewöhnliche Art zu sterben gezeichnet wird — genommen auf ihrer feinsten Ebene — den wiedererkennbaren Ursachen, nicht den klinischen Gruppen darüber — und reduziert auf die acht stärksten je Land, Geschlecht und Altersgruppe, wobei alles Übrige zu „andere Ursachen" zusammengefasst wird.
+Alter und Geschlecht stammen aus der UN-Tabelle der Sterbefälle nach Alter und Geschlecht in den World Population Prospects, Zahlen von 2023. Die Ursache stammt aus den [Global Health Estimates der WHO](https://www.who.int/data/global-health-estimates/), der Ausgabe GHE 2021, veröffentlicht 2024. Ich nutze ihre Schätzungen für 2019, das letzte Jahr vor der Pandemie, weil ich nicht will, dass COVID-19 als die gewöhnliche Art zu sterben gezeichnet wird. Für jedes Land, Geschlecht und jede Altersgruppe behalte ich die acht häufigsten wiedererkennbaren Ursachen und fasse den Rest zu „andere Ursachen" zusammen.
 
-Sie werden **in dieser Reihenfolge** gezogen, sodass eine Ursache immer nur aus der Alters- und Geschlechtsgruppe kommt, die plausibel daran stirbt. Zieh die Ursache zuerst, und du bekommst Zwanzigjährige mit Demenz.
+Alter, Geschlecht und Ursache ziehe ich nicht unabhängig voneinander. Erst Geschlecht und Alter, dann die Ursache aus der Verteilung dieser Gruppe. Sonst bekämen wir Kombinationen, die die Quelldaten fast nie zeigen.
 
-Beide Tabellen liegen als JSON im Repository, der Feed braucht also keinen API-Aufruf zur Laufzeit und liest sich offline genauso. Die Ursachentabelle kam früher aus der Global Burden of Disease des IHME, von Hand aus einem Werkzeug exportiert, das jeden Download hinter einer Anmeldung und einer Grenze von hunderttausend Zeilen verschließt. Die WHO-Tabelle ist eine einzige Anfrage ohne Zugangsdaten, und das ist ein guter Teil des Grundes, warum sie hier steht.
+Beide Tabellen ([Alter und Geschlecht](/data/mortality-age-sex.json), [Ursache](/data/causes.json)) liegen als JSON im Repository, der Feed macht zur Laufzeit also keinen API-Aufruf und liest sich offline genauso. Die Ursachentabelle kam früher aus der Global Burden of Disease des IHME, die ich von Hand aus einem Ergebniswerkzeug exportieren musste, das jeden Download hinter einer Anmeldung versteckt und bei hunderttausend Zeilen kappt. Die WHO-Tabelle ist eine Anfrage und kein Konto. Das ist der Hauptgrund, warum sie hier steht.
 
-Die Ursache unter die Landesebene zu bringen heißt zurück zum IHME, und zurück zu jener Grenze. Der subnationale Export sind 723 Orte mal 22 Altersgruppen mal zwei Geschlechter mal 22 Ursachengruppen — siebenhunderttausend Zeilen, also acht Downloads, gegen ein Kontingent, das pro Ausgabe verbraucht wird und sich nie wieder auffüllt. Also wurden die acht danach geordnet, wie viele Tote auf jeden entfielen, und nicht nach der Reihenfolge, in der das Werkzeug sie auflistet. Nach dem ersten war das Kontingent aufgebraucht. Dieser eine Download enthält die Herz-Kreislauf-Erkrankungen, die Krebserkrankungen und die chronischen Atemwegserkrankungen — 55% aller Todesfälle — in regionaler Auflösung; in der Reihenfolge des Werkzeugs hätte derselbe Download etwa ein Zehntel davon enthalten. Er steckt im Feed, und es lohnt sich, genau zu sagen, wie weit er reicht, denn zwei verschiedene Anteile wirken zusammen. Die Regionen decken **44,6%** der gezogenen Todesfälle ab; die drei Gruppen sind **55,0%** der Ursachen. Nur wo beides zutrifft, entscheidet die Region — also bewegen sich **24,5% aller Ursachenziehungen** jetzt mit dem Ort statt mit dem Land. Der Rest behält die nationale Mischung.
+Die Ursache unter die Landesebene zu bringen heißt zurück zum IHME, und zurück zu dieser Grenze. Der subnationale Export sind 723 Orte × 22 Altersgruppen × zwei Geschlechter × 22 Ursachengruppen: siebenhunderttausend Zeilen, also acht Downloads, gegen ein Kontingent, das pro Ausgabe verbraucht wird und sich nie wieder auffüllt. Also habe ich die acht danach geordnet, wie viele Tote jeder trägt, statt nach der Reihenfolge, in der das Werkzeug sie auflistet. Nach dem ersten war das Kontingent aufgebraucht.
+
+Dieser eine Download enthält die Herz-Kreislauf-Erkrankungen, die Krebserkrankungen und die chronischen Atemwegserkrankungen, 55% aller Todesfälle, in regionaler Auflösung. In der Reihenfolge des Werkzeugs hätte derselbe Download etwa ein Zehntel davon enthalten. Jetzt steckt er im Feed. Wie weit reicht er? Zwei Anteile wirken zusammen. Die Regionen decken **44,6%** der gezogenen Todesfälle ab; die drei Gruppen sind **55,0%** der Ursachen. Die Region entscheidet nur, wo beides zutrifft, also bewegen sich **24,5% aller Ursachenziehungen** jetzt mit dem Ort statt mit dem Land. Der Rest behält die nationale Mischung.
 
 Was der Feed weiß, als Anteil der Todesfälle, die er zieht:
 
@@ -277,17 +277,21 @@ Was der Feed weiß, als Anteil der Todesfälle, die er zieht:
 | Ursache, diese 3 Gruppen |                    44,6% |          — |    55,4% |
 | Ursache, die anderen 19  |                        — |          — |     100% |
 
-Die Neugewichtung ist ein Verhältnis, kein Ersatz. Zweiundzwanzig klinische Gruppen können keine siebenundachtzig benannten Ursachen tragen, also wird das IHME nie gebeten, irgendetwas zu benennen: für jede Region, Altersgruppe und jedes Geschlecht liefert es eine einzige Zahl pro Gruppe — den Anteil dieser Gruppe an den Todesfällen dort, geteilt durch ihren Anteil im Land — und die WHO-Bezeichnungen innerhalb der Gruppe werden damit multipliziert. Alles außerhalb der drei Gruppen bewegt sich gemeinsam mit dem Rest, damit die drei sich nicht stillschweigend aufblähen können.
+Die Neugewichtung ist ein Verhältnis. Zweiundzwanzig klinische Gruppen können keine siebenundachtzig benannten Ursachen tragen, also bitte ich die GBD nie, irgendetwas zu benennen. Für jede Region, Altersgruppe und jedes Geschlecht liefert sie eine Zahl pro Gruppe: den Anteil dieser Gruppe an den Todesfällen dort, geteilt durch ihren Anteil im Land. Die WHO-Bezeichnungen innerhalb der Gruppe werden damit multipliziert. Alles außerhalb der drei Gruppen bewegt sich gemeinsam mit dem Rest, damit die drei sich nicht stillschweigend aufblähen können.
 
-Drei Dinge stehen noch aus, und keines davon ist eine Kleinigkeit. Neunzehn der zweiundzwanzig Gruppen haben überhaupt keine regionalen Daten — das sind sieben Downloads, die ein Kontingent noch schuldet, das sich nicht wieder aufgefüllt hat. Fünfundfünfzig Prozent der Todesfälle geschehen außerhalb der 474 Regionen — darunter ganz China, das hier keine subnationalen Einheiten hat — und ziehen eine nationale Ursachenmischung. Und siebzehn der Regionen sind Städte, die zu klein sind, als dass eine Halbgrad-Zelle sie ihnen zusprechen könnte: Delhi, Osaka, Greater London, Mexiko-Stadt, Jakarta, Manila und elf weitere gewinnen keine eigene Zelle, ihre Todesfälle werden also mit der Mischung der umgebenden Region gezogen. Das sind 2,6% der Todesfälle innerhalb der Regionen, und schuld ist das Gitter, nicht die Daten.
+Drei Dinge fehlen noch, und keines davon ist klein. Neunzehn der zweiundzwanzig Gruppen haben überhaupt keine regionalen Daten: sieben Downloads, die mir ein Kontingent noch schuldet, das sich nicht wieder aufgefüllt hat. 55% der Todesfälle geschehen außerhalb der 474 Regionen (darunter ganz China, das hier keine subnationalen Einheiten hat) und ziehen eine nationale Ursachenmischung. Und siebzehn der Regionen sind Städte, zu klein, als dass eine Halbgrad-Zelle ihnen zufallen könnte. Delhi, Osaka, Greater London, Mexiko-Stadt, Jakarta, Manila und elf weitere gewinnen keine eigene Zelle, ihre Todesfälle werden also mit der Mischung der umgebenden Region gezogen. Das sind 2,6% der Todesfälle innerhalb der Regionen. Schuld ist das Gitter; die Daten sind in Ordnung.
 
 [sampling order]
 
 # Dann kippt der Monat es
 
-Dieselben drei Tabellen geben im Januar nicht dieselbe Antwort wie im Juli. Jede Altersgruppe und jede Ursachengruppe trägt eine Kurve aus zwölf Punkten, auf einen Jahresmittelwert von eins normiert, sodass die Jahressummen genau das bleiben, was die Tabellen sagen, während sich die Mischung innerhalb eines Monats verschiebt: ein nördlicher Winter zieht älter, und mehr Atemwege. Südlich des Äquators laufen diese Kurven ein halbes Jahr versetzt, und das ist gemessen, nicht angenommen.
+Die Jahreszeit verändert auch Alter und Ursache, die wir ziehen. Ich schätze diese Veränderungen aus den Registern, die ich habe, und leihe die Muster dann an Länder aus, die keine haben. Dieses Ausleihen ist einer der wackligeren Teile des Modells.
 
-Die Kurven stammen aus den monatlichen Sterberegistern Brasiliens und Mexikos — den einzigen beiden Ländern hier, deren Mikrodaten Datum und Ursache zusammen führen — und erreichen alle anderen über dieselbe Übertragung nach Klimazone, die das Kapitel zur Saisonalität benutzt. Das Alter ist vollständig abgedeckt. Die Ursache nicht: 55 der 87 Bezeichnungen leihen sich die Kurve ihres ICD-10-Kapitels, die anderen 32 bleiben flach, mit eins multipliziert. Die größte davon ist „andere Ursachen" selbst — der Rest, in den die Kürzung auf die stärksten acht alles Übrige zusammenfasst, in der Regel ein Drittel des Gewichts in den Erwachsenengruppen und bis zur Hälfte. Sie flach zu lassen ist eine Entscheidung und kein Versehen: sie ist ein Sack unverbundener Todesfälle ohne eigenes Kapitel, und ihr die Kurve des durchschnittlichen Todes zu geben hieße, eine Form zu behaupten, die ich nicht gemessen habe.
+Alter und Ursache nutzen verschiedene Register. Die Alterskurven sind aus [Eurostats Wochenregistern](https://ec.europa.eu/eurostat/cache/metadata/en/demomwk_esms.htm) für 24 europäische Länder gemessen. Die Ursachenkurven kommen aus den monatlichen Sterberegistern von [Brasiliens DATASUS](https://datasus.saude.gov.br/informacoes-de-saude-tabnet/) und [Mexikos Secretaría de Salud](https://www.datos.gob.mx/dataset/registro_defunciones), den beiden Länderquellen hier, deren Mikrodaten Datum und Ursache zusammen führen. Beide werden als stetige harmonische Kurven vierter Ordnung angepasst. Die zwölf Monatswerte im Diagramm sind Momentaufnahmen dieser Kurven; was das Modell behält, ist die Kurve selbst.
+
+Länder ohne solche Register borgen über dieselbe Spenderkaskade wie das Timing: regionale Durchschnitte, Nachbarländer, Klima, Breitengrad. Alle neun Altersgruppen haben gemessene Kurven in den 24 Quellländern. Die Ursache ist lückenhafter: 55 der 87 Bezeichnungen leihen sich die Kurve ihres ICD-10-Kapitels, und die anderen 32 lasse ich flach, mit eins multipliziert. Die größte davon ist „andere Ursachen" selbst, der Sack, in den die Kürzung auf die stärksten acht alles Übrige kehrt, in der Regel ein Drittel des Gewichts in den Erwachsenengruppen und bis zur Hälfte. Ich habe sie absichtlich flach gelassen. Sie ist ein Haufen unverbundener Todesfälle ohne eigenes Kapitel, und ihr die Kurve des durchschnittlichen Todes zu geben hieße, eine Form zu behaupten, die ich nie gemessen habe.
+
+Beim Ziehen verändern diese Multiplikatoren die bedingten Alters- und Ursachengewichte, die dann gemeinsam normiert werden. Jede Kurve hat über das Jahr im Mittel eins, aber das allein garantiert nicht, dass jede Kategorie nach dem Kombinieren der Gewichte genau ihren Jahresanteil behält.
 
 [deaths by age and cause]
 

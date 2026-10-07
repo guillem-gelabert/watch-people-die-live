@@ -109,15 +109,15 @@ Afegeix o treu qualsevol país amb una corba mesurada directament per comparar.
 
 ## De les observacions a un multiplicador continu
 
-Setmanal, mensual i trimestral descriuen amb quina freqüència arriben les observacions. No són mètodes de suavitzat. Tria qualsevol país amb observacions setmanals que passi el control de qualitat per veure què conserva cada cadència, compara l'antiga mitjana circular de tres mesos i commuta entre els ordres 1–4 de la corba harmònica contínua. L'ordre 4 és el model que fa servir ara el globus.
+Setmanal, mensual, trimestral: això és cada quant informa un país, i decideix quanta forma sobreviu. El suavitzat és un pas a part. Tria a sota un país que informi setmanalment per veure què conserva cada cadència, compara-ho amb la mitjana circular de tres mesos amb què funcionava abans el globus, i canvia la corba harmònica entre els ordres 1 i 4. El globus fa servir ara l'ordre 4.
 
 [smoothing explainer]
 
-En aquests gràfics, un factor per sobre d'1 vol dir que les morts es disparen més ràpid que la mitjana anual, i un factor per sota d'1 vol dir que ho fan més lentament. La corba de producció és una regressió de Fourier d'ordre 4 agrupada sobre tots els anys complets no COVID: les observacions setmanals es queden setmanals, els recomptes es converteixen en intensitat diària, i el resultat es pot avaluar de manera contínua en qualsevol dia de l'any.
+Un factor per sobre d'1 vol dir que les morts es disparen més de pressa que la mitjana de l'any; per sota d'1, més a poc a poc. La corba que fa servir el globus és una regressió de Fourier d'ordre 4 agrupada sobre tots els anys complets sense COVID. Les observacions setmanals es queden setmanals, els recomptes es converteixen en una intensitat diària, i la corba ajustada dona un valor per a qualsevol dia de l'any, també els que ningú no ha informat.
 
-Molts països temperats segueixen un patró semblant: l'hivern és significativament més mortal que l'estiu. A prop de l'equador el senyal anual sol ser més pla o segueix les estacions plujoses i seques en comptes d'un contrast hivern/estiu, de manera que el model harmònic no assumeix que tots els països tinguin un pic d'hivern.
+La majoria de països temperats s'assemblen: l'hivern mata força més que l'estiu. Més a prop de l'equador la corba és més plana, o segueix l'estació de pluges i la seca en comptes de l'hivern i l'estiu. Per això el model harmònic no dona per fet cap pic d'hivern enlloc; s'ajusta a la forma que tinguin les dades.
 
-Les corbes de l'hemisferi sud només es desplacen mig any quan el gràfic compara la seva forma estacional amb la de països del nord. Les seves corbes de producció mantenen la fase de calendari real.
+Quan el gràfic posa els països de l'hemisferi sud al costat dels del nord, els desplaça mig any perquè les formes es puguin comparar. El globus no ho fa: allà, el juliol de Xile continua sent juliol.
 
 Aquestes tries meves de vocabulari revelen una assumpció que, encara que sembli òbvia, podria ser errònia: que els canvis de les taxes al llarg de l'any es deuen sobretot a les estacions climàtiques. En teoria podrien reflectir una altra cosa: pensa en mecanismes socials com el Ramadà o en artefactes de dades com el registre tardà de defuncions, les dates de defunció per defecte, i coses així.
 
@@ -127,21 +127,21 @@ Quan em falten les dades que necessito sempre em faig la pregunta: hi ha algun i
 
 [proxy ranking card]
 
-Abans de comprometre'ns amb un, val la pena veure què segueix realment la _força_ de l'oscil·lació estacional d'un país entre els països que ja declaren una corba. Moltes són més o menys unimodals, mentre que alguns climes tropicals poden tenir trets més amples o múltiples de temporada de pluges. L'amplitud continua sent un bon primer resum — com de lluny es mou la corba respecte a la seva mitjana anual — sense pretendre que tota forma tingui un únic pic d'hivern.
+Abans de comprometre'ns amb un, val la pena veure què segueix realment la _força_ de l'oscil·lació estacional d'un país entre els països que ja declaren una corba. Moltes són més o menys unimodals, mentre que alguns climes tropicals poden tenir trets més amples o múltiples de temporada de pluges. L'amplitud continua sent un bon primer resum (com de lluny es mou la corba respecte a la seva mitjana anual), sense pretendre que tota forma tingui un únic pic d'hivern.
 
 En els gràfics que segueixen, cada punt és un país amb dades estacionals observades. L'eix y mostra l'amplitud: com més amunt és un punt, més gran és la diferència de mortalitat entre estiu i hivern. L'eix x situa els països en cadascun dels indicadors proposats.
 
-L'eix inferior mostra la latitud absoluta — com de lluny és un país de l'equador. Els punts de l'esquerra són tropicals, els punts a prop de la vora dreta són a prop dels pols.
+L'eix inferior mostra la latitud absoluta, com de lluny és un país de l'equador. Els punts de l'esquerra són tropicals, els punts a prop de la vora dreta són a prop dels pols.
 
 [latitude scatter]
 
-Veiem un patró esperat: l'amplitud és mínima entre els tròpics, perquè allà els països no experimenten estacions astronòmiques. I un altre — si més no per a mi — inesperat: per sobre dels 35° l'estacionalitat disminueix, en comptes d'enfilar-se amb hiverns més freds i més llargs. Una explicació possible és que a partir d'un cert llindar la gent entén que s'ha d'adaptar a l'hivern i implementa adaptacions socials, de conducta i d'habitatge. Que Espanya, amb un clima més temperat, mostri una mortalitat hivernal més alta que Suècia apuntaria en aquesta direcció.
+Veiem un patró esperat: l'amplitud és mínima entre els tròpics, perquè allà els països no experimenten estacions astronòmiques. I un altre d'inesperat (si més no per a mi): per sobre dels 35° l'estacionalitat disminueix, en comptes d'enfilar-se amb hiverns més freds i més llargs. Una explicació possible és que a partir d'un cert llindar la gent entén que s'ha d'adaptar a l'hivern i implementa adaptacions socials, de conducta i d'habitatge. Que Espanya, amb un clima més temperat, mostri una mortalitat hivernal més alta que Suècia apuntaria en aquesta direcció.
 
 Aquí posem tots els països i regions al seu respectiu calaix climàtic. Si això ha de ser un bon indicador, hauríem de veure que els punts de cada clima estan agrupats.
 
 [koppen scatter]
 
-Doncs bé, això no canvia gaire el panorama. Confirmem que hi ha correlació, que l'estacionalitat és més baixa entre els tròpics, i que el clima — igual que la latitud — prediu millor l'estacionalitat allà on l'estacionalitat és baixa.
+Doncs bé, això no canvia gaire el panorama. Confirmem que hi ha correlació, que l'estacionalitat és més baixa entre els tròpics, i que el clima, igual que la latitud, prediu millor l'estacionalitat allà on l'estacionalitat és baixa.
 
 [pop65 scatter]
 
@@ -153,13 +153,13 @@ Més del mateix. No hi ha cap correlació visible entre com de ric és un país 
 
 [neighbour scatter]
 
-I els països veïns? Això va millor. Aquí hi ha una correlació forta. L'adjacència amb veïns fronterers és l'indicador més fort — l'error mitjà més baix, la correlació més alta, i l'únic amb capacitat predictiva positiva tant contra el llindar de la corba mitjana com contra la latitud. La latitud i la classe climàtica queden juntes just darrere, amb el clima superant la latitud en el país típic.
+I els països veïns? Això va millor. Aquí hi ha una correlació forta. De tot el que he provat amb els països que tenen corba mesurada, manllevar dels veïns fronterers guanya: l'error mitjà més baix, la correlació més alta, i l'únic mètode que supera alhora el llindar de la corba mitjana i la latitud. La latitud i la classe climàtica queden just darrere, amb el clima lleugerament per davant de la latitud en el país típic.
 
 :::accordion
 
 ## Com puntuen realment els indicadors · Puntuacions de validació creuada per als cinc indicadors
 
-Aquestes són afirmacions sobre error i capacitat predictiva, així que aquí les tens mesurades. Cada país que declara una corba s'amaga per torns, es prediu a partir de cada indicador en comptes de les seves pròpies dades, i es puntua contra la forma observada.
+Acabo de fer afirmacions sobre error i capacitat predictiva, així que aquí hi ha la mesura. Amago cada país que declara una corba, el predic amb cada mètode com si no tingués dades, i puntuo la predicció contra la forma real. En aquests gràfics, l'amplitud és la desviació quadràtica mitjana de la corba ajustada respecte a la seva mitjana anual.
 
 [prediction comparison]
 
@@ -167,13 +167,13 @@ Aquestes són afirmacions sobre error i capacitat predictiva, així que aquí le
 
 ## Doncs com ha anat la teva classificació?
 
-Has posat els cinc en un ordre abans que res d'això fos a la pantalla. Aquest és l'ordre que produeixen realment els gràfics de més amunt, i on ha quedat la teva proposta.
+La classificació preguntava quin indicador segueix la mida de l'oscil·lació d'un país. La prova de deixar-ne un fora pregunta una altra cosa: fins a quin punt reconstrueix cada mètode la corba sencera quan l'amago? Si has ordenat els cinc abans dels gràfics, aquí és on ha quedat la teva aposta.
 
 [proxy scorecard]
 
 ## Regions frontereres, no només països fronterers
 
-Les regions adjacents dins d'un mateix país es corresponen encara més estretament que els països fronterers. Aquesta coincidència és el motiu pel qual la reconstrucció a partir de la regió més propera supera qualsevol altre indicador a escala regional. Dues regions russes, Ingúixia i Txukotka, tenien dades setmanals brutes inservibles — setmanes amb taxa zero o soroll excessiu de pics — i s'imputen a partir de la mitjana dels seus millors veïns propers en comptes de mostrar-se tal qual o descartar-se.
+Les regions veïnes dins d'un mateix país es segueixen encara més de prop que els països veïns, i per això la reconstrucció a partir de la regió més propera supera qualsevol altre indicador a escala regional. Dues regions russes, Ingúixia i Txukotka, tenien dades setmanals brutes que no podia fer servir (setmanes amb zero morts, o pics massa grans per ser reals), així que en comptes de mostrar-les tal qual o descartar-les les he omplert amb la mitjana dels seus veïns bons més propers.
 
 [region neighbour scatter]
 
@@ -191,32 +191,30 @@ Les regions adjacents dins d'un mateix país es corresponen encara més estretam
 
 Cada quadrat és mig grau de la mateixa graella que mostreja el globus, acolorit per les morts que l'estació d'aquest mes afegeix, o treu, a un mes ordinari d'allà. Arrossega per l'any i els hemisferis es bescanvien: el superàvit de gener a Europa és el dèficit de gener al sud d'Àfrica, i al juliol s'han intercanviat.
 
-La textura dins d'un país és població, no estacionalitat. Deu països tenen corbes regionals mesurades, i dins d'aquest marc això es redueix a Sud-àfrica, la Rússia occidental i l'Índia i la Xina modelades pel clima; Europa no en té cap. A tota la resta, totes les cel·les d'un país comparteixen una sola corba, i els contorns diuen a quina unitat pertany aquesta corba: continus quan algú hi ha comptat morts, discontinus quan s'ha reconstruït a partir d'un veí, d'una classe climàtica o d'una latitud. El que canvia d'una cel·la a una altra dins d'una d'aquestes fronteres és quanta gent hi viu, no quan mor.
+La textura que veus dins d'un país és població. Només deu països tenen corbes regionals mesurades, i en aquest marc això es redueix a Sud-àfrica, la Rússia occidental i l'Índia i la Xina modelades pel clima; Europa no en té cap. A tota la resta, totes les cel·les d'un país comparteixen una sola corba, i els contorns et diuen a quina unitat pertany: continus quan algú hi ha comptat morts, discontinus quan l'he reconstruït a partir d'un veí, d'una classe climàtica o d'una latitud. Dins d'una d'aquestes fronteres, el que canvia d'una cel·la a l'altra és quanta gent hi viu. Quan mor és igual a tot arreu.
 
 ### conflicts · Una guerra no és un procés de Poisson [Conflictes] · #eeb87d
 
-Les capes anteriors capturen tendències de mortalitat a llarg termini, que expliquen la major part de les morts al món. Però la mortalitat actual també necessita factors de gra més fi, i el més gran són els conflictes. El canal en temps real d'ACLED per a recerca publica agregats setmanals per país i Admin-1 amb morts i coordenades del centroide regional. Aquests centroides són una aproximació, no ubicacions d'esdeveniments individuals.
+Tot el que hem vist fins ara és mortalitat lenta: les tendències a llarg termini que expliquen la major part de les morts del món. Però hi ha morts que no segueixen cap tendència, i el grup més gran són les guerres. [ACLED publica agregats setmanals](https://acleddata.com/use-access/how-use-acleds-aggregated-data) de morts declarades en conflictes, clavats als centroides de cada país i de cada regió Admin-1. ACLED suma els esdeveniments de cada setmana al centre d'una província; no diu on ha passat cadascun.
 
-Per a totes les altres capes multiplicàvem la taxa bruta de mortalitat base per un factor d'estacionalitat o de densitat. Aquí obtenim 12 setmanes completes declarades, acabades en la data de publicació més antiga compartida per les sis regions d'ACLED. Quin és, doncs, el factor per a la setmana actual?
+Totes les altres capes fins ara eren un factor pel qual multiplicàvem la taxa bruta de mortalitat: la densitat, l'estació. Aquesta és un recompte. Tenim 12 setmanes completes declarades, que acaben en la data de publicació més antiga que comparteixen les sis regions d'ACLED. Així doncs, quanta gent mor a les guerres en una setmana qualsevol d'ara mateix?
 
-Fem una mitjana ponderada per recència per estimar la mortalitat de la setmana actual. Concretament fem servir una mitjana mòbil robusta ponderada exponencialment (Robust EWMA): _dona més pes a les setmanes recents que a les antigues, però esmorteeix els valors sospitosament extrems abans de fer la mitjana_.
+Faig una mitjana ponderada que es refia més de les setmanes recents que de les antigues i que aixafa els extrems abans de fer la mitjana. Això té nom: mitjana mòbil robusta ponderada exponencialment, Robust EWMA. Una setmana boja no pot moure gaire l'estimació. La contrapartida: quan una guerra empitjora de cop, l'estimació va endarrerida.
 
-Per exemple:
-
-Prenem set setmanes de la finestra de 12:
+Aquí ho tens amb set setmanes inventades (l'estimació real en fa servir 12; amb set l'aritmètica és més curta).
 
 | Setmana |  1  |  2  |  3  |  4  |  5  |  6  |  7  |
 | ----- | --: | --: | --: | --: | --: | --: | --: |
 | Morts |  20 |  22 |  21 |  90 |  24 |  26 |  28 |
 
-Calculem els percentils 10 i 90.
+Primer, els percentils 10 i 90.
 
 | Percentil | Límit | Significat                                       |
 | --------- | ----: | ------------------------------------------------ |
 | P10       |  20,6 | Al voltant del 10% de les setmanes tenen xifres més baixes. |
 | P90       |  52,8 | Al voltant del 90% de les setmanes tenen xifres més baixes. |
 
-Després actualitzem les xifres per sobre i per sota d'aquests límits:
+Tot el que queda fora s'arrossega cap endins:
 
 | Setmana | Valor original | Valor retallat | Canvi          |
 | --: | -------------: | -------------: | -------------- |
@@ -228,9 +226,9 @@ Després actualitzem les xifres per sobre i per sota d'aquests límits:
 |   6 |             26 |             26 | Sense canvis   |
 |   7 |             28 |             28 | Sense canvis   |
 
-Per calcular els pesos triem una semivida: quantes setmanes triga a reduir-se a la meitat l'impacte d'una setmana en l'estimació final. Ajustar-la exigiria una validació més llarga; aquí el valor predeterminat de producció és quatre setmanes.
+Després, els pesos. Surten d'una semivida: quantes setmanes passen fins que una setmana compta la meitat del que comptava. No l'he ajustada (caldria una validació en condicions); el globus fa servir quatre setmanes.
 
-Així que els pesos per reduir l'impacte a la meitat cada quatre setmanes queden així:
+Amb una semivida de quatre setmanes els pesos són:
 
 | Setmana | Pes    | Nota                        |
 | --: | -----: | --------------------------- |
@@ -242,15 +240,15 @@ Així que els pesos per reduir l'impacte a la meitat cada quatre setmanes queden
 |   6 |  0,841 |                             |
 |   7 |  1,000 | Setmana completa més recent |
 
-Després fem una mitjana ponderada amb aquests pesos. Que ens dona 28,4.
+Mitjana ponderada dels valors retallats: 28,4. La mitjana simple de les xifres brutes és 33, estirada cap amunt per aquella setmana de 90.
 
-Totes dues tries — com de ràpid decau la influència d'una setmana i com de fort s'arrosseguen cap endins els extrems — són meves, no de les dades. El globus sempre fa servir el resultat predeterminat de quatre setmanes i P10–P90, distribuït segons la proporció de morts de cada regió Admin-1 dins les 12 setmanes i anualitzat. Els controls són una demostració contrafactual; moure'ls no canvia el globus.
+Tots dos comandaments (com de ràpid s'esvaeix una setmana, com de fort s'arrosseguen els extrems cap endins) són tries meves; les dades no les han triat. El globus sempre fa anar el valor per defecte, quatre setmanes i P10–P90, després reparteix el resultat entre les regions Admin-1 segons la part de cadascuna en les morts de les 12 setmanes, i l'anualitza. Els controls de sota et deixen veure què donarien altres ajustos. Moure'ls no toca el globus.
 
 [widget to update half life, curve smoothness, and see prediction]
 
 [map of conflict fatalities]
 
-El mapa mostra les morts de les mateixes 12 setmanes completes als centroides Admin-1 d'ACLED. Per al globus, cada centroide s'assigna a la cel·la poblada més propera dins del mateix país.
+El mapa mostra les mateixes 12 setmanes de morts als centroides Admin-1 d'ACLED. Al globus, cada centroide salta a la cel·la poblada més propera del mateix país, perquè un punt no pugui caure en un desert buit només perquè allà hi ha el centre de la província.
 
 ### who · Qui · #d9dbdd · chapter
 
@@ -258,15 +256,17 @@ El mapa mostra les morts de les mateixes 12 setmanes completes als centroides Ad
 Cada llampec rep una frase, treta de la distribució del lloc on s'ha disparat.
 :::
 
-# Edat, després sexe, després una causa
+# Sexe, edat, després causa
 
-**L'edat i el sexe** surten de la taula de defuncions per edat i sexe de les Perspectives de la Població Mundial de l'ONU, en les xifres de 2023. La **causa** surt de les Estimacions Sanitàries Mundials de l'Organització Mundial de la Salut — l'edició de 2021, llegida a 2019, l'últim any abans de la pandèmia, perquè la covid no es dibuixi com la manera ordinària de morir — preses al seu nivell més específic — les causes reconeixibles, no els grups clínics que hi ha per damunt — i reduïda a les vuit més fortes per país, sexe i franja d'edat, amb tota la resta plegada en «altres causes».
+L'edat i el sexe surten de la taula de defuncions per edat i sexe de les Perspectives de la Població Mundial de l'ONU, xifres de 2023. La causa surt de les [Estimacions Sanitàries Mundials de l'OMS](https://www.who.int/data/global-health-estimates/), l'edició GHE 2021 publicada el 2024. En faig servir les estimacions de 2019, l'últim any abans de la pandèmia, perquè no vull que la COVID-19 es dibuixi com la manera ordinària de morir. Per a cada país, sexe i franja d'edat em quedo les vuit causes reconeixibles més freqüents i plego la resta a «altres causes».
 
-Es mostregen **en aquest ordre**, de manera que una causa només es treu de la franja d'edat i sexe que plausiblement en mor. Treu la causa primer i tens vint-i-cinc-anyencs amb demència.
+No trec l'edat, el sexe i la causa per separat. Primer el sexe i l'edat, després la causa de la distribució d'aquell grup. Altrament tindríem combinacions que les dades d'origen gairebé mai no mostren.
 
-Totes dues taules s'inclouen com a JSON al repositori, així que el flux no necessita cap crida a una API en temps d'execució i es llegeix igual sense connexió. La taula de causes venia abans de l'Estudi de la Càrrega Global de Malaltia de l'IHME, exportada a mà d'una eina que tanca cada descàrrega darrere d'un compte i d'un límit de cent mil files. La de l'OMS és una sola petició sense credencials, i això és bona part del motiu que sigui la que hi ha aquí.
+Totes dues taules ([edat i sexe](/data/mortality-age-sex.json), [causa](/data/causes.json)) s'inclouen com a JSON al repositori, així que el flux no fa cap crida a una API en temps d'execució i es llegeix igual sense connexió. La taula de causes venia abans de l'Estudi de la Càrrega Global de Malaltia de l'IHME, que vaig haver d'exportar a mà d'una eina de resultats que amaga cada descàrrega darrere d'un compte i la limita a cent mil files. La taula de l'OMS és una petició i cap compte. Això és bona part del motiu que sigui la que hi ha aquí.
 
-Baixar la causa per sota del país vol dir tornar a l'IHME, i tornar a aquell límit. L'exportació subnacional són 723 llocs per 22 franges d'edat per dos sexes per 22 grups de causes — set-centes mil files, o vuit descàrregues, contra una quota que es gasta per edició i no es recupera mai. Per això les vuit es van ordenar per quantes morts portava cadascuna, i no per l'ordre en què l'eina les llista. La quota es va exhaurir després de la primera. Aquella descàrrega conté les malalties cardiovasculars, els càncers i les malalties respiratòries cròniques — el 55% de totes les morts — a resolució regional; en l'ordre propi de l'eina, la mateixa descàrrega n'hauria portat aproximadament una desena part. Ja és al flux, i val la pena ser exacte sobre fins on arriba, perquè hi actuen dues fraccions diferents. Les regions cobreixen el **44,6%** de les morts que es dibuixen; els tres grups són el **55,0%** de les causes. Només allà on es compleixen totes dues decideix la regió, de manera que el **24,5% de totes les tries de causa** ara es mouen amb el lloc i no amb el país. La resta conserven la barreja nacional.
+Baixar la causa per sota del país vol dir tornar a l'IHME, i tornar a aquell límit. L'exportació subnacional són 723 llocs × 22 franges d'edat × dos sexes × 22 grups de causes: set-centes mil files, o vuit descàrregues, contra una quota que es gasta per edició i no es recupera mai. Així que vaig ordenar les vuit per quantes morts porta cadascuna, en comptes de l'ordre en què l'eina les llista. La quota es va acabar després de la primera.
+
+Aquella descàrrega conté les malalties cardiovasculars, els càncers i les malalties respiratòries cròniques, el 55% de totes les morts, a resolució regional. En l'ordre propi de l'eina, la mateixa descàrrega n'hauria contingut aproximadament una desena part. Ara ja és al flux. Fins on arriba? Hi actuen dues fraccions. Les regions cobreixen el **44,6%** de les morts que es dibuixen; els tres grups són el **55,0%** de les causes. La regió només decideix allà on es compleixen totes dues, així que el **24,5% de totes les tries de causa** ara es mouen amb el lloc en comptes del país. La resta conserven la barreja nacional.
 
 El que sap el flux, en proporció de les morts que dibuixa:
 
@@ -276,17 +276,21 @@ El que sap el flux, en proporció de les morts que dibuixa:
 | Causa, aquests 3 grups |                   44,6% |        — |    55,4% |
 | Causa, els altres 19   |                       — |        — |     100% |
 
-La reponderació és una raó, no una substitució. Vint-i-dos grups clínics no poden carregar vuitanta-set causes amb nom, així que mai no es demana a l'IHME que anomeni res: per a cada regió, franja d'edat i sexe dona un sol nombre per grup — la proporció de morts d'aquell grup allà, dividida per la seva proporció nacional — i les etiquetes de l'OMS de dins del grup es multipliquen per aquest nombre. Tot el que queda fora dels tres grups es mou plegat amb el romanent, de manera que els tres no es poden inflar en silenci.
+La reponderació és una raó. Vint-i-dos grups clínics no poden carregar vuitanta-set causes amb nom, així que mai no demano al GBD que anomeni res. Per a cada regió, franja d'edat i sexe dona un nombre per grup: la proporció de morts d'aquell grup allà, dividida per la seva proporció nacional. Les etiquetes de l'OMS de dins del grup es multipliquen per aquest nombre. Tot el que queda fora dels tres grups es mou plegat amb el romanent, de manera que els tres no es poden inflar en silenci.
 
-Queden tres coses pendents, i cap no és un detall. Dinou dels vint-i-dos grups no tenen cap dada regional, cosa que són set descàrregues que encara deu una quota que no s'ha recuperat. El cinquanta-cinc per cent de les morts passen fora de les 474 regions —la Xina sencera entre elles, que aquí no té unitats subnacionals— i treuen una barreja de causes nacional. I disset de les regions són ciutats massa petites perquè una cel·la de mig grau els en pugui adjudicar cap: Delhi, Osaka, Londres, Ciutat de Mèxic, Jakarta, Manila i onze més no guanyen cap cel·la pròpia, així que les seves morts es dibuixen amb la barreja de la regió del voltant. Això és el 2,6% de les morts de dins de les regions, i la culpa és de la graella, no de les dades.
+Falten tres coses, i cap no és petita. Dinou dels vint-i-dos grups no tenen cap dada regional: set descàrregues que encara em deu una quota que no s'ha recuperat. El 55% de les morts passen fora de les 474 regions (tota la Xina entre elles, que aquí no té unitats subnacionals) i treuen una barreja de causes nacional. I disset de les regions són ciutats massa petites perquè una cel·la de mig grau les hi pugui adjudicar. Delhi, Osaka, el Gran Londres, Ciutat de Mèxic, Jakarta, Manila i onze més no guanyen cap cel·la pròpia, així que les seves morts es dibuixen amb la barreja de la regió del voltant. Això és el 2,6% de les morts de dins de les regions. La culpa és de la graella; les dades estan bé.
 
 [sampling order]
 
 # Després el mes ho decanta
 
-Les mateixes tres taules no donen la mateixa resposta al gener que al juliol. Cada franja d'edat i cada grup de causes porta una corba de dotze punts, normalitzada a una mitjana d'u al llarg de l'any, així que els totals anuals continuen sent exactament els que diuen les taules mentre la barreja dins d'un mes es mou: un hivern del nord treu gent més gran, i més causes respiratòries. Al sud de l'equador aquestes corbes van mig any desfasades, i això està mesurat, no suposat.
+L'època de l'any també canvia l'edat i la causa que traiem. Estimo aquests canvis a partir dels registres que tinc, i després presto els patrons als països que no en tenen. Aquest préstec és una de les parts més fluixes del model.
 
-Les corbes surten dels registres mensuals de defuncions del Brasil i de Mèxic — els dos únics països d'aquí les microdades dels quals porten data i causa alhora — i arriben a la resta a través de la mateixa transferència per zona climàtica que fa servir el capítol de l'estacionalitat. L'edat queda coberta del tot. La causa no: 55 de les 87 etiquetes manlleven la corba del seu capítol de la CIM-10, i les altres 32 es queden planes, multiplicades per u. La més gran de totes és «altres causes» mateixa — el residu on la retallada a les vuit més fortes plega tota la resta, típicament un terç del pes a les franges adultes i fins a la meitat. Deixar-la plana és una decisió, no un descuit: és una bossa de morts sense relació entre si i sense cap capítol propi, i donar-li la corba de la mort mitjana seria afirmar una forma que no he mesurat.
+L'edat i la causa fan servir registres diferents. Les corbes d'edat es mesuren a partir dels [registres setmanals d'Eurostat](https://ec.europa.eu/eurostat/cache/metadata/en/demomwk_esms.htm) de 24 països europeus. Les corbes de causa surten dels registres mensuals de defuncions del [sistema de mortalitat DATASUS del Brasil](https://datasus.saude.gov.br/informacoes-de-saude-tabnet/) i de la [Secretaría de Salud de Mèxic](https://www.datos.gob.mx/dataset/registro_defunciones), les dues fonts de país d'aquí les microdades de les quals porten data i causa alhora. Totes dues s'ajusten com a corbes harmòniques contínues d'ordre 4. Els dotze valors mensuals del gràfic són instantànies d'aquestes corbes; el que el model guarda és la corba mateixa.
+
+Els països sense aquests registres manlleven a través de la mateixa cascada de donants que el temps: mitjanes regionals, països veïns, clima, latitud. Les nou franges d'edat tenen corbes mesurades als 24 països d'origen. La causa és més irregular: 55 de les 87 etiquetes manlleven la corba del seu capítol de la CIM-10, i les altres 32 les deixo planes, multiplicades per u. La més gran d'aquestes és «altres causes» mateixa, el sac on la retallada a les vuit més fortes escombra tota la resta, típicament un terç del pes a les franges adultes i fins a la meitat. L'he deixada plana a posta. És un munt de morts sense relació entre si i sense cap capítol propi, i donar-li la corba de la mort mitjana seria afirmar una forma que no he mesurat mai.
+
+En el moment de mostrejar, aquests multiplicadors canvien els pesos condicionals d'edat i causa, que després es normalitzen plegats. Cada corba fa de mitjana u al llarg de l'any, però això sol no garanteix que cada categoria conservi exactament la seva proporció anual un cop combinats els pesos.
 
 [deaths by age and cause]
 
