@@ -180,7 +180,7 @@ export default function GlobalRandomMap({ features, grid }: GlobalRandomMapProps
       .attr("width", width)
       .attr("height", height)
       .attr("fill", "transparent")
-      .on("pointermove", (event) => {
+      .on("pointermove click", (event) => {
         const [x, y] = d3.pointer(event, ref.current);
         const lonLat = projection.invert?.([x, y]);
         if (!lonLat) {

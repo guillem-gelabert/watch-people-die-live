@@ -221,7 +221,7 @@ export default function CountryCentroidMap({
       .attr("width", width)
       .attr("height", height)
       .attr("fill", "transparent")
-      .on("pointermove", (event) => {
+      .on("pointermove click", (event) => {
         const [x, y] = d3.pointer(event, ref.current);
         const lonLat = projection.invert?.([x, y]);
         const hit = lonLat ? features.find((f) => d3.geoContains(f, lonLat)) : undefined;

@@ -1909,6 +1909,11 @@ footer {
   font-size: 0.78rem;
   color: var(--ink, #1d1822);
   white-space: pre-line;
+
+  /* Placed by tooltip.ts against the viewport with an 8px margin on either side, so it has to fit in
+     what that leaves. Long lines wrap rather than push the label off a phone's edge. */
+  max-width: min(22rem, calc(100vw - 16px));
+  overflow-wrap: anywhere;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.08s ease-out;
@@ -1916,6 +1921,15 @@ footer {
 
 .chart-tooltip.visible {
   opacity: 1;
+}
+
+/* Opened by a finger: tapping the label is one of the ways to close it, so it has to be hit. It
+   stays hit-testable through the closing tap (.closing) so that tap does not fall through to the
+   chart underneath and open another one. */
+.chart-tooltip.pinned,
+.chart-tooltip.closing {
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 /* The density close-ups used to be dark-navy tiles; they now composite onto the section sky

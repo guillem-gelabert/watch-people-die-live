@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, type PointerEvent as ReactPointerEvent } from "react";
+import { useMemo, type MouseEvent as ReactMouseEvent } from "react";
 import * as d3 from "d3";
 import { showTooltip, hideTooltip } from "../tooltip";
 import { parseColor } from "../palette";
@@ -307,7 +307,7 @@ export default function BorderRasterCloseup({
 
   // Cell hover: raster country is the cell's own m49; also resolve the vector country
   // under the pointer so we can flag the mismatch strip near borders.
-  const onCellMove = (event: ReactPointerEvent, cell: CellModel) => {
+  const onCellMove = (event: ReactMouseEvent, cell: CellModel) => {
     const rasterName = nameById.get(cell.m49);
     const vectorHit = borders.find((b) =>
       d3.geoContains(b.feature, [cell.lon + 0.25, cell.lat + 0.25]),
@@ -353,6 +353,7 @@ export default function BorderRasterCloseup({
                 fill={c.fill}
                 stroke="none"
                 onPointerMove={(e) => onCellMove(e, c)}
+                onClick={(e) => onCellMove(e, c)}
                 onPointerLeave={hideTooltip}
               />
             ))}
@@ -365,6 +366,9 @@ export default function BorderRasterCloseup({
                 key={b.key}
                 d={b.d}
                 onPointerMove={(e) =>
+                  showTooltip(b.feature.properties?.name ?? UNKNOWN, e.clientX, e.clientY)
+                }
+                onClick={(e) =>
                   showTooltip(b.feature.properties?.name ?? UNKNOWN, e.clientX, e.clientY)
                 }
                 onPointerLeave={hideTooltip}

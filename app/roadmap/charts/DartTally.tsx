@@ -1,7 +1,7 @@
 "use client";
 
 import { useDict } from "../I18nContext";
-import { hideTooltip, moveTooltip, showTooltip } from "../tooltip";
+import { hideTooltip, moveTooltip, showTooltip, showTooltipAt } from "../tooltip";
 import { fill } from "@/lib/i18n/fill";
 import { useDartTally } from "./dartTallyState";
 
@@ -55,21 +55,20 @@ export default function DartTally() {
                 type="button"
                 className="dart-tally-label has-definition"
                 aria-label={`${row.label}: ${row.definition}`}
-                onPointerEnter={(event) =>
-                  showTooltip(row.definition, event.clientX, event.clientY)
-                }
-                onPointerMove={(event) => moveTooltip(event.clientX, event.clientY)}
-                onPointerLeave={(event) => {
-                  if (event.pointerType !== "touch") hideTooltip();
+                // A finger fires pointerenter before pointerdown, which would open the tooltip
+                // only for that same touch to close it; the click below opens it instead.
+                onPointerEnter={(event) => {
+                  if (event.pointerType !== "touch")
+                    showTooltip(row.definition, event.clientX, event.clientY);
                 }}
-                onFocus={(event) => {
-                  const rect = event.currentTarget.getBoundingClientRect();
-                  showTooltip(row.definition, rect.left + rect.width / 2, rect.bottom);
+                onPointerMove={(event) => {
+                  if (event.pointerType !== "touch") moveTooltip(event.clientX, event.clientY);
                 }}
+                onPointerLeave={hideTooltip}
+                onFocus={(event) => showTooltipAt(row.definition, event.currentTarget)}
                 onClick={(event) => {
                   event.currentTarget.focus();
-                  const rect = event.currentTarget.getBoundingClientRect();
-                  showTooltip(row.definition, rect.left + rect.width / 2, rect.bottom);
+                  showTooltipAt(row.definition, event.currentTarget);
                 }}
                 onBlur={hideTooltip}
                 onKeyDown={(event) => {

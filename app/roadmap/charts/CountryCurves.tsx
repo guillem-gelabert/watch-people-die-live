@@ -340,7 +340,7 @@ export default function CountryCurves({ seasonality, features, proxies }: Countr
       .attr("stroke-linecap", "round")
       .attr("d", (d) => line(d.curve))
       .style("cursor", "pointer")
-      .on("pointermove", (event, d) => {
+      .on("pointermove click", (event, d) => {
         // Nearest phase under the pointer for this series.
         const [px] = d3.pointer(event, g.node());
         const phase = Math.max(0, Math.min(1, x.invert(px)));

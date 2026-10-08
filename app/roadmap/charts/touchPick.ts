@@ -54,9 +54,9 @@ export function nearestWithin<T extends PickCandidate>(
   return best;
 }
 
-// What a tap does to what is already open. Tapping the point that is already showing closes it,
-// which is the only dismiss path a touch reader has: `hideTooltip` hangs off `pointerleave`, and a
-// finger never produces one.
+// What a tap does to what is already open. Tapping the point that is already showing closes it.
+// In practice the shared tooltip gets there first — a pinned tooltip closes on the next touch
+// anywhere (see tooltip.ts) — and this is what the picker would do on its own.
 export function tapOutcome<T>(shown: T | null, picked: T | null): { shown: T | null } {
   if (picked === null) return { shown: null };
   if (shown === picked) return { shown: null };
@@ -95,6 +95,12 @@ export function attachTapPicker<T extends PickCandidate>(
     .style("pointer-events", "none");
 
   let shown: T | null = null;
+  // Called by the tooltip whenever it closes, including from a tap outside this chart, so the ring
+  // never outlives the label that explains it.
+  const clear = () => {
+    shown = null;
+    marker.attr("opacity", 0);
+  };
 
   g.append("rect")
     .attr("class", "chart-tap-surface")
@@ -108,13 +114,11 @@ export function attachTapPicker<T extends PickCandidate>(
       const [localX, localY] = d3.pointer(event, g.node());
       const picked = nearestWithin(candidates, localX, localY, radius);
       const next = tapOutcome(shown, picked).shown;
-      shown = next;
       if (!next) {
-        marker.attr("opacity", 0);
+        clear();
         hideTooltip();
         return;
       }
-      marker.attr("cx", next.x).attr("cy", next.y).attr("opacity", 1);
       // Positioned at the point rather than at the finger, so the tooltip and the ring agree about
       // which dot is being described.
       const node = g.node() as SVGGElement;
@@ -122,6 +126,9 @@ export function attachTapPicker<T extends PickCandidate>(
       const at = ctm
         ? new DOMPoint(next.x, next.y).matrixTransform(ctm)
         : { x: event.clientX, y: event.clientY };
-      showTooltip(describe(next), at.x, at.y);
+      // Declined when this same tap has just closed the same point's tooltip: that is a toggle.
+      if (!showTooltip(describe(next), at.x, at.y, { onHide: clear })) return;
+      shown = next;
+      marker.attr("cx", next.x).attr("cy", next.y).attr("opacity", 1);
     });
 }

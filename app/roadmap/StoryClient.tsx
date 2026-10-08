@@ -13,6 +13,7 @@ import RoadmapMarkdown, { roadmapSections, type SectionHeadingKind } from "./roa
 import { ProxyGuessProvider } from "./proxy/ProxyGuessContext";
 import { prepareReveals, prepareTypers, runReveals, runTypers, type Typer } from "./storyMotion";
 import { useStorySlots } from "./storySlots";
+import { installTouchTooltips } from "./tooltip";
 import "./roadmap.css";
 
 interface StoryClientProps {
@@ -158,6 +159,10 @@ export default function StoryClient({ markdown }: StoryClientProps) {
       }
     }
   }, []);
+
+  // A tap on a native `title` shows it in the chart tooltip, which has to be listening before any
+  // chart has opened one.
+  useEffect(installTouchTooltips, []);
 
   // rAF-throttled: scroll can fire far more often than the compositor paints, and this
   // handler both reads layout and writes styles.

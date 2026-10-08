@@ -363,7 +363,7 @@ export default function AmplitudeMap({
     });
   };
 
-  const onPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+  const onPointerMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas || !cache || !rateGrid) return;
     const rect = canvas.getBoundingClientRect();
@@ -469,6 +469,7 @@ export default function AmplitudeMap({
           role="img"
           aria-label={t.aria}
           onPointerMove={onPointerMove}
+          onClick={onPointerMove}
           onPointerLeave={hideTooltip}
         />
         {/* The provenance outlines, over the cells and in vector: about two hundred paths against

@@ -374,7 +374,7 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
     // Saying "no data" here would contradict what the reader can see, and for this grid the two
     // really are the same claim: the source covers the whole land surface, so a cell with no row is
     // a cell with nobody in it, not a gap in the coverage.
-    function onPointerMove(event: PointerEvent) {
+    function onPointerMove(event: MouseEvent) {
       if (!grid || !features) return;
       const rect = canvas!.getBoundingClientRect();
       const scaleX = canvas!.width / rect.width;
@@ -408,12 +408,14 @@ export default function DensityMap({ grid, features, deathsPerYearById }: Densit
       }
     }
     canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("click", onPointerMove);
     canvas.addEventListener("pointerleave", hideTooltip);
     return () => {
       disposed = true;
       controller.stop();
       if (animationRef.current === controller) animationRef.current = null;
       canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("click", onPointerMove);
       canvas.removeEventListener("pointerleave", hideTooltip);
     };
   }, [grid, features, deathsPerYearById, logScale, projection, width, height, t, unknown]);

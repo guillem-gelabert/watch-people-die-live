@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import * as d3 from "d3";
 import { robustEwma } from "@/lib/conflict-model";
 import type { ConflictStackSegment, ConflictWeeklyStack } from "../types";
@@ -113,6 +113,43 @@ export default function ConflictEwmaWidget({ weeklyStack }: ConflictEwmaWidgetPr
   };
   const flat = halfLife === 0;
   const clamped = clampP > 0;
+  // The band under the pointer, or under a tap. A tap leaves the highlight on, so whatever closes
+  // the tooltip — the next tap, anywhere — has to take it off again.
+  const clearHover = () => setHover(null);
+  const pick = (event: MouseEvent<SVGRectElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    if (bounds.width <= 0 || bounds.height <= 0) return;
+    const index = Math.max(
+      0,
+      Math.min(
+        weeks.length - 1,
+        Math.floor(((event.clientX - bounds.left) / bounds.width) * weeks.length),
+      ),
+    );
+    const valueAtPointer = y.invert(((event.clientY - bounds.top) / bounds.height) * innerH);
+    const week = bars[index]!;
+    let cumulative = 0;
+    let segmentIndex = -1;
+    for (const [candidate, segment] of week.segments.entries()) {
+      if (
+        segment.fatalities > 0 &&
+        valueAtPointer >= cumulative &&
+        valueAtPointer < cumulative + segment.fatalities
+      ) {
+        segmentIndex = candidate;
+        break;
+      }
+      cumulative += segment.fatalities;
+    }
+    const segment = week.segments[segmentIndex];
+    if (!segment) {
+      setHover(null);
+      hideTooltip();
+      return;
+    }
+    setHover({ i: index, si: segmentIndex });
+    showTooltip(describe(segment), event.clientX, event.clientY, { onHide: clearHover });
+  };
 
   return (
     <div className="ewma-widget">
@@ -246,42 +283,8 @@ export default function ConflictEwmaWidget({ weeklyStack }: ConflictEwmaWidgetPr
             height={innerH}
             fill="transparent"
             pointerEvents="all"
-            onPointerMove={(event) => {
-              const bounds = event.currentTarget.getBoundingClientRect();
-              if (bounds.width <= 0 || bounds.height <= 0) return;
-              const index = Math.max(
-                0,
-                Math.min(
-                  weeks.length - 1,
-                  Math.floor(((event.clientX - bounds.left) / bounds.width) * weeks.length),
-                ),
-              );
-              const valueAtPointer = y.invert(
-                ((event.clientY - bounds.top) / bounds.height) * innerH,
-              );
-              const week = bars[index]!;
-              let cumulative = 0;
-              let segmentIndex = -1;
-              for (const [candidate, segment] of week.segments.entries()) {
-                if (
-                  segment.fatalities > 0 &&
-                  valueAtPointer >= cumulative &&
-                  valueAtPointer < cumulative + segment.fatalities
-                ) {
-                  segmentIndex = candidate;
-                  break;
-                }
-                cumulative += segment.fatalities;
-              }
-              const segment = week.segments[segmentIndex];
-              if (!segment) {
-                setHover(null);
-                hideTooltip();
-                return;
-              }
-              setHover({ i: index, si: segmentIndex });
-              showTooltip(describe(segment), event.clientX, event.clientY);
-            }}
+            onPointerMove={pick}
+            onClick={pick}
             onPointerLeave={() => {
               setHover(null);
               hideTooltip();

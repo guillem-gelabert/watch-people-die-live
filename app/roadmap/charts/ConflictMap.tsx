@@ -89,7 +89,7 @@ export default function ConflictMap({ conflicts, features }: ConflictMapProps) {
         .attr("r", Math.max(0.6, r(region.fatalities)))
         .attr("fill", ink)
         .attr("fill-opacity", 0.55)
-        .on("pointerenter", (event: PointerEvent) =>
+        .on("pointermove click", (event: MouseEvent) =>
           showTooltip(
             fill(t.regionTooltip, {
               region: region.admin1,

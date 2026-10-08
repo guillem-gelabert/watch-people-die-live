@@ -263,7 +263,7 @@ export default function SubnationalChoroplethMap({
         const { rate } = rateOf(c.region);
         return rate != null ? step(rate) : PLATE;
       })
-      .on("pointermove", (event, c) => {
+      .on("pointermove click", (event, c) => {
         const { rate, national } = rateOf(c.region);
         const label =
           rate == null

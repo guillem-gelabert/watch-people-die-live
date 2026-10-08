@@ -55,6 +55,7 @@ export default function ProxyStrip({
   const d = useDict();
   const paragraphRef = useRef<HTMLParagraphElement | null>(null);
   const tipRef = useRef<HTMLSpanElement | null>(null);
+  const infoRef = useRef<HTMLButtonElement | null>(null);
   const [tipOpen, setTipOpen] = useState(false);
   // Which side of the ⓘ the tip hangs from. It sits above by default and drops below when there
   // is not enough room, which is the case for the top row of the modal.
@@ -74,7 +75,15 @@ export default function ProxyStrip({
   // that is about to move.
   useEffect(() => {
     if (!tipOpen) return;
-    const close = () => setTipOpen(false);
+    // Except on the ⓘ itself, whose own click toggles: closed here first, that click would reopen.
+    const close = (event: Event) => {
+      if (
+        event.target instanceof Element &&
+        event.target.closest(".proxy-strip-info") === infoRef.current
+      )
+        return;
+      setTipOpen(false);
+    };
     window.addEventListener("pointerdown", close, { capture: true });
     window.addEventListener("scroll", close, { passive: true });
     return () => {
@@ -112,6 +121,7 @@ export default function ProxyStrip({
         <span className="proxy-strip-controls" data-shown={controlsShown ? "1" : "0"}>
           <button
             type="button"
+            ref={infoRef}
             className="proxy-strip-info"
             aria-expanded={tipOpen}
             // The sortable container filters this button, and stopping the pointer here keeps an
